@@ -1,4 +1,4 @@
-# Siwon Business 수강신청
+# Siwon Business LMS
 
 기업 영어 교육용 LMS (Learning Management System).
 

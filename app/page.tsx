@@ -13,7 +13,7 @@ export default async function Home() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md text-center">
-        <h1 className="text-3xl font-bold text-brand-900">Siwon Business 수강신청</h1>
+        <h1 className="text-3xl font-bold text-brand-900">Siwon Business LMS</h1>
         <p className="mt-2 text-slate-600">기업 영어 교육 학습 관리 시스템</p>
 
         <div className="mt-8 flex flex-col gap-3">

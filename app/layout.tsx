@@ -3,12 +3,12 @@ import "./globals.css";
 import PwaRegister from "@/components/PwaRegister";
 
 export const metadata: Metadata = {
-  title: "Siwon Business 수강신청",
+  title: "Siwon Business LMS",
   description: "기업 영어 교육 LMS",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "Siwon Business 수강신청",
+    title: "Siwon Business LMS",
     statusBarStyle: "default",
   },
   icons: {

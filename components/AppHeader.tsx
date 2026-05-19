@@ -27,7 +27,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
                 ? "Siwon Business LMS"
                 : profile.role === "teacher"
                   ? "Siwon Business — Teacher Portal"
-                  : "Siwon Business 수강신청"}
+                  : "Siwon Business LMS"}
             </span>
           </Link>
           <nav className="hidden gap-1 text-sm font-medium sm:flex">

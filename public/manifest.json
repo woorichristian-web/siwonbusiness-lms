@@ -1,6 +1,6 @@
 {
-  "name": "Siwon Business 수강신청",
-  "short_name": "Siwon Business 수강신청",
+  "name": "Siwon Business LMS",
+  "short_name": "Siwon Business LMS",
   "description": "기업 영어 교육 LMS — 수업 신청·취소·달력",
   "start_url": "/",
   "scope": "/",
