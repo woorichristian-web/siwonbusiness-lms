@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1d4ed8"/>
+  <g fill="#ffffff">
+    <!-- 책 모양 -->
+    <path d="M120 140 h120 a40 40 0 0 1 40 40 v220 a20 20 0 0 0 -20 -20 H120 z"/>
+    <path d="M392 140 H272 a40 40 0 0 0 -40 40 v220 a20 20 0 0 1 20 -20 h140 z"/>
+    <!-- L 글자 (LMS) -->
+    <text x="50%" y="73%" font-family="-apple-system, system-ui, sans-serif"
+          font-size="120" font-weight="800" text-anchor="middle" fill="#1d4ed8">L</text>
+  </g>
+</svg>

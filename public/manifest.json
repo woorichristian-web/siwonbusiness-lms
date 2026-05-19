@@ -1,0 +1,20 @@
+{
+  "name": "Siwon Business 수강신청",
+  "short_name": "Siwon Business 수강신청",
+  "description": "기업 영어 교육 LMS — 수업 신청·취소·달력",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#1d4ed8",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
