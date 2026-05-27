@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { useMemo, useState, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -39,6 +40,43 @@ export interface BookingEvent {
  */
 export default function ClassSchedulesView({ events }: { events: BookingEvent[] }) {
   const [selected, setSelected] = useState<BookingEvent | null>(null);
+  const [view, setView] = useState<"day" | "week" | "month">("day");
+  const [dayDate, setDayDate] = useState<Date>(() => new Date());
+  const calRef = useRef<FullCalendar | null>(null);
+
+  // Day 뷰 — 선택한 날짜의 수업만 시간순으로 정렬
+  const dayEvents = useMemo(() => {
+    const start = new Date(dayDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return events
+      .filter((e) => {
+        const t = new Date(e.start_at).getTime();
+        return t >= start.getTime() && t < end.getTime();
+      })
+      .sort(
+        (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
+      );
+  }, [events, dayDate]);
+
+  function navigate(action: "prev" | "today" | "next") {
+    if (view === "day") {
+      if (action === "today") {
+        setDayDate(new Date());
+        return;
+      }
+      const d = new Date(dayDate);
+      d.setDate(d.getDate() + (action === "next" ? 1 : -1));
+      setDayDate(d);
+    } else {
+      const api = calRef.current?.getApi();
+      if (!api) return;
+      if (action === "prev") api.prev();
+      else if (action === "next") api.next();
+      else api.today();
+    }
+  }
 
   const fcEvents: EventInput[] = useMemo(
     () =>
@@ -67,62 +105,95 @@ export default function ClassSchedulesView({ events }: { events: BookingEvent[] 
         </h2>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-4">
-        <style>{`
-          .fc-event { cursor: pointer; }
-          .fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; }
-          /* 슬롯 높이 확대 — 4줄(시간/이름/회사/타입) 모두 보이도록 */
-          .fc .fc-timegrid-slot { height: 3em !important; }
-          .fc .fc-timegrid-slot-minor { border-top-style: dotted; }
-          .fc-timegrid-event { min-height: 3.5em; }
-          .fc-timegrid-event .fc-event-main { padding: 0 !important; }
-          .fc-timegrid-event-harness > .fc-timegrid-event { inset: 0 0 0 0 !important; }
-          .fc { min-width: 640px; }
-          @media (min-width: 768px) { .fc { min-width: 0; } }
-        `}</style>
-        <FullCalendar
-          plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-          initialView="timeGridWeek"
-          headerToolbar={{
-            left: "prev,next today",
-            center: "title",
-            right: "timeGridDay,timeGridWeek,dayGridMonth",
-          }}
-          buttonText={{ today: "Today", day: "Day", week: "Week", month: "Month" }}
-          locale="en"
-          slotMinTime="06:00:00"
-          slotMaxTime="23:00:00"
-          allDaySlot={false}
-          nowIndicator
-          height="auto"
-          events={fcEvents}
-          eventClick={onEventClick}
-          eventDisplay="block"
-          eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-          slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-          dayHeaderFormat={{ month: "2-digit", day: "2-digit", weekday: "short" }}
-          slotDuration="00:30:00"
-          eventContent={(arg) => {
-            const e = arg.event.extendedProps as BookingEvent;
-            return (
-              <div style={{ padding: "4px 6px", lineHeight: 1.3, height: "100%", display: "flex", flexDirection: "column", gap: 1, overflow: "hidden" }}>
-                <div style={{ fontSize: "0.72rem", opacity: 0.95, fontWeight: 500 }}>{arg.timeText}</div>
-                <div style={{ fontSize: "0.85rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {e.student_name}
-                </div>
-                {e.student_company && (
-                  <div style={{ fontSize: "0.68rem", opacity: 0.9, fontStyle: "italic", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {e.student_company}
-                  </div>
-                )}
-                <div style={{ fontSize: "0.68rem", opacity: 0.9 }}>
-                  {e.class_type === "1on1" ? "1:1" : "Group"} · {e.format === "online" ? "Online" : "Offline"}
-                </div>
-              </div>
-            );
-          }}
-        />
+      {/* Toolbar — prev/today/next + Day/Week/Month 탭 */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white p-1 shadow-sm">
+          <button type="button" onClick={() => navigate("prev")} aria-label="Previous"
+            className="rounded px-2 py-1 text-sm text-slate-600 hover:bg-slate-50">◀</button>
+          <button type="button" onClick={() => navigate("today")}
+            className="rounded px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50">Today</button>
+          <button type="button" onClick={() => navigate("next")} aria-label="Next"
+            className="rounded px-2 py-1 text-sm text-slate-600 hover:bg-slate-50">▶</button>
+          {view === "day" && (
+            <span className="ml-2 hidden text-sm font-semibold text-slate-700 sm:inline">
+              {dayDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            </span>
+          )}
+        </div>
+        <div className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+          {(["day", "week", "month"] as const).map((v) => (
+            <button key={v} type="button" onClick={() => setView(v)}
+              className={"px-3 py-1.5 text-sm font-medium transition " +
+                (view === v ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-50")}>
+              {v === "day" ? "Day" : v === "week" ? "Week" : "Month"}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {view === "day" ? (
+        <>
+          {/* Day view 모바일용 날짜 라벨 */}
+          <div className="mb-2 text-sm font-semibold text-slate-700 sm:hidden">
+            {dayDate.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "long", day: "numeric" })}
+          </div>
+          <DayCardList events={dayEvents} onSelect={setSelected} />
+        </>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-4">
+          <style>{`
+            .fc-event { cursor: pointer; }
+            .fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; }
+            /* 슬롯 높이 확대 — 4줄(시간/이름/회사/타입) 모두 보이도록 */
+            .fc .fc-timegrid-slot { height: 3em !important; }
+            .fc .fc-timegrid-slot-minor { border-top-style: dotted; }
+            .fc-timegrid-event { min-height: 3.5em; }
+            .fc-timegrid-event .fc-event-main { padding: 0 !important; }
+            .fc-timegrid-event-harness > .fc-timegrid-event { inset: 0 0 0 0 !important; }
+            .fc { min-width: 640px; }
+            @media (min-width: 768px) { .fc { min-width: 0; } }
+          `}</style>
+          <FullCalendar
+            ref={calRef}
+            key={view}
+            plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+            initialView={view === "week" ? "timeGridWeek" : "dayGridMonth"}
+            headerToolbar={{ left: "", center: "title", right: "" }}
+            locale="en"
+            slotMinTime="06:00:00"
+            slotMaxTime="23:00:00"
+            allDaySlot={false}
+            nowIndicator
+            height="auto"
+            events={fcEvents}
+            eventClick={onEventClick}
+            eventDisplay="block"
+            eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+            slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+            dayHeaderFormat={{ month: "2-digit", day: "2-digit", weekday: "short" }}
+            slotDuration="00:30:00"
+            eventContent={(arg) => {
+              const e = arg.event.extendedProps as BookingEvent;
+              return (
+                <div style={{ padding: "4px 6px", lineHeight: 1.3, height: "100%", display: "flex", flexDirection: "column", gap: 1, overflow: "hidden" }}>
+                  <div style={{ fontSize: "0.72rem", opacity: 0.95, fontWeight: 500 }}>{arg.timeText}</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {e.student_name}
+                  </div>
+                  {e.student_company && (
+                    <div style={{ fontSize: "0.68rem", opacity: 0.9, fontStyle: "italic", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {e.student_company}
+                    </div>
+                  )}
+                  <div style={{ fontSize: "0.68rem", opacity: 0.9 }}>
+                    {e.class_type === "1on1" ? "1:1" : "Group"} · {e.format === "online" ? "Online" : "Offline"}
+                  </div>
+                </div>
+              );
+            }}
+          />
+        </div>
+      )}
 
       {events.length === 0 && (
         <p className="mt-4 text-center text-sm text-slate-400">
@@ -347,5 +418,151 @@ function Row({ k, v }: { k: string; v: string }) {
       <span className="w-28 text-slate-500">{k}</span>
       <span className="flex-1 text-slate-800">{v}</span>
     </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Day view — 시간순 카드 리스트
+   ────────────────────────────────────────────────────────────────────── */
+function DayCardList({
+  events,
+  onSelect,
+}: {
+  events: BookingEvent[];
+  onSelect: (e: BookingEvent) => void;
+}) {
+  if (events.length === 0) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-12 text-center text-sm text-slate-400">
+        📭 No classes on this day.
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {events.map((e) => (
+        <ClassCard key={e.id} event={e} onClick={() => onSelect(e)} />
+      ))}
+    </div>
+  );
+}
+
+function ClassCard({
+  event,
+  onClick,
+}: {
+  event: BookingEvent;
+  onClick: () => void;
+}) {
+  const start = new Date(event.start_at);
+  const end = new Date(event.end_at);
+  const now = Date.now();
+  const isPast = end.getTime() <= now;
+  const isOngoing = start.getTime() <= now && end.getTime() > now;
+
+  // Feedback summary (avg of completed ratings, if any)
+  const fb = event.feedback;
+  const fbValues = fb
+    ? [
+        fb.grammar_accuracy, fb.grammar_complexity,
+        fb.vocabulary_diversity, fb.vocabulary_relevancy,
+        fb.comprehension,
+        fb.content_clarity, fb.content_organization,
+        fb.participation, fb.tone_manner, fb.preparation,
+      ].filter((v): v is number => typeof v === "number")
+    : [];
+  const fbAvg = fbValues.length === 0
+    ? null
+    : fbValues.reduce((s, n) => s + n, 0) / fbValues.length;
+
+  const timeFmt = (d: Date) =>
+    d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        "block w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-brand-300 hover:shadow-md " +
+        (isOngoing
+          ? "border-blue-400 ring-2 ring-blue-100"
+          : isPast
+          ? "border-slate-200 opacity-75"
+          : "border-slate-200")
+      }
+    >
+      <div className="flex items-start gap-3">
+        {/* 시간 컬럼 */}
+        <div className="w-20 flex-shrink-0 text-center sm:w-24">
+          <div className="text-base font-bold text-brand-700 sm:text-lg">
+            {timeFmt(start)}
+          </div>
+          <div className="text-xs text-slate-400">{timeFmt(end)}</div>
+        </div>
+
+        {/* 본문 */}
+        <div className="min-w-0 flex-1 border-l border-slate-100 pl-3">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            <span className="truncate text-base font-bold text-slate-800">
+              {event.student_name}
+            </span>
+            {isOngoing && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                ● LIVE
+              </span>
+            )}
+            {isPast && !isOngoing && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                Done
+              </span>
+            )}
+          </div>
+          {event.student_company && (
+            <div className="truncate text-xs italic text-slate-500">
+              🏢 {event.student_company}
+            </div>
+          )}
+          {event.course_name && (
+            <div className="truncate text-xs text-slate-500">
+              📚 {event.course_name}
+            </div>
+          )}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <Pill>{event.class_type === "1on1" ? "1:1" : "Group"}</Pill>
+            <Pill>{event.format === "online" ? "💻 Online" : "🏫 Offline"}</Pill>
+            {event.attendance_status && (
+              <Pill color="emerald">
+                ✓ {ATTENDANCE_LABELS_EN[event.attendance_status]}
+              </Pill>
+            )}
+            {fbAvg != null && (
+              <Pill color="amber">⭐ {fbAvg.toFixed(1)}/10</Pill>
+            )}
+          </div>
+        </div>
+
+        <div className="self-center text-lg text-slate-300">›</div>
+      </div>
+    </button>
+  );
+}
+
+function Pill({
+  children,
+  color = "slate",
+}: {
+  children: ReactNode;
+  color?: "slate" | "emerald" | "amber" | "blue";
+}) {
+  const styles: Record<string, string> = {
+    slate: "bg-slate-100 text-slate-600",
+    emerald: "bg-emerald-100 text-emerald-700",
+    amber: "bg-amber-100 text-amber-700",
+    blue: "bg-blue-100 text-blue-700",
+  };
+  return (
+    <span className={"rounded-full px-2 py-0.5 text-[11px] font-medium " + styles[color]}>
+      {children}
+    </span>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -15,6 +15,43 @@ export default function StudentCalendar({ slots }: { slots: BookableSlot[] }) {
   const [selected, setSelected] = useState<BookableSlot | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [view, setView] = useState<"day" | "week" | "month" | "year">("day");
+  const [dayDate, setDayDate] = useState<Date>(() => new Date());
+  const calRef = useRef<FullCalendar | null>(null);
+
+  // Day 뷰 — 선택한 날짜 슬롯만 시간순 정렬
+  const daySlots = useMemo(() => {
+    const start = new Date(dayDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return slots
+      .filter((s) => {
+        const t = new Date(s.start_at).getTime();
+        return t >= start.getTime() && t < end.getTime();
+      })
+      .sort(
+        (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
+      );
+  }, [slots, dayDate]);
+
+  function navigate(action: "prev" | "today" | "next") {
+    if (view === "day") {
+      if (action === "today") {
+        setDayDate(new Date());
+        return;
+      }
+      const d = new Date(dayDate);
+      d.setDate(d.getDate() + (action === "next" ? 1 : -1));
+      setDayDate(d);
+    } else {
+      const api = calRef.current?.getApi();
+      if (!api) return;
+      if (action === "prev") api.prev();
+      else if (action === "next") api.next();
+      else api.today();
+    }
+  }
 
   const events: EventInput[] = useMemo(
     () =>
@@ -67,59 +104,93 @@ export default function StudentCalendar({ slots }: { slots: BookableSlot[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div>
       <style>{calendarStyles}</style>
-      <FullCalendar
-        plugins={[timeGridPlugin, dayGridPlugin, multiMonthPlugin, interactionPlugin]}
-        initialView="timeGridWeek"
-        headerToolbar={{
-          left: "prev,next today",
-          center: "title",
-          right: "timeGridWeek,dayGridMonth,multiMonthYear",
-        }}
-        buttonText={{
-          today: "오늘",
-          week: "Week",
-          month: "Month",
-          year: "Year",
-        }}
-        views={{
-          multiMonthYear: {
-            type: "multiMonth",
-            duration: { years: 1 },
-            multiMonthMaxColumns: 3,
-          },
-        }}
-        locale={koLocale}
-        slotMinTime="06:00:00"
-        slotMaxTime="23:00:00"
-        allDaySlot={false}
-        nowIndicator
-        height="auto"
-        events={events}
-        eventClick={onEventClick}
-        eventDisplay="block"
-        eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-        slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-        dayHeaderFormat={{ month: "2-digit", day: "2-digit", weekday: "short" }}
-        eventContent={(arg) => {
-          const slot = arg.event.extendedProps as BookableSlot;
-          return (
-            <div className="fc-event-inner">
-              <div className="fc-event-time">{arg.timeText}</div>
-              <div className="fc-event-name">
-                {slot.i_am_booked && <span className="fc-mine-check">✓ </span>}
-                {slot.teacher_name}
-              </div>
-              <div className="fc-event-sub">
-                {slot.class_type === "1on1" ? "1:1" : "그룹"} ·{" "}
-                {slot.format === "online" ? "온라인" : "오프라인"} ·{" "}
-                {slot.booked_count}/{slot.capacity}
-              </div>
-            </div>
-          );
-        }}
-      />
+
+      {/* Toolbar — prev/today/next + Day/Week/Month/Year 탭 */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white p-1 shadow-sm">
+          <button type="button" onClick={() => navigate("prev")} aria-label="이전"
+            className="rounded px-2 py-1 text-sm text-slate-600 hover:bg-slate-50">◀</button>
+          <button type="button" onClick={() => navigate("today")}
+            className="rounded px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50">오늘</button>
+          <button type="button" onClick={() => navigate("next")} aria-label="다음"
+            className="rounded px-2 py-1 text-sm text-slate-600 hover:bg-slate-50">▶</button>
+          {view === "day" && (
+            <span className="ml-2 hidden text-sm font-semibold text-slate-700 sm:inline">
+              {dayDate.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
+            </span>
+          )}
+        </div>
+        <div className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+          {(["day", "week", "month", "year"] as const).map((v) => (
+            <button key={v} type="button" onClick={() => setView(v)}
+              className={"px-3 py-1.5 text-sm font-medium transition " +
+                (view === v ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-50")}>
+              {v === "day" ? "Day" : v === "week" ? "Week" : v === "month" ? "Month" : "Year"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {view === "day" ? (
+        <>
+          <div className="mb-2 text-sm font-semibold text-slate-700 sm:hidden">
+            {dayDate.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
+          </div>
+          <SlotCardListStudent slots={daySlots} onSelect={(s) => { setSelected(s); setMessage(null); }} />
+        </>
+      ) : (
+        <div className="overflow-x-auto">
+          <FullCalendar
+            ref={calRef}
+            key={view}
+            plugins={[timeGridPlugin, dayGridPlugin, multiMonthPlugin, interactionPlugin]}
+            initialView={
+              view === "week" ? "timeGridWeek" :
+              view === "month" ? "dayGridMonth" : "multiMonthYear"
+            }
+            headerToolbar={{ left: "", center: "title", right: "" }}
+            buttonText={{ today: "오늘", week: "Week", month: "Month", year: "Year" }}
+            views={{
+              multiMonthYear: {
+                type: "multiMonth",
+                duration: { years: 1 },
+                multiMonthMaxColumns: 3,
+              },
+            }}
+            locale={koLocale}
+            slotMinTime="06:00:00"
+            slotMaxTime="23:00:00"
+            allDaySlot={false}
+            nowIndicator
+            height="auto"
+            events={events}
+            eventClick={onEventClick}
+            eventDisplay="block"
+            eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+            slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+            dayHeaderFormat={{ month: "2-digit", day: "2-digit", weekday: "short" }}
+            eventContent={(arg) => {
+              const slot = arg.event.extendedProps as BookableSlot;
+              return (
+                <div className="fc-event-inner">
+                  <div className="fc-event-time">{arg.timeText}</div>
+                  <div className="fc-event-name">
+                    {slot.i_am_booked && <span className="fc-mine-check">✓ </span>}
+                    {slot.teacher_name}
+                  </div>
+                  <div className="fc-event-sub">
+                    {slot.class_type === "1on1" ? "1:1" : "그룹"} ·{" "}
+                    {slot.format === "online" ? "온라인" : "오프라인"} ·{" "}
+                    {slot.booked_count}/{slot.capacity}
+                  </div>
+                </div>
+              );
+            }}
+          />
+        </div>
+      )}
 
       {selected && (
         <SlotModal
@@ -230,6 +301,127 @@ function format(d: Date) {
 }
 function formatTime(d: Date) {
   return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Day view — 교육생용 슬롯 카드 리스트
+   ────────────────────────────────────────────────────────────────────── */
+function SlotCardListStudent({
+  slots,
+  onSelect,
+}: {
+  slots: BookableSlot[];
+  onSelect: (s: BookableSlot) => void;
+}) {
+  if (slots.length === 0) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-12 text-center text-sm text-slate-400">
+        📭 이 날에는 등록된 수업이 없습니다.
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {slots.map((s) => (
+        <SlotCardStudent
+          key={`${s.availability_id}|${s.start_at}`}
+          slot={s}
+          onClick={() => onSelect(s)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function SlotCardStudent({
+  slot,
+  onClick,
+}: {
+  slot: BookableSlot;
+  onClick: () => void;
+}) {
+  const start = new Date(slot.start_at);
+  const end = new Date(slot.end_at);
+  const now = Date.now();
+  const isPast = slot.is_past;
+  const isOngoing = start.getTime() <= now && end.getTime() > now;
+  const isMine = slot.i_am_booked;
+  const isFull = slot.booked_count >= slot.capacity && !isMine;
+  const isClosed = slot.status === "closed";
+
+  // 상태 라벨 + 색
+  let statusLabel = "신청 가능";
+  let statusClr = "bg-blue-100 text-blue-700";
+  let borderClr = "border-slate-200";
+  if (isPast) {
+    statusLabel = isMine ? "완료된 수업" : "지난 시간";
+    statusClr = "bg-slate-100 text-slate-500";
+  } else if (isMine) {
+    statusLabel = "내 수업";
+    statusClr = "bg-emerald-100 text-emerald-700";
+    borderClr = "border-emerald-300";
+  } else if (isClosed) {
+    statusLabel = "마감";
+    statusClr = "bg-slate-100 text-slate-500";
+  } else if (isFull) {
+    statusLabel = "정원 마감";
+    statusClr = "bg-amber-100 text-amber-700";
+  }
+
+  const timeFmt = (d: Date) =>
+    d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        "block w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-brand-300 hover:shadow-md " +
+        (isOngoing
+          ? "border-blue-400 ring-2 ring-blue-100"
+          : isPast
+          ? "border-slate-200 opacity-70"
+          : borderClr)
+      }
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-20 flex-shrink-0 text-center sm:w-24">
+          <div className="text-base font-bold text-brand-700 sm:text-lg">{timeFmt(start)}</div>
+          <div className="text-xs text-slate-400">{timeFmt(end)}</div>
+        </div>
+
+        <div className="min-w-0 flex-1 border-l border-slate-100 pl-3">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            <span className="truncate text-base font-bold text-slate-800">
+              {isMine && <span className="mr-1 text-emerald-600">✓</span>}
+              {slot.teacher_name} 강사
+            </span>
+            {isOngoing && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                ● 진행중
+              </span>
+            )}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+              {slot.class_type === "1on1" ? "1:1" : "그룹"}
+            </span>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+              {slot.format === "online" ? "💻 온라인" : "🏫 오프라인"}
+            </span>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+              {slot.booked_count}/{slot.capacity}명
+            </span>
+            <span className={"rounded-full px-2 py-0.5 text-[11px] font-medium " + statusClr}>
+              {statusLabel}
+            </span>
+          </div>
+        </div>
+
+        <div className="self-center text-lg text-slate-300">›</div>
+      </div>
+    </button>
+  );
 }
 
 const calendarStyles = `
