@@ -129,23 +129,23 @@ export default function ClassManageView({ rows }: { rows: ClassRow[] }) {
             </span>
           </h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            출석 미체크 또는 피드백 미제출 항목입니다. 우선 처리해주세요.
+            Sessions with missing attendance or unsubmitted feedback. Please handle these first.
           </p>
         </header>
 
         {unevaluated.length === 0 ? (
           <p className="p-4 text-center text-sm text-slate-500">
-            모든 과거 수업의 출석/평가가 완료되었습니다 🎉
+            All past sessions are checked and evaluated 🎉
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="px-4 py-2">날짜</th>
-                  <th className="px-4 py-2">학생</th>
-                  <th className="px-4 py-2">출석</th>
-                  <th className="px-4 py-2">평가</th>
+                  <th className="px-4 py-2">Date</th>
+                  <th className="px-4 py-2">Student</th>
+                  <th className="px-4 py-2">Attendance</th>
+                  <th className="px-4 py-2">Feedback</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -162,11 +162,11 @@ export default function ClassManageView({ rows }: { rows: ClassRow[] }) {
         )}
       </section>
 
-      {/* === 강좌별 전체 목록 === */}
+      {/* === All courses === */}
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-700">
-            전체 강좌 ({courses.length})
+            All courses ({courses.length})
           </h2>
         </div>
 
@@ -266,9 +266,9 @@ function UnevaluatedRow({
           >
             <span className="inline-block h-2 w-2 rounded-full"
               style={{ backgroundColor: fbMissing ? "#ef4444" : "#10b981" }} />
-            {fbIsDraft ? "임시저장됨 · 평가 이어하기"
-              : fbMissing ? "📝 평가 작성"
-              : "📝 평가 완료 · 보기"}
+            {fbIsDraft ? "Draft · continue"
+              : fbMissing ? "📝 Write feedback"
+              : "📝 Submitted · view"}
           </button>
         </td>
       </tr>

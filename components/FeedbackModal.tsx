@@ -151,14 +151,14 @@ export default function FeedbackModal({
           )}
         </header>
 
-        {/* 날짜 strip — 학생의 모든 과거 수업, 미평가는 빨강 */}
+        {/* Date strip — all past sessions, red for unevaluated */}
         <section className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3">
           <div className="mb-2 flex items-center justify-between">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              📅 수업 선택
+              📅 Select session
             </h4>
             <span className="text-xs text-slate-400">
-              총 {pastSessions.length}회 · 🔴 미평가
+              {pastSessions.length} sessions · 🔴 unevaluated
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -195,7 +195,7 @@ export default function FeedbackModal({
         </section>
 
         <p className="mb-4 text-xs text-slate-500">
-          1~10점으로 평가. 같은 숫자를 다시 클릭하면 해제. 미평가 항목은 평균에서 제외.
+          Rate each item from 1 to 10. Click the same number again to clear. Unrated items are excluded from the average.
         </p>
 
         {/* LANGUAGE */}
@@ -257,7 +257,7 @@ export default function FeedbackModal({
 
         {selectedSession.feedback?.status === "draft" && (
           <p className="mt-3 text-xs text-amber-700">
-            ⚠️ 현재 임시저장 상태입니다. 평균/리포트에 반영되지 않아요. Submit 해주세요.
+            ⚠️ This feedback is saved as a draft. It will not be included in averages or reports until you Submit.
           </p>
         )}
 
@@ -269,7 +269,7 @@ export default function FeedbackModal({
             disabled={pending}
             onClick={() => save("draft")}
           >
-            {pending ? "Saving..." : "💾 임시저장"}
+            {pending ? "Saving..." : "💾 Save draft"}
           </button>
           <button
             type="button"
