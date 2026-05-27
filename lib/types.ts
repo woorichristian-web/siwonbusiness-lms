@@ -47,6 +47,8 @@ export interface Teacher {
   bank_name: string | null;
   bank_account: string | null;
   account_holder: string | null;
+  zoom_url: string | null;
+  teams_url: string | null;
   created_at: string;
 }
 

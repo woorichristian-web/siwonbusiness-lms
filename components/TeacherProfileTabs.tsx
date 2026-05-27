@@ -95,6 +95,8 @@ function InfoSection({
   const [phone, setPhone] = useState(profile.phone ?? "");
   const [bio, setBio] = useState(teacher?.bio ?? "");
   const [specialty, setSpecialty] = useState(teacher?.specialty ?? "");
+  const [zoomUrl, setZoomUrl] = useState(teacher?.zoom_url ?? "");
+  const [teamsUrl, setTeamsUrl] = useState(teacher?.teams_url ?? "");
 
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
@@ -114,6 +116,8 @@ function InfoSection({
       const r2 = await updateMyTeacher({
         bio: bio.trim() || null,
         specialty: specialty.trim() || null,
+        zoom_url: zoomUrl.trim() || null,
+        teams_url: teamsUrl.trim() || null,
       });
       if (!r2.ok) { setMsg({ type: "err", text: r2.error ?? "Failed to update profile" }); return; }
 
@@ -191,6 +195,38 @@ function InfoSection({
             <textarea className="input min-h-[100px]"
               placeholder="A short introduction about your background and teaching style."
               value={bio} onChange={(e) => setBio(e.target.value)} />
+          </div>
+        </section>
+
+        <section className="card space-y-4">
+          <h2 className="text-base font-semibold">🎥 Online Meeting Rooms</h2>
+          <p className="text-xs text-slate-500">
+            Your default meeting room links. Shown on class detail cards so you can launch the session in one click.
+          </p>
+
+          <div>
+            <label className="label">Zoom URL</label>
+            <input
+              type="url"
+              className="input"
+              placeholder="https://zoom.us/j/1234567890?pwd=..."
+              value={zoomUrl}
+              onChange={(e) => setZoomUrl(e.target.value)}
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Use your Personal Meeting Room link or a recurring meeting URL.
+            </p>
+          </div>
+
+          <div>
+            <label className="label">Microsoft Teams URL</label>
+            <input
+              type="url"
+              className="input"
+              placeholder="https://teams.microsoft.com/l/meetup-join/..."
+              value={teamsUrl}
+              onChange={(e) => setTeamsUrl(e.target.value)}
+            />
           </div>
         </section>
 

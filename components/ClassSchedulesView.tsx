@@ -29,6 +29,8 @@ export interface BookingEvent {
   attendance_status: AttendanceStatus | null;
   attendance_notes: string | null;
   feedback: Feedback | null;
+  zoom_url: string | null;
+  teams_url: string | null;
 }
 
 /**
@@ -194,6 +196,38 @@ function StudentDetailModal({
           <Row k="Class type" v={event.class_type === "1on1" ? "1:1" : "Small group"} />
           <Row k="Format" v={event.format === "online" ? "Online" : "Offline"} />
         </dl>
+
+        {/* 온라인 회의실 바로가기 — Zoom / Teams */}
+        {event.format === "online" && (event.zoom_url || event.teams_url) && (
+          <div className="mb-4 flex flex-wrap gap-2 rounded-md border border-blue-200 bg-blue-50/40 p-3">
+            <span className="self-center text-xs font-semibold text-slate-600">🎥 Join class:</span>
+            {event.zoom_url && (
+              <a
+                href={event.zoom_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              >
+                Open in Zoom ↗
+              </a>
+            )}
+            {event.teams_url && (
+              <a
+                href={event.teams_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-purple-700"
+              >
+                Open in Teams ↗
+              </a>
+            )}
+          </div>
+        )}
+        {event.format === "online" && !event.zoom_url && !event.teams_url && (
+          <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/40 p-3 text-xs text-amber-700">
+            💡 Set your Zoom / Teams URL in <a href="/teacher/profile" className="font-semibold underline">My Page</a> to enable one-click join.
+          </div>
+        )}
 
         {/* Attendance check */}
         <div className="rounded-md border border-slate-200 bg-slate-50 p-3">

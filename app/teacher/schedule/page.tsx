@@ -11,6 +11,15 @@ export default async function TeacherSchedulePage() {
   const profile = await requireRole(["teacher", "admin"]);
   const supabase = createClient();
 
+  // 0) Teacher's meeting room URLs (Zoom/Teams)
+  const { data: teacherRow } = await supabase
+    .from("teachers")
+    .select("zoom_url, teams_url")
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+  const zoomUrl = teacherRow?.zoom_url ?? null;
+  const teamsUrl = teacherRow?.teams_url ?? null;
+
   // 1) Teacher's slots
   const { data: slots } = await supabase
     .from("time_slots")
@@ -92,6 +101,8 @@ export default async function TeacherSchedulePage() {
       attendance_status: (att?.status as any) ?? null,
       attendance_notes: att?.notes ?? null,
       feedback: feedbackMap.get(b.id) ?? null,
+      zoom_url: zoomUrl,
+      teams_url: teamsUrl,
     };
   });
 
