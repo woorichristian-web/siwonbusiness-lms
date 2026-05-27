@@ -6,26 +6,28 @@
   <rect x="48" y="48" width="416" height="416" rx="60"
         fill="none" stroke="#fbbf24" stroke-width="4" opacity="0.4"/>
 
-  <!-- 가운데 큰 굵은 S — sans-serif Black 900 -->
-  <text x="256" y="240"
-        font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif"
-        font-size="280"
-        font-weight="900"
-        text-anchor="middle"
-        dominant-baseline="middle"
-        letter-spacing="-12"
-        fill="#fbbf24">S</text>
+  <!-- 두꺼운 S — SVG path 로 직접 그림 (폰트 의존 없음) -->
+  <g transform="translate(126, 70) scale(2.6)">
+    <path
+      d="M 75 28 Q 75 10 50 10 Q 25 10 25 30 Q 25 50 50 50 Q 75 50 75 70 Q 75 90 50 90 Q 25 90 25 72"
+      stroke="#fbbf24"
+      stroke-width="18"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+  </g>
 
-  <!-- BUSINESS 텍스트 호 path — 안전영역 안에 위치 (y ~ 360) -->
+  <!-- BUSINESS 호 path — 안전영역 안에 위치 -->
   <defs>
-    <path id="arc-business" d="M 120 360 Q 256 420 392 360" fill="none"/>
+    <path id="arc-business" d="M 130 360 Q 256 415 382 360" fill="none"/>
   </defs>
 
-  <!-- S 아래쪽 둥근 호 'BUSINESS' 텍스트 — 굵게, 안전영역 안 -->
+  <!-- S 아래쪽 둥근 호 'BUSINESS' 텍스트 -->
   <text font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif"
         font-size="38"
         font-weight="800"
-        letter-spacing="5"
+        letter-spacing="6"
         fill="#fbbf24">
     <textPath href="#arc-business" startOffset="50%" text-anchor="middle">
       BUSINESS

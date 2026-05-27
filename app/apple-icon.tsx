@@ -4,6 +4,8 @@ import { ImageResponse } from "next/og";
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
+const S_PATH = "M 75 28 Q 75 10 50 10 Q 25 10 25 30 Q 25 50 50 50 Q 75 50 75 70 Q 75 90 50 90 Q 25 90 25 72";
+
 export default function AppleIcon() {
   return new ImageResponse(
     (
@@ -12,47 +14,50 @@ export default function AppleIcon() {
           width: "100%",
           height: "100%",
           display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
+          position: "relative",
           background: "#1e3a8a",
           borderRadius: 34,
-          position: "relative",
         }}
       >
-        {/* 내부 골드 액센트 테두리 — 안전영역 안에 위치 */}
         <div
           style={{
             position: "absolute",
-            top: 18,
-            left: 18,
-            right: 18,
-            bottom: 18,
-            border: "1.5px solid rgba(251, 191, 36, 0.4)",
-            borderRadius: 22,
+            top: 17,
+            left: 17,
+            right: 17,
+            bottom: 17,
+            border: "2px solid rgba(251, 191, 36, 0.4)",
+            borderRadius: 21,
           }}
         />
-        {/* 큰 두꺼운 S — Black weight */}
-        <div
-          style={{
-            fontSize: 115,
-            fontWeight: 900,
-            color: "#fbbf24",
-            lineHeight: 1,
-            letterSpacing: -5,
-            marginTop: -6,
-          }}
+
+        <svg
+          width="94"
+          height="94"
+          viewBox="0 0 100 100"
+          style={{ position: "absolute", top: 24, left: 43 }}
         >
-          S
-        </div>
-        {/* BUSINESS 텍스트 — 굵게 */}
+          <path
+            d={S_PATH}
+            stroke="#fbbf24"
+            strokeWidth="18"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </svg>
+
         <div
           style={{
-            fontSize: 14,
-            fontWeight: 800,
+            position: "absolute",
+            top: 124,
+            left: 0,
+            right: 0,
+            display: "flex",
+            justifyContent: "center",
+            fontSize: 15,
             color: "#fbbf24",
-            letterSpacing: 2.5,
-            marginTop: 2,
+            letterSpacing: 3,
           }}
         >
           BUSINESS

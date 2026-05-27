@@ -1,7 +1,9 @@
 import { ImageResponse } from "next/og";
 
-// PWA 매니페스트용 192x192 아이콘 (maskable 호환 — 안전영역 안에 콘텐츠 배치)
+// PWA 192x192 아이콘 (maskable 호환)
 export const runtime = "edge";
+
+const S_PATH = "M 75 28 Q 75 10 50 10 Q 25 10 25 30 Q 25 50 50 50 Q 75 50 75 70 Q 75 90 50 90 Q 25 90 25 72";
 
 export async function GET() {
   return new ImageResponse(
@@ -11,45 +13,50 @@ export async function GET() {
           width: "100%",
           height: "100%",
           display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
+          position: "relative",
           background: "#1e3a8a",
           borderRadius: 36,
-          position: "relative",
         }}
       >
-        {/* 골드 액센트 — 안전영역 안에 위치 */}
         <div
           style={{
             position: "absolute",
-            top: 20,
-            left: 20,
-            right: 20,
-            bottom: 20,
-            border: "1.5px solid rgba(251, 191, 36, 0.4)",
+            top: 18,
+            left: 18,
+            right: 18,
+            bottom: 18,
+            border: "2px solid rgba(251, 191, 36, 0.4)",
             borderRadius: 22,
           }}
         />
-        <div
-          style={{
-            fontSize: 122,
-            fontWeight: 900,
-            color: "#fbbf24",
-            lineHeight: 1,
-            letterSpacing: -5,
-            marginTop: -6,
-          }}
+
+        <svg
+          width="100"
+          height="100"
+          viewBox="0 0 100 100"
+          style={{ position: "absolute", top: 26, left: 46 }}
         >
-          S
-        </div>
+          <path
+            d={S_PATH}
+            stroke="#fbbf24"
+            strokeWidth="18"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </svg>
+
         <div
           style={{
-            fontSize: 15,
-            fontWeight: 800,
+            position: "absolute",
+            top: 132,
+            left: 0,
+            right: 0,
+            display: "flex",
+            justifyContent: "center",
+            fontSize: 17,
             color: "#fbbf24",
-            letterSpacing: 3,
-            marginTop: 4,
+            letterSpacing: 3.5,
           }}
         >
           BUSINESS
