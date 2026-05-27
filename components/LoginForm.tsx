@@ -9,6 +9,7 @@ export default function LoginForm() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -56,17 +57,32 @@ export default function LoginForm() {
 
       <div>
         <label className="label">비밀번호</label>
-        <input
-          type="password"
-          className="input"
-          required
-          autoComplete="current-password"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            className="input pr-16"
+            required
+            autoComplete="current-password"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
+            tabIndex={-1}
+          >
+            {showPassword ? "숨기기" : "보기"}
+          </button>
+        </div>
+        {password.length > 0 && (
+          <p className="mt-1 text-xs text-slate-400">
+            {password.length}자 입력됨 · 마지막 글자 미리보기: <code className="rounded bg-slate-100 px-1">{password.slice(-3)}</code>
+          </p>
+        )}
       </div>
 
       <button type="submit" disabled={loading} className="btn w-full">
