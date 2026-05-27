@@ -6,7 +6,7 @@ import CompanyAdminClient from "@/components/CompanyAdminClient";
 import CompanyCoursesList from "@/components/CompanyCoursesList";
 import CompanyDetailTabs from "@/components/CompanyDetailTabs";
 import CompanyPerformanceView from "@/components/CompanyPerformanceView";
-import { getCompanyPerformance } from "@/lib/company-performance";
+import { getCompanyPerformance, type CompanyPerformanceData } from "@/lib/company-performance";
 import type { Profile, CompanySettings, CompanyHoliday } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
