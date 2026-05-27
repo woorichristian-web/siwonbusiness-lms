@@ -151,6 +151,8 @@ export interface CompanySettings {
   allowed_formats: string[];
   allowed_teacher_ids: string[];
   total_sessions: number | null;
+  /** true 면 센터가 수강신청을 대행 — 교육생은 신청 화면에서 비활성화 메시지를 봄 */
+  center_managed_registration: boolean;
   updated_at: string;
 }
 

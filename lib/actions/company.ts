@@ -26,6 +26,7 @@ export async function upsertCompanySettings(input: {
   allowed_formats: ClassFormat[];
   allowed_teacher_ids: string[];
   total_sessions: number | null;
+  center_managed_registration: boolean;
 }) {
   try { await assertAdmin(); }
   catch (e: any) { return { ok: false, error: e.message }; }
@@ -44,6 +45,7 @@ export async function upsertCompanySettings(input: {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin/companies");
   revalidatePath("/student/calendar");
+  revalidatePath("/student/register");
   return { ok: true };
 }
 

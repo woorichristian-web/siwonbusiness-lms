@@ -427,3 +427,163 @@ function parseDate(s: string): Date | null {
   const d = new Date(candidate);
   return isNaN(d.getTime()) ? null : d;
 }
+
+// =====================================================================
+// 강사 일괄 업로드 — 계정 + 강사 메타(zoom/teams URL, 시급 등) 생성/업데이트
+// =====================================================================
+export interface TeacherImportRow {
+  username: string;
+  password?: string;       // 신규 생성 시 필수, 기존 계정 업데이트 시 비워두면 그대로
+  name: string;
+  birth_date?: string;
+  phone?: string;
+  residence_area?: string;
+  specialty?: string;
+  bio?: string;
+  hourly_rate?: string | number;
+  bank_name?: string;
+  bank_account?: string;
+  account_holder?: string;
+  zoom_url?: string;
+  teams_url?: string;
+}
+
+export interface TeacherImportResult {
+  created: number;        // 신규 강사 계정 수
+  updated: number;        // 기존 강사 업데이트 수
+  errors: { row: number; reason: string }[];
+}
+
+export async function adminBulkUploadTeachers(
+  rows: TeacherImportRow[],
+): Promise<{ ok: true; result: TeacherImportResult } | { ok: false; error: string }> {
+  try { await assertAdmin(); }
+  catch (e: any) { return { ok: false, error: e.message }; }
+
+  const admin = createAdminClient();
+  const result: TeacherImportResult = { created: 0, updated: 0, errors: [] };
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const rowNum = i + 2;
+
+    if (!r.username || !r.name) {
+      result.errors.push({ row: rowNum, reason: "username, name 은 필수" });
+      continue;
+    }
+    if (!/^[a-zA-Z0-9_.-]{3,20}$/.test(r.username)) {
+      result.errors.push({ row: rowNum, reason: `아이디 형식 오류 (${r.username})` });
+      continue;
+    }
+
+    const username = r.username.toLowerCase();
+    const hourlyRate =
+      r.hourly_rate != null && String(r.hourly_rate).trim() !== ""
+        ? Number(r.hourly_rate)
+        : null;
+
+    // 기존 사용자 조회 — username 으로
+    const { data: existing } = await admin
+      .from("profiles")
+      .select("id, role")
+      .eq("username", username)
+      .maybeSingle();
+
+    let userId: string;
+    let isNew = false;
+
+    if (existing) {
+      // 기존 계정 — 강사가 아니면 에러
+      if (existing.role !== "teacher") {
+        result.errors.push({
+          row: rowNum,
+          reason: `아이디 '${r.username}' 는 이미 ${existing.role} 로 등록되어 있어 강사로 업데이트할 수 없습니다.`,
+        });
+        continue;
+      }
+      userId = existing.id;
+
+      // 비밀번호가 들어있으면 갱신
+      if (r.password && r.password.length >= 8) {
+        await admin.auth.admin.updateUserById(userId, { password: r.password });
+      }
+    } else {
+      // 신규 계정 — 비밀번호 필수
+      if (!r.password || r.password.length < 8) {
+        result.errors.push({
+          row: rowNum,
+          reason: "신규 강사는 비밀번호 (8자 이상) 필수",
+        });
+        continue;
+      }
+      const email = usernameToEmail(r.username);
+      const { data: created, error: authErr } = await admin.auth.admin.createUser({
+        email,
+        password: r.password,
+        email_confirm: true,
+      });
+      if (authErr || !created.user) {
+        result.errors.push({
+          row: rowNum,
+          reason: authErr?.message?.toLowerCase().includes("already")
+            ? `이미 사용 중인 이메일/아이디 (${r.username})`
+            : authErr?.message ?? "계정 생성 실패",
+        });
+        continue;
+      }
+      userId = created.user.id;
+      isNew = true;
+    }
+
+    // profiles upsert
+    const profilePatch: any = {
+      id: userId,
+      role: "teacher" as const,
+      username,
+      name: r.name.trim(),
+      birth_date: r.birth_date || null,
+      phone: r.phone || null,
+      residence_area: r.residence_area || null,
+    };
+    const { error: pErr } = isNew
+      ? await admin.from("profiles").insert(profilePatch)
+      : await admin.from("profiles").update({
+          name: profilePatch.name,
+          birth_date: profilePatch.birth_date,
+          phone: profilePatch.phone,
+          residence_area: profilePatch.residence_area,
+        }).eq("id", userId);
+    if (pErr) {
+      if (isNew) await admin.auth.admin.deleteUser(userId);
+      result.errors.push({ row: rowNum, reason: `profile 저장 실패: ${pErr.message}` });
+      continue;
+    }
+
+    // teachers upsert (메타 정보)
+    const teacherPatch = {
+      profile_id: userId,
+      specialty: r.specialty || null,
+      bio: r.bio || null,
+      hourly_rate: Number.isFinite(hourlyRate as number) ? hourlyRate : null,
+      bank_name: r.bank_name || null,
+      bank_account: r.bank_account || null,
+      account_holder: r.account_holder || null,
+      zoom_url: r.zoom_url || null,
+      teams_url: r.teams_url || null,
+    };
+    const { error: tErr } = await admin
+      .from("teachers")
+      .upsert(teacherPatch, { onConflict: "profile_id" });
+    if (tErr) {
+      result.errors.push({ row: rowNum, reason: `teacher meta 저장 실패: ${tErr.message}` });
+      continue;
+    }
+
+    if (isNew) result.created++;
+    else result.updated++;
+  }
+
+  revalidatePath("/admin/upload");
+  revalidatePath("/admin/users");
+  return { ok: true, result };
+}

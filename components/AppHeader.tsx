@@ -48,6 +48,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
     profile.role === "student"
       ? [
           { href: "/student/calendar", label: "수업일정" },
+          { href: "/student/register", label: "수강신청" },
           { href: "/student/status", label: "수강현황" },
           { href: "/student/progress", label: "진행 리포트" },
           { href: "/student/messages", label: "메시지", badge: unread },

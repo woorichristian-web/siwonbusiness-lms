@@ -106,6 +106,9 @@ function SettingsCards({
   const [totalSessions, setTotalSessions] = useState<string>(
     settings?.total_sessions != null ? String(settings.total_sessions) : ""
   );
+  const [centerManaged, setCenterManaged] = useState<boolean>(
+    settings?.center_managed_registration ?? false
+  );
 
   function toggle<T extends string>(arr: T[], setArr: (a: T[]) => void, v: T) {
     setArr(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
@@ -120,6 +123,7 @@ function SettingsCards({
         allowed_formats: formats as any,
         allowed_teacher_ids: teacherIds,
         total_sessions: totalSessions.trim() === "" ? null : Number(totalSessions),
+        center_managed_registration: centerManaged,
       });
       if (!r.ok) { setError(r.error ?? "저장 실패"); return; }
       setSavedAt(new Date().toLocaleTimeString("ko-KR"));
@@ -171,6 +175,31 @@ function SettingsCards({
           value={totalSessions} onChange={(e) => setTotalSessions(e.target.value)} />
         <p className="mt-2 text-xs text-slate-400">
           {totalSessions.trim() === "" ? "현재: 무제한" : `현재: 교육생 1인당 ${totalSessions}회`}
+        </p>
+      </section>
+
+      {/* 수강신청 대행 설정 */}
+      <section className="card md:col-span-3">
+        <div className="flex items-start gap-3">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={centerManaged}
+              onChange={(e) => setCenterManaged(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+            />
+            <span className="text-sm font-semibold text-slate-700">
+              센터(기업)가 수강신청을 대행
+            </span>
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          체크 시 — 해당 기업 교육생은 <b>'수강신청'</b> 메뉴에서 직접 신청할 수 없고,
+          <i>"귀하의 수강신청은 귀사에서 대신합니다."</i> 안내만 표시됩니다.
+          관리자가 회원 페이지 또는 일괄 업로드로 대신 신청해주세요.
+        </p>
+        <p className="mt-1 text-xs text-amber-600">
+          현재: <b>{centerManaged ? "센터 대행 (학생 직접 신청 불가)" : "학생 직접 신청 허용"}</b>
         </p>
       </section>
 
