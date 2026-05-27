@@ -100,6 +100,11 @@ export default function TeacherScheduleEditor({
           .fc-event { cursor: pointer; }
           .fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; }
           .fc-past { opacity: 0.5; }
+          /* 슬롯 높이 확대 — 시간/타입/예약수가 잘리지 않도록 */
+          .fc .fc-timegrid-slot { height: 3em !important; }
+          .fc .fc-timegrid-slot-minor { border-top-style: dotted; }
+          .fc-timegrid-event { min-height: 3em; }
+          .fc-timegrid-event .fc-event-main { padding: 0 !important; }
           .fc { min-width: 640px; }
           @media (min-width: 768px) { .fc { min-width: 0; } }
         `}</style>
@@ -124,15 +129,16 @@ export default function TeacherScheduleEditor({
           eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
           slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
           dayHeaderFormat={{ month: "2-digit", day: "2-digit", weekday: "short" }}
+          slotDuration="00:30:00"
           eventContent={(arg) => {
             const { slot, booked } = arg.event.extendedProps as { slot: TimeSlot; booked: number };
             return (
-              <div style={{ padding: "2px 4px", lineHeight: 1.2 }}>
-                <div style={{ fontSize: "0.7rem", opacity: 0.9 }}>{arg.timeText}</div>
-                <div style={{ fontSize: "0.75rem", fontWeight: 600 }}>
+              <div style={{ padding: "4px 6px", lineHeight: 1.3, height: "100%", display: "flex", flexDirection: "column", gap: 1, overflow: "hidden" }}>
+                <div style={{ fontSize: "0.72rem", opacity: 0.95, fontWeight: 500 }}>{arg.timeText}</div>
+                <div style={{ fontSize: "0.8rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {slot.class_type === "1on1" ? "1:1" : "Group"} · {slot.format === "online" ? "Online" : "Offline"}
                 </div>
-                <div style={{ fontSize: "0.65rem", opacity: 0.85 }}>
+                <div style={{ fontSize: "0.68rem", opacity: 0.9 }}>
                   Booked {booked}/{slot.capacity} · {slot.status === "open" ? "Open" : "Closed"}
                 </div>
               </div>

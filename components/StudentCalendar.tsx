@@ -233,15 +233,20 @@ function formatTime(d: Date) {
 }
 
 const calendarStyles = `
-.fc-event-inner { padding: 2px 4px; line-height: 1.2; }
-.fc-event-time  { font-size: 0.7rem; opacity: 0.9; }
-.fc-event-name  { font-size: 0.8rem; font-weight: 500; }
-.fc-event-sub   { font-size: 0.65rem; opacity: 0.85; margin-top: 1px; }
+.fc-event-inner { padding: 4px 6px; line-height: 1.3; height: 100%; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+.fc-event-time  { font-size: 0.72rem; opacity: 0.95; font-weight: 500; }
+.fc-event-name  { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-event-sub   { font-size: 0.68rem; opacity: 0.9; }
 .fc-mine .fc-event-name { font-weight: 700; }
 .fc-mine-check { font-weight: 700; }
 .fc-event { cursor: pointer; }
 .fc-past { opacity: 0.5; }                         /* 지나간 슬롯 반투명 */
 .fc-past .fc-event { cursor: default; }
+/* 슬롯 높이 확대 — 시간/이름/타입 모두 한눈에 보이도록 */
+.fc .fc-timegrid-slot { height: 3em !important; }
+.fc .fc-timegrid-slot-minor { border-top-style: dotted; }
+.fc-timegrid-event { min-height: 3em; }
+.fc-timegrid-event .fc-event-main { padding: 0 !important; }
 .fc { min-width: 640px; }
 @media (min-width: 768px) { .fc { min-width: 0; } }
 `;

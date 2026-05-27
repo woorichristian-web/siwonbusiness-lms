@@ -71,6 +71,12 @@ export default function ClassSchedulesView({ events }: { events: BookingEvent[] 
         <style>{`
           .fc-event { cursor: pointer; }
           .fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; }
+          /* 슬롯 높이 확대 — 4줄(시간/이름/회사/타입) 모두 보이도록 */
+          .fc .fc-timegrid-slot { height: 3em !important; }
+          .fc .fc-timegrid-slot-minor { border-top-style: dotted; }
+          .fc-timegrid-event { min-height: 3.5em; }
+          .fc-timegrid-event .fc-event-main { padding: 0 !important; }
+          .fc-timegrid-event-harness > .fc-timegrid-event { inset: 0 0 0 0 !important; }
           .fc { min-width: 640px; }
           @media (min-width: 768px) { .fc { min-width: 0; } }
         `}</style>
@@ -95,18 +101,21 @@ export default function ClassSchedulesView({ events }: { events: BookingEvent[] 
           eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
           slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
           dayHeaderFormat={{ month: "2-digit", day: "2-digit", weekday: "short" }}
+          slotDuration="00:30:00"
           eventContent={(arg) => {
             const e = arg.event.extendedProps as BookingEvent;
             return (
-              <div style={{ padding: "2px 4px", lineHeight: 1.2 }}>
-                <div style={{ fontSize: "0.7rem", opacity: 0.9 }}>{arg.timeText}</div>
-                <div style={{ fontSize: "0.8rem", fontWeight: 700 }}>{e.student_name}</div>
+              <div style={{ padding: "4px 6px", lineHeight: 1.3, height: "100%", display: "flex", flexDirection: "column", gap: 1, overflow: "hidden" }}>
+                <div style={{ fontSize: "0.72rem", opacity: 0.95, fontWeight: 500 }}>{arg.timeText}</div>
+                <div style={{ fontSize: "0.85rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {e.student_name}
+                </div>
                 {e.student_company && (
-                  <div style={{ fontSize: "0.62rem", opacity: 0.9, fontStyle: "italic" }}>
+                  <div style={{ fontSize: "0.68rem", opacity: 0.9, fontStyle: "italic", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {e.student_company}
                   </div>
                 )}
-                <div style={{ fontSize: "0.62rem", opacity: 0.85 }}>
+                <div style={{ fontSize: "0.68rem", opacity: 0.9 }}>
                   {e.class_type === "1on1" ? "1:1" : "Group"} · {e.format === "online" ? "Online" : "Offline"}
                 </div>
               </div>
