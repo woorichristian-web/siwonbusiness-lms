@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
 import MessageNotifier from "@/components/MessageNotifier";
 import MessagePopupOnLogin from "@/components/MessagePopupOnLogin";
+import MobileMenuDrawer, { type MobileMenuItem } from "@/components/MobileMenuDrawer";
 
 export default async function AppHeader({ profile }: { profile: Profile }) {
   // 안 읽은 메시지 (개수 + 최근 5건은 팝업에 사용)
@@ -41,58 +42,75 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
         ? "/teacher/messages"
         : "/admin/messages";
 
+  // 역할별 네비게이션 항목 — 데스크탑/모바일 공통 데이터
+  const unread = unreadCount ?? 0;
+  const navItems: MobileMenuItem[] =
+    profile.role === "student"
+      ? [
+          { href: "/student/calendar", label: "수업일정" },
+          { href: "/student/status", label: "수강현황" },
+          { href: "/student/progress", label: "진행 리포트" },
+          { href: "/student/messages", label: "메시지", badge: unread },
+          { href: "/student/profile", label: "마이페이지" },
+        ]
+      : profile.role === "teacher"
+        ? [
+            { href: "/teacher/schedule", label: "My Classes" },
+            { href: "/teacher/class-manage", label: "Management" },
+            { href: "/teacher/messages", label: "Messages", badge: unread },
+            { href: "/teacher/profile", label: "My Page" },
+          ]
+        : [
+            { href: "/admin", label: "관리자 홈" },
+            { href: "/admin/users", label: "회원 관리" },
+            { href: "/admin/companies", label: "기업별 관리" },
+            { href: "/admin/upload", label: "DB 관리" },
+            { href: "/admin/messages", label: "메시지", badge: unread },
+            { href: "/admin/profile", label: "마이페이지" },
+          ];
+
+  const brandSubtitle = profile.role === "teacher" ? "Teacher Portal" : "LMS";
+  const signOutLabel = profile.role === "teacher" ? "Sign out" : "로그아웃";
+
   return (
     <header className="relative bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-blue-100 shadow-lg">
       {/* 상단 얇은 골드 액센트 */}
       <div className="h-0.5 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400" />
 
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-3.5">
-        {/* 좌측: 브랜드 + 메뉴 */}
-        <div className="flex min-w-0 items-center gap-10">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:gap-6 sm:px-6 sm:py-3.5">
+        {/* 좌측: 햄버거(모바일) + 브랜드 + 데스크탑 네비 */}
+        <div className="flex min-w-0 items-center gap-2 sm:gap-10">
+          <MobileMenuDrawer
+            items={navItems}
+            userName={profile.name}
+            userRole={roleLabel(profile.role)}
+            brandSubtitle={brandSubtitle}
+            signOutLabel={signOutLabel}
+          />
+
           <Link
             href="/dashboard"
-            className="shrink-0 text-lg font-bold tracking-tight transition hover:opacity-90"
+            className="min-w-0 shrink truncate text-base font-bold tracking-tight transition hover:opacity-90 sm:text-lg"
           >
             <span className="text-white">Siwon Business</span>
-            <span className="ml-2 font-medium tracking-wide text-amber-300">
-              {profile.role === "teacher" ? "Teacher Portal" : "LMS"}
+            {/* 부제는 데스크탑에서만 표시 — 모바일에선 햄버거 안에 들어감 */}
+            <span className="ml-2 hidden font-medium tracking-wide text-amber-300 sm:inline">
+              {brandSubtitle}
             </span>
           </Link>
 
           <nav className="hidden gap-1 text-sm sm:flex">
-            {profile.role === "student" && (
-              <>
-                <NavLink href="/student/calendar">수업일정</NavLink>
-                <NavLink href="/student/status">수강현황</NavLink>
-                <NavLink href="/student/progress">진행 리포트</NavLink>
-                <NavLink href="/student/messages" badge={unreadCount ?? 0}>메시지</NavLink>
-                <NavLink href="/student/profile">마이페이지</NavLink>
-              </>
-            )}
-            {profile.role === "teacher" && (
-              <>
-                <NavLink href="/teacher/schedule">My Classes</NavLink>
-                <NavLink href="/teacher/class-manage">Management</NavLink>
-                <NavLink href="/teacher/messages" badge={unreadCount ?? 0}>Messages</NavLink>
-                <NavLink href="/teacher/profile">My Page</NavLink>
-              </>
-            )}
-            {profile.role === "admin" && (
-              <>
-                <NavLink href="/admin">관리자 홈</NavLink>
-                <NavLink href="/admin/users">회원 관리</NavLink>
-                <NavLink href="/admin/companies">기업별 관리</NavLink>
-                <NavLink href="/admin/upload">DB 관리</NavLink>
-                <NavLink href="/admin/messages" badge={unreadCount ?? 0}>메시지</NavLink>
-                <NavLink href="/admin/profile">마이페이지</NavLink>
-              </>
-            )}
+            {navItems.map((item) => (
+              <NavLink key={item.href} href={item.href} badge={item.badge}>
+                {item.label}
+              </NavLink>
+            ))}
           </nav>
         </div>
 
-        {/* 우측: 사용자 + 로그아웃 */}
-        <div className="flex items-center gap-3">
-          <div className="hidden text-right text-sm sm:block">
+        {/* 우측: 사용자 + 로그아웃 — 데스크탑 전용 (모바일은 햄버거 안에 포함) */}
+        <div className="hidden items-center gap-3 sm:flex">
+          <div className="text-right text-sm">
             <div className="font-medium text-white">{profile.name}</div>
             <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-300">
               {roleLabel(profile.role)}
@@ -102,7 +120,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
             <button
               className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-medium text-blue-50 transition hover:border-white/25 hover:bg-white/10 hover:text-white"
             >
-              {profile.role === "teacher" ? "Sign out" : "로그아웃"}
+              {signOutLabel}
             </button>
           </form>
         </div>
