@@ -20,7 +20,7 @@ export default async function StudentProgressPage() {
           </p>
         </header>
         {data ? (
-          <ProgressReport data={data} />
+          <ProgressReport data={data} hideDownload />
         ) : (
           <div className="card text-center text-slate-500">
             아직 데이터가 없습니다.

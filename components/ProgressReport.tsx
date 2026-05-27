@@ -114,7 +114,14 @@ function humanBucket(key: string, mode: "weekly" | "monthly") {
   return key; // e.g. 2026-W21
 }
 
-export default function ProgressReport({ data }: { data: ProgressData }) {
+export default function ProgressReport({
+  data,
+  hideDownload = false,
+}: {
+  data: ProgressData;
+  /** true 면 PNG 다운로드 버튼을 숨김 (교육생 본인 화면 등) */
+  hideDownload?: boolean;
+}) {
   const { mode, data: chartData } = useMemo(
     () => bucketize(data.feedbackPoints),
     [data.feedbackPoints]
@@ -171,16 +178,18 @@ export default function ProgressReport({ data }: { data: ProgressData }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-end">
-        <button
-          type="button"
-          onClick={downloadAsImage}
-          disabled={downloading}
-          className="btn"
-        >
-          {downloading ? "이미지 생성 중..." : "⬇ PNG 다운로드"}
-        </button>
-      </div>
+      {!hideDownload && (
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={downloadAsImage}
+            disabled={downloading}
+            className="btn"
+          >
+            {downloading ? "이미지 생성 중..." : "⬇ PNG 다운로드"}
+          </button>
+        </div>
+      )}
 
       <div ref={reportRef} className="space-y-6 bg-slate-50 p-4">
 
