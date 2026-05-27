@@ -3,15 +3,43 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
 import MessageNotifier from "@/components/MessageNotifier";
+import MessagePopupOnLogin from "@/components/MessagePopupOnLogin";
 
 export default async function AppHeader({ profile }: { profile: Profile }) {
-  // 안 읽은 메시지 수 (헤더 뱃지용)
+  // 안 읽은 메시지 (개수 + 최근 5건은 팝업에 사용)
   const supabase = createClient();
-  const { count: unreadCount } = await supabase
+  const { data: unreadMessages, count: unreadCount } = await supabase
     .from("messages")
-    .select("id", { count: "exact", head: true })
+    .select("id, body, created_at, sender_id", { count: "exact" })
     .eq("recipient_id", profile.id)
-    .is("read_at", null);
+    .is("read_at", null)
+    .order("created_at", { ascending: false });
+
+  // 발신자 이름 매핑
+  const senderInfo = new Map<string, { name: string; role: string }>();
+  const senderIds = Array.from(new Set((unreadMessages ?? []).map((m: any) => m.sender_id)));
+  if (senderIds.length > 0) {
+    const { data: senders } = await supabase
+      .from("profiles")
+      .select("id, name, role")
+      .in("id", senderIds);
+    for (const s of senders ?? []) senderInfo.set(s.id, { name: s.name, role: s.role });
+  }
+
+  const popupMessages = (unreadMessages ?? []).map((m: any) => ({
+    id: m.id,
+    body: m.body,
+    created_at: m.created_at,
+    sender_name: senderInfo.get(m.sender_id)?.name ?? "—",
+    sender_role: senderInfo.get(m.sender_id)?.role ?? "student",
+  }));
+
+  const inboxHref =
+    profile.role === "student"
+      ? "/student/messages"
+      : profile.role === "teacher"
+        ? "/teacher/messages"
+        : "/admin/messages";
 
   return (
     <header className="relative bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-slate-200 shadow-lg">
@@ -85,6 +113,15 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
 
       {/* Realtime 알림 — 새 메시지 도착 시 토스트 표시 */}
       <MessageNotifier userId={profile.id} />
+
+      {/* 접속 시 안 읽은 메시지 팝업 (세션당 1회) */}
+      {popupMessages.length > 0 && (
+        <MessagePopupOnLogin
+          unreadMessages={popupMessages}
+          inboxHref={inboxHref}
+          isTeacher={profile.role === "teacher"}
+        />
+      )}
     </header>
   );
 }
