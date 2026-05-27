@@ -20,39 +20,39 @@ export default function AppleIcon() {
           position: "relative",
         }}
       >
-        {/* 내부 골드 액센트 테두리 */}
+        {/* 내부 골드 액센트 테두리 — 안전영역 안에 위치 */}
         <div
           style={{
             position: "absolute",
-            top: 8,
-            left: 8,
-            right: 8,
-            bottom: 8,
-            border: "1.5px solid rgba(251, 191, 36, 0.45)",
-            borderRadius: 27,
+            top: 18,
+            left: 18,
+            right: 18,
+            bottom: 18,
+            border: "1.5px solid rgba(251, 191, 36, 0.4)",
+            borderRadius: 22,
           }}
         />
-        {/* 큰 S */}
+        {/* 큰 두꺼운 S — Black weight */}
         <div
           style={{
-            fontSize: 130,
-            fontWeight: 700,
+            fontSize: 115,
+            fontWeight: 900,
             color: "#fbbf24",
-            fontFamily: "Georgia, serif",
             lineHeight: 1,
-            marginTop: -8,
+            letterSpacing: -5,
+            marginTop: -6,
           }}
         >
           S
         </div>
-        {/* BUSINESS 텍스트 (직선 — 작은 사이즈 가독성 최우선) */}
+        {/* BUSINESS 텍스트 — 굵게 */}
         <div
           style={{
-            fontSize: 16,
-            fontWeight: 700,
+            fontSize: 14,
+            fontWeight: 800,
             color: "#fbbf24",
-            letterSpacing: 3,
-            marginTop: 4,
+            letterSpacing: 2.5,
+            marginTop: 2,
           }}
         >
           BUSINESS

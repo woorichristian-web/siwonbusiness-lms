@@ -20,11 +20,11 @@ export default function Icon() {
       >
         <div
           style={{
-            fontSize: 50,
-            fontWeight: 700,
+            fontSize: 54,
+            fontWeight: 900,
             color: "#fbbf24",
-            fontFamily: "Georgia, serif",
             lineHeight: 1,
+            letterSpacing: -3,
           }}
         >
           S
