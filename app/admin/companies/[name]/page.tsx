@@ -4,20 +4,27 @@ import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import CompanyAdminClient from "@/components/CompanyAdminClient";
 import CompanyCoursesList from "@/components/CompanyCoursesList";
+import CompanyDetailTabs from "@/components/CompanyDetailTabs";
+import CompanyPerformanceView from "@/components/CompanyPerformanceView";
+import { getCompanyPerformance } from "@/lib/company-performance";
 import type { Profile, CompanySettings, CompanyHoliday } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function CompanyDetailPage({
   params,
+  searchParams,
 }: {
   params: { name: string };
+  searchParams: { tab?: string; month?: string };
 }) {
   const profile = await requireRole(["admin"]);
   const supabase = createClient();
   const selectedCompany = decodeURIComponent(params.name);
+  const tab: "course" | "performance" =
+    searchParams.tab === "performance" ? "performance" : "course";
 
-  // 전체 회원
+  // 공통: 회원 목록
   const { data: allProfiles } = await supabase
     .from("profiles")
     .select("*")
@@ -33,11 +40,58 @@ export default async function CompanyDetailPage({
     )
   ).sort((a, b) => a.localeCompare(b, "ko"));
 
-  // 선택 회사 데이터
   const members = allUsers.filter(
     (u) => u.role === "student" && u.company_name === selectedCompany
   );
 
+  return (
+    <>
+      <AppHeader profile={profile} />
+      <main className="mx-auto max-w-6xl px-4 py-6">
+        <div className="mb-4">
+          <Link href="/admin/companies" className="text-sm text-brand-600 hover:underline">
+            ← 기업 목록으로
+          </Link>
+        </div>
+
+        <header className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-800">🏢 {selectedCompany}</h1>
+          <p className="text-sm text-slate-500">
+            회원 {members.length}명 · 과정관리 + 성과관리
+          </p>
+        </header>
+
+        <CompanyDetailTabs companyName={selectedCompany} current={tab} />
+
+        {tab === "course" ? (
+          <CourseManagementTab
+            selectedCompany={selectedCompany}
+            companies={companies}
+            teachers={teachers}
+            members={members}
+          />
+        ) : (
+          <PerformanceTab
+            selectedCompany={selectedCompany}
+            monthParam={searchParams.month}
+          />
+        )}
+      </main>
+    </>
+  );
+}
+
+async function CourseManagementTab({
+  selectedCompany, companies, teachers, members,
+}: {
+  selectedCompany: string;
+  companies: string[];
+  teachers: Profile[];
+  members: Profile[];
+}) {
+  const supabase = createClient();
+
+  // 회사 설정/휴일
   const [{ data: s }, { data: h }] = await Promise.all([
     supabase.from("company_settings").select("*").eq("company_name", selectedCompany).maybeSingle(),
     supabase.from("company_holidays").select("*").eq("company_name", selectedCompany)
@@ -64,40 +118,45 @@ export default async function CompanyDetailPage({
 
   return (
     <>
-      <AppHeader profile={profile} />
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        <div className="mb-4">
-          <Link href="/admin/companies" className="text-sm text-brand-600 hover:underline">
-            ← 기업 목록으로
-          </Link>
-        </div>
-
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-800">🏢 {selectedCompany}</h1>
-          <p className="text-sm text-slate-500">
-            회원 {members.length}명 · 과정·강사·차시·휴일 설정 + 강좌별 리포트
-          </p>
-        </header>
-
-        {/* 계약 강좌 리스트 — 최상단 */}
-        <div className="mb-6">
-          <CompanyCoursesList
-            companyName={selectedCompany}
-            members={members}
-            teachers={teachers}
-          />
-        </div>
-
-        <CompanyAdminClient
-          companies={companies}
-          selectedCompany={selectedCompany}
-          teachers={teachers}
+      <div className="mb-6">
+        <CompanyCoursesList
+          companyName={selectedCompany}
           members={members}
-          settings={settings}
-          holidays={holidays}
-          bookingsByMember={bookingsByMember}
+          teachers={teachers}
         />
-      </main>
+      </div>
+
+      <CompanyAdminClient
+        companies={companies}
+        selectedCompany={selectedCompany}
+        teachers={teachers}
+        members={members}
+        settings={settings}
+        holidays={holidays}
+        bookingsByMember={bookingsByMember}
+      />
     </>
   );
+}
+
+async function PerformanceTab({
+  selectedCompany, monthParam,
+}: {
+  selectedCompany: string;
+  monthParam?: string;
+}) {
+  // monthParam: "YYYY-MM" or undefined → current month
+  const now = new Date();
+  let year = now.getFullYear();
+  let month = now.getMonth() + 1;
+  if (monthParam) {
+    const [y, m] = monthParam.split("-").map(Number);
+    if (Number.isInteger(y) && Number.isInteger(m) && m >= 1 && m <= 12) {
+      year = y;
+      month = m;
+    }
+  }
+
+  const data = await getCompanyPerformance(selectedCompany, year, month);
+  return <CompanyPerformanceView companyName={selectedCompany} data={data} />;
 }
