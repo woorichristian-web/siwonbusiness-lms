@@ -1,11 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#1d4ed8"/>
-  <g fill="#ffffff">
-    <!-- 책 모양 -->
-    <path d="M120 140 h120 a40 40 0 0 1 40 40 v220 a20 20 0 0 0 -20 -20 H120 z"/>
-    <path d="M392 140 H272 a40 40 0 0 0 -40 40 v220 a20 20 0 0 1 20 -20 h140 z"/>
-    <!-- L 글자 (LMS) -->
-    <text x="50%" y="73%" font-family="-apple-system, system-ui, sans-serif"
-          font-size="120" font-weight="800" text-anchor="middle" fill="#1d4ed8">L</text>
-  </g>
+  <!-- Royal Blue 라운드 사각 배경 -->
+  <rect width="512" height="512" rx="96" fill="#1e3a8a"/>
+
+  <!-- 안쪽 골드 액센트 라인 -->
+  <rect x="24" y="24" width="464" height="464" rx="76"
+        fill="none" stroke="#fbbf24" stroke-width="3" opacity="0.45"/>
+
+  <!-- 가운데 큰 골드 S (Georgia 세리프 — 비즈니스 톤) -->
+  <text x="256" y="280"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="310"
+        font-weight="700"
+        text-anchor="middle"
+        dominant-baseline="middle"
+        fill="#fbbf24">S</text>
+
+  <!-- BUSINESS 텍스트가 따라 배치될 호 path (보이지 않음) -->
+  <defs>
+    <path id="arc-business" d="M 90 388 Q 256 478 422 388" fill="none"/>
+  </defs>
+
+  <!-- S 아래쪽 둥근 호 'BUSINESS' 텍스트 -->
+  <text font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="42"
+        font-weight="700"
+        letter-spacing="6"
+        fill="#fbbf24">
+    <textPath href="#arc-business" startOffset="50%" text-anchor="middle">
+      BUSINESS
+    </textPath>
+  </text>
 </svg>
