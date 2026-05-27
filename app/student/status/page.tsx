@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
+import StudentTeacherFeedbackForm from "@/components/StudentTeacherFeedbackForm";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,18 @@ export default async function StudentStatusPage() {
       .eq("id", profile.assigned_teacher_id)
       .maybeSingle();
     assignedTeacherName = t?.name ?? null;
+  }
+
+  // 기존 강사 평가 (교육생→강사) — 폼에 미리 채우기 위해
+  let existingTeacherFeedback: { rating: number | null; comment: string | null } | null = null;
+  if (profile.assigned_teacher_id) {
+    const { data: stf } = await supabase
+      .from("student_teacher_feedback")
+      .select("rating, comment")
+      .eq("student_id", profile.id)
+      .eq("teacher_id", profile.assigned_teacher_id)
+      .maybeSingle();
+    existingTeacherFeedback = stf ?? null;
   }
 
   // 슬롯 상세 (강사명, 형식)
@@ -149,6 +162,18 @@ export default async function StudentStatusPage() {
             </div>
           )}
         </section>
+
+        {/* 강사 평가 — 배정 강사가 있을 때만 */}
+        {profile.assigned_teacher_id && assignedTeacherName && (
+          <section className="card mb-6">
+            <StudentTeacherFeedbackForm
+              teacherId={profile.assigned_teacher_id}
+              teacherName={assignedTeacherName}
+              initialRating={existingTeacherFeedback?.rating ?? null}
+              initialComment={existingTeacherFeedback?.comment ?? null}
+            />
+          </section>
+        )}
 
         {/* 진행률 바 */}
         {totalSessions != null && totalSessions > 0 && (

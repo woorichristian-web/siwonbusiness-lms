@@ -129,6 +129,17 @@ export type FeedbackInput = Partial<Record<FeedbackKey, number | null>> & {
   comment?: string | null;
 };
 
+/** Student → Teacher feedback (1 per student-teacher pair) */
+export interface StudentTeacherFeedback {
+  id: string;
+  student_id: string;
+  teacher_id: string;
+  rating: number | null;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CompanySettings {
   company_name: string;
   allowed_class_types: string[];

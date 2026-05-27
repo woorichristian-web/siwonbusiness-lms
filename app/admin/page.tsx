@@ -99,8 +99,8 @@ export default async function AdminHome() {
             desc="교육생·강사·관리자 계정을 관리자가 직접 발급." />
           <Card href="/admin/companies" title="기업별 관리"
             desc="기업을 선택해 과정·강사·차시·휴일 설정 + 회원별 메모 + Excel 다운로드." />
-          <Card href="/admin/upload" title="스케줄 일괄 업로드"
-            desc="엑셀(.xlsx) 또는 CSV 로 강사별 시간 슬롯을 한꺼번에 등록." />
+          <Card href="/admin/upload" title="DB 관리 (업로드/다운로드)"
+            desc="교육생·강사 스케줄 일괄 업로드 + 출석률·평가 점수까지 통합 Excel 다운로드." />
         </div>
       </main>
     </>

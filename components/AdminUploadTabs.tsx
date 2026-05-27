@@ -3,46 +3,33 @@
 import { useState } from "react";
 import AdminUploadForm from "@/components/AdminUploadForm";
 import AdminStudentUploadForm from "@/components/AdminStudentUploadForm";
+import AdminDbDownload from "@/components/AdminDbDownload";
 
-type Tab = "schedule" | "students";
+type Tab = "students" | "schedule" | "download";
 
-export default function AdminUploadTabs() {
-  const [tab, setTab] = useState<Tab>("schedule");
+export default function AdminUploadTabs({ companies }: { companies: string[] }) {
+  const [tab, setTab] = useState<Tab>("students");
 
   return (
     <div>
       {/* 탭 헤더 */}
       <div className="mb-4 flex gap-1 border-b border-slate-200">
-        <TabBtn active={tab === "schedule"} onClick={() => setTab("schedule")}>
-          강사 시간표
-        </TabBtn>
         <TabBtn active={tab === "students"} onClick={() => setTab("students")}>
-          교육생 명단
+          🎓 교육생 업로드
+        </TabBtn>
+        <TabBtn active={tab === "schedule"} onClick={() => setTab("schedule")}>
+          🗓️ 강사 시간표 업로드
+        </TabBtn>
+        <TabBtn active={tab === "download"} onClick={() => setTab("download")}>
+          📥 DB 내려받기
         </TabBtn>
       </div>
 
-      {/* 탭별 안내 + 폼 */}
-      {tab === "schedule" ? (
+      {tab === "students" && (
         <>
           <FormatGuide
-            title="강사 시간표 파일 형식"
-            description="첫 행은 헤더(컬럼명)여야 하며, 다음 컬럼이 모두 필요합니다."
-            rows={[
-              ["teacher_username", "강사 아이디 (사전 등록 필요)", "jane_kim"],
-              ["start_at", "시작 (Excel datetime 또는 ISO)", "2026-06-01 09:00"],
-              ["end_at", "종료", "2026-06-01 10:00"],
-              ["format", "online 또는 offline", "online"],
-              ["class_type", "1on1 또는 small_group", "1on1"],
-              ["capacity", "정원 (정수)", "1"],
-            ]}
-          />
-          <AdminUploadForm />
-        </>
-      ) : (
-        <>
-          <FormatGuide
-            title="교육생 명단 파일 형식"
-            description="username, password, name 은 필수. 나머지는 선택. 우측 상단 '⬇ 템플릿 다운로드' 로 샘플 파일을 받으실 수 있습니다."
+            title="교육생 명단 업로드"
+            description="username, password, name 은 필수. 나머지는 선택. '⬇ 템플릿 다운로드' 로 샘플 받기. 한 번 업로드하면 회원 관리·기업별 관리에 모두 자동 반영됩니다."
             rows={[
               ["username", "아이디 (영/숫자, 3~20자)", "kim123"],
               ["password", "임시 비밀번호 (8자 이상)", "kim1234567"],
@@ -56,15 +43,35 @@ export default function AdminUploadTabs() {
               ["learning_purpose", "영어 학습 목적", "비즈니스 이메일/문서 작성"],
               ["assigned_teacher_username", "배정 강사 아이디", "jane"],
               ["course_name", "수강 강좌명", "영어 회화 6개월 코스"],
-              ["course_start_date", "수강 시작일 (YYYY-MM-DD)", "2026-06-01"],
-              ["course_end_date", "수강 종료일 (YYYY-MM-DD)", "2026-11-30"],
-              ["course_total_sessions", "수강 차시 (총 강좌수)", "24"],
-              ["schedule", "예약할 수업 일정 (/로 구분, 강사 가능시간 안의 시각)", "2026-06-01 09:00 / 2026-06-08 09:00"],
+              ["course_start_date", "수강 시작일", "2026-06-01"],
+              ["course_end_date", "수강 종료일", "2026-11-30"],
+              ["course_total_sessions", "총 차시", "24"],
+              ["schedule", "수업 시간 (/로 구분)", "2026-06-01 09:00 / 2026-06-08 09:00"],
             ]}
           />
           <AdminStudentUploadForm />
         </>
       )}
+
+      {tab === "schedule" && (
+        <>
+          <FormatGuide
+            title="강사 시간표 업로드"
+            description="강사의 가능 시간 슬롯을 일괄 등록. 강사가 직접 시간을 입력하지 않을 때 사용."
+            rows={[
+              ["teacher_username", "강사 아이디 (사전 등록 필요)", "jane_kim"],
+              ["start_at", "시작 (Excel datetime 또는 ISO)", "2026-06-01 09:00"],
+              ["end_at", "종료", "2026-06-01 10:00"],
+              ["format", "online 또는 offline", "online"],
+              ["class_type", "1on1 또는 small_group", "1on1"],
+              ["capacity", "정원 (정수)", "1"],
+            ]}
+          />
+          <AdminUploadForm />
+        </>
+      )}
+
+      {tab === "download" && <AdminDbDownload companies={companies} />}
     </div>
   );
 }

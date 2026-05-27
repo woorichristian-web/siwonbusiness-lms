@@ -53,7 +53,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
                 <NavLink href="/admin" icon="🏠">관리자 홈</NavLink>
                 <NavLink href="/admin/users" icon="👥">회원 관리</NavLink>
                 <NavLink href="/admin/companies" icon="🏢">기업별 관리</NavLink>
-                <NavLink href="/admin/upload" icon="📤">스케줄 업로드</NavLink>
+                <NavLink href="/admin/upload" icon="📤">DB 관리</NavLink>
                 <NavLink href="/admin/messages" icon="💬" badge={unreadCount ?? 0}>메시지</NavLink>
                 <NavLink href="/admin/profile" icon="👤">마이페이지</NavLink>
               </>
