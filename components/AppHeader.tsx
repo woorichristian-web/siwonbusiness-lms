@@ -1,4 +1,4 @@
-// 로그인 후 공통 헤더. 세련된 디자인 — 아이콘 없이 깔끔한 텍스트.
+// 로그인 후 공통 헤더. 세련된 다크 네이비 비즈니스 디자인.
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
@@ -13,20 +13,20 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
     .eq("recipient_id", profile.id)
     .is("read_at", null);
 
-  const brandName =
-    profile.role === "teacher" ? "Siwon Business — Teacher Portal" : "Siwon Business LMS";
-
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="relative bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-slate-200 shadow-lg">
+      {/* 상단 얇은 브랜드 색 액센트 */}
+      <div className="h-0.5 bg-gradient-to-r from-brand-500 via-brand-400 to-brand-600" />
+
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-3.5">
         {/* 좌측: 브랜드 + 메뉴 */}
         <div className="flex min-w-0 items-center gap-10">
           <Link
             href="/dashboard"
-            className="shrink-0 text-lg font-bold tracking-tight text-slate-900 hover:text-brand-700"
+            className="shrink-0 text-lg font-bold tracking-tight transition hover:opacity-90"
           >
-            <span className="text-brand-700">Siwon Business</span>
-            <span className="ml-1.5 font-medium text-slate-500">
+            <span className="text-white">Siwon Business</span>
+            <span className="ml-1.5 font-medium text-brand-300">
               {profile.role === "teacher" ? "Teacher Portal" : "LMS"}
             </span>
           </Link>
@@ -65,20 +65,23 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
         {/* 우측: 사용자 + 로그아웃 */}
         <div className="flex items-center gap-3">
           <div className="hidden text-right text-sm sm:block">
-            <div className="font-medium text-slate-700">{profile.name}</div>
-            <div className="text-xs uppercase tracking-wider text-slate-400">
+            <div className="font-medium text-white">{profile.name}</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-300">
               {roleLabel(profile.role)}
             </div>
           </div>
           <form action="/api/auth/signout" method="post">
             <button
-              className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+              className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
             >
               {profile.role === "teacher" ? "Sign out" : "로그아웃"}
             </button>
           </form>
         </div>
       </div>
+
+      {/* 하단 얇은 underline (메뉴 분리감) */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       {/* Realtime 알림 — 새 메시지 도착 시 토스트 표시 */}
       <MessageNotifier userId={profile.id} />
@@ -96,11 +99,11 @@ function NavLink({
   return (
     <Link
       href={href}
-      className="relative rounded-md px-3 py-1.5 font-medium text-slate-600 transition hover:bg-slate-50 hover:text-brand-700"
+      className="relative rounded-md px-3 py-1.5 font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
     >
       {children}
       {badge != null && badge > 0 && (
-        <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+        <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow-md ring-2 ring-slate-900">
           {badge > 99 ? "99+" : badge}
         </span>
       )}
