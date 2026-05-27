@@ -52,10 +52,40 @@ export default function AdminUploadForm() {
     });
   }
 
+  function downloadTemplate() {
+    const sample = [
+      {
+        teacher_username: "jane",
+        start_at: "2026-06-01 09:00",
+        end_at: "2026-06-01 10:00",
+        format: "online",
+        class_type: "1on1",
+        capacity: 1,
+      },
+      {
+        teacher_username: "jane",
+        start_at: "2026-06-01 11:00",
+        end_at: "2026-06-01 12:00",
+        format: "offline",
+        class_type: "small_group",
+        capacity: 4,
+      },
+    ];
+    const ws = XLSX.utils.json_to_sheet(sample);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "강사시간표");
+    XLSX.writeFile(wb, "teacher_schedule_template.xlsx");
+  }
+
   return (
     <div>
       <section className="card mb-4">
-        <label className="label">파일 선택 (.xlsx, .xls, .csv)</label>
+        <header className="mb-3 flex items-center justify-between">
+          <h3 className="font-semibold">파일 선택 (.xlsx, .xls, .csv)</h3>
+          <button className="btn-ghost text-xs" onClick={downloadTemplate}>
+            ⬇ 템플릿 다운로드
+          </button>
+        </header>
         <input type="file" accept=".xlsx,.xls,.csv" onChange={onFile}
           className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-md
             file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm
