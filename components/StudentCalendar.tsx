@@ -16,7 +16,8 @@ export default function StudentCalendar({ slots }: { slots: BookableSlot[] }) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [view, setView] = useState<"day" | "week" | "month" | "year">("day");
-  const [dayDate, setDayDate] = useState<Date>(() => new Date());
+  // 초기 Day 날짜: 오늘 수업이 있으면 오늘, 없으면 다음 예정 수업 날짜로 자동 점프
+  const [dayDate, setDayDate] = useState<Date>(() => pickInitialDayDate(slots));
   const calRef = useRef<FullCalendar | null>(null);
 
   // Day 뷰 — 선택한 날짜 슬롯만 시간순 정렬
@@ -135,8 +136,14 @@ export default function StudentCalendar({ slots }: { slots: BookableSlot[] }) {
 
       {view === "day" ? (
         <>
-          <div className="mb-2 text-sm font-semibold text-slate-700 sm:hidden">
-            {dayDate.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
+          {/* 카드 위 헤딩 — 오늘의 수업 / 예정된 수업 / 지난 수업 */}
+          <div className="mb-3 flex items-baseline gap-3">
+            <h3 className="text-lg font-bold text-slate-800">
+              {dayLabelKo(dayDate, daySlots.length > 0)}
+            </h3>
+            <span className="text-xs text-slate-500">
+              {dayDate.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
+            </span>
           </div>
           <SlotCardListStudent slots={daySlots} onSelect={(s) => { setSelected(s); setMessage(null); }} />
         </>
@@ -256,6 +263,33 @@ function SlotModal({
           } />
         </div>
 
+        {/* 내가 신청한 온라인 수업 — Zoom / Teams 입장 버튼 */}
+        {slot.i_am_booked && !isPast && slot.format === "online" && (slot.zoom_url || slot.teams_url) && (
+          <div className="mt-4 flex flex-wrap gap-2 rounded-md border border-blue-200 bg-blue-50/40 p-3">
+            <span className="self-center text-xs font-semibold text-slate-600">🎥 수업 입장:</span>
+            {slot.zoom_url && (
+              <a
+                href={slot.zoom_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              >
+                Zoom 열기 ↗
+              </a>
+            )}
+            {slot.teams_url && (
+              <a
+                href={slot.teams_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-purple-700"
+              >
+                Teams 열기 ↗
+              </a>
+            )}
+          </div>
+        )}
+
         {message && (
           <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-2 text-sm text-slate-700">
             {message}
@@ -301,6 +335,46 @@ function format(d: Date) {
 }
 function formatTime(d: Date) {
   return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Day 초기 날짜 선택 — 오늘 수업이 있으면 오늘, 없으면 다음 예정 수업 날짜
+   ────────────────────────────────────────────────────────────────────── */
+function pickInitialDayDate(slots: BookableSlot[]): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const hasToday = slots.some((s) => {
+    const t = new Date(s.start_at).getTime();
+    return t >= today.getTime() && t < tomorrow.getTime();
+  });
+  if (hasToday) return today;
+
+  const nowMs = Date.now();
+  const upcoming = slots
+    .map((s) => new Date(s.start_at).getTime())
+    .filter((t) => t >= nowMs)
+    .sort((a, b) => a - b);
+  if (upcoming.length === 0) return today;
+  const next = new Date(upcoming[0]);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Day 헤딩 — 오늘의 수업 / 예정된 수업 / 지난 수업
+   ────────────────────────────────────────────────────────────────────── */
+function dayLabelKo(dayDate: Date, hasClasses: boolean): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dayDate);
+  d.setHours(0, 0, 0, 0);
+  const diff = d.getTime() - today.getTime();
+  if (diff === 0) return hasClasses ? "오늘의 수업" : "오늘은 수업이 없습니다";
+  if (diff > 0) return hasClasses ? "예정된 수업" : "이 날에는 수업이 없습니다";
+  return hasClasses ? "지난 수업" : "이 날에는 수업이 없습니다";
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -416,6 +490,34 @@ function SlotCardStudent({
               {statusLabel}
             </span>
           </div>
+
+          {/* 내가 신청한 온라인 수업 — Zoom / Teams 바로 들어가기 버튼 */}
+          {isMine && !isPast && slot.format === "online" && (slot.zoom_url || slot.teams_url) && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {slot.zoom_url && (
+                <a
+                  href={slot.zoom_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                >
+                  🎥 Zoom 입장 ↗
+                </a>
+              )}
+              {slot.teams_url && (
+                <a
+                  href={slot.teams_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 rounded-md bg-purple-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-purple-700"
+                >
+                  💼 Teams 입장 ↗
+                </a>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="self-center text-lg text-slate-300">›</div>

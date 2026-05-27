@@ -202,4 +202,6 @@ export interface BookableSlot {
   booked_count: number;        // 이 작은 칸에 들어간 예약 수
   i_am_booked: boolean;        // 본인 예약 여부
   is_past: boolean;            // 이미 지나간 시간 (마감 처리)
+  zoom_url: string | null;     // 강사가 설정한 Zoom 회의실 URL (online 일 때 카드/모달에 표시)
+  teams_url: string | null;    // 강사가 설정한 Teams 회의실 URL
 }

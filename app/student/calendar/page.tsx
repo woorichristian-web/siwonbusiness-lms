@@ -47,12 +47,18 @@ export default async function StudentCalendarPage() {
     new Set((availabilities ?? []).map((a: any) => a.teacher_id))
   );
   const teacherNames = new Map<string, string>();
+  const teacherZoom = new Map<string, string | null>();
+  const teacherTeams = new Map<string, string | null>();
   if (teacherIds.length > 0) {
-    const { data: teachers } = await supabase
-      .from("profiles")
-      .select("id, name")
-      .in("id", teacherIds);
+    const [{ data: teachers }, { data: teacherMeta }] = await Promise.all([
+      supabase.from("profiles").select("id, name").in("id", teacherIds),
+      supabase.from("teachers").select("profile_id, zoom_url, teams_url").in("profile_id", teacherIds),
+    ]);
     for (const t of teachers ?? []) teacherNames.set(t.id, t.name);
+    for (const t of teacherMeta ?? []) {
+      teacherZoom.set(t.profile_id, t.zoom_url);
+      teacherTeams.set(t.profile_id, t.teams_url);
+    }
   }
 
   const { data: bookings } = await supabase
@@ -117,6 +123,8 @@ export default async function StudentCalendarPage() {
         booked_count: bookedCount.get(key) ?? 0,
         i_am_booked: myBooked.has(key),
         is_past: (t + dur * 60000) <= now,
+        zoom_url: teacherZoom.get(a.teacher_id) ?? null,
+        teams_url: teacherTeams.get(a.teacher_id) ?? null,
       });
     }
   }

@@ -22,7 +22,8 @@ export default function TeacherScheduleEditor({
   const [editing, setEditing] = useState<TimeSlot | "new" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"day" | "week" | "month">("day");
-  const [dayDate, setDayDate] = useState<Date>(() => new Date());
+  // 초기 Day 날짜: 오늘 슬롯이 있으면 오늘, 없으면 다음 예정 슬롯 날짜로 자동 점프
+  const [dayDate, setDayDate] = useState<Date>(() => pickInitialDayDate(slots));
   const calRef = useRef<FullCalendar | null>(null);
 
   // Day 뷰 — 선택한 날짜의 슬롯을 시간순으로 정렬
@@ -159,8 +160,14 @@ export default function TeacherScheduleEditor({
 
       {view === "day" ? (
         <div className="mb-6">
-          <div className="mb-2 text-sm font-semibold text-slate-700 sm:hidden">
-            {dayDate.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "long", day: "numeric" })}
+          {/* 카드 위 헤딩 — Today's Class / Upcoming Class / Past Class */}
+          <div className="mb-3 flex items-baseline gap-3">
+            <h3 className="text-lg font-bold text-slate-800">
+              {dayLabelEn(dayDate, daySlots.length > 0)}
+            </h3>
+            <span className="text-xs text-slate-500">
+              {dayDate.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "long", day: "numeric" })}
+            </span>
           </div>
           <SlotCardList
             slots={daySlots}
@@ -465,6 +472,46 @@ function Legend({ color, label }: { color: string; label: string }) {
       {label}
     </span>
   );
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Day 초기 날짜 선택 — 오늘 슬롯이 있으면 오늘, 없으면 다음 예정 슬롯 날짜
+   ────────────────────────────────────────────────────────────────────── */
+function pickInitialDayDate(slots: TimeSlot[]): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const hasToday = slots.some((s) => {
+    const t = new Date(s.start_at).getTime();
+    return t >= today.getTime() && t < tomorrow.getTime();
+  });
+  if (hasToday) return today;
+
+  const nowMs = Date.now();
+  const upcoming = slots
+    .map((s) => new Date(s.start_at).getTime())
+    .filter((t) => t >= nowMs)
+    .sort((a, b) => a - b);
+  if (upcoming.length === 0) return today;
+  const next = new Date(upcoming[0]);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Day 헤딩 (영문) — Today's Class / Upcoming Class / Past Class
+   ────────────────────────────────────────────────────────────────────── */
+function dayLabelEn(dayDate: Date, hasSlots: boolean): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dayDate);
+  d.setHours(0, 0, 0, 0);
+  const diff = d.getTime() - today.getTime();
+  if (diff === 0) return hasSlots ? "Today's Class" : "No Class Today";
+  if (diff > 0) return hasSlots ? "Upcoming Class" : "No Class on This Day";
+  return hasSlots ? "Past Class" : "No Class on This Day";
 }
 
 /* ──────────────────────────────────────────────────────────────────────

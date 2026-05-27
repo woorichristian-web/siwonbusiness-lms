@@ -41,7 +41,8 @@ export interface BookingEvent {
 export default function ClassSchedulesView({ events }: { events: BookingEvent[] }) {
   const [selected, setSelected] = useState<BookingEvent | null>(null);
   const [view, setView] = useState<"day" | "week" | "month">("day");
-  const [dayDate, setDayDate] = useState<Date>(() => new Date());
+  // 초기 Day 날짜: 오늘 수업이 있으면 오늘, 없으면 다음 예정 수업 날짜로 자동 점프
+  const [dayDate, setDayDate] = useState<Date>(() => pickInitialDayDate(events));
   const calRef = useRef<FullCalendar | null>(null);
 
   // Day 뷰 — 선택한 날짜의 수업만 시간순으로 정렬
@@ -133,9 +134,14 @@ export default function ClassSchedulesView({ events }: { events: BookingEvent[] 
 
       {view === "day" ? (
         <>
-          {/* Day view 모바일용 날짜 라벨 */}
-          <div className="mb-2 text-sm font-semibold text-slate-700 sm:hidden">
-            {dayDate.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "long", day: "numeric" })}
+          {/* 카드 위 헤딩 — Today's Class / Upcoming Class / Past Class */}
+          <div className="mb-3 flex items-baseline gap-3">
+            <h3 className="text-lg font-bold text-slate-800">
+              {dayLabelEn(dayDate, dayEvents.length > 0)}
+            </h3>
+            <span className="text-xs text-slate-500">
+              {dayDate.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "long", day: "numeric" })}
+            </span>
           </div>
           <DayCardList events={dayEvents} onSelect={setSelected} />
         </>
@@ -419,6 +425,46 @@ function Row({ k, v }: { k: string; v: string }) {
       <span className="flex-1 text-slate-800">{v}</span>
     </div>
   );
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Day 초기 날짜 선택 — 오늘 수업이 있으면 오늘, 없으면 다음 예정 수업 날짜
+   ────────────────────────────────────────────────────────────────────── */
+function pickInitialDayDate(events: BookingEvent[]): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const hasToday = events.some((e) => {
+    const t = new Date(e.start_at).getTime();
+    return t >= today.getTime() && t < tomorrow.getTime();
+  });
+  if (hasToday) return today;
+
+  const nowMs = Date.now();
+  const upcoming = events
+    .map((e) => new Date(e.start_at).getTime())
+    .filter((t) => t >= nowMs)
+    .sort((a, b) => a - b);
+  if (upcoming.length === 0) return today;
+  const next = new Date(upcoming[0]);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Day 헤딩 (영문) — Today's Class / Upcoming Class / Past Class
+   ────────────────────────────────────────────────────────────────────── */
+function dayLabelEn(dayDate: Date, hasClasses: boolean): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dayDate);
+  d.setHours(0, 0, 0, 0);
+  const diff = d.getTime() - today.getTime();
+  if (diff === 0) return hasClasses ? "Today's Class" : "No Class Today";
+  if (diff > 0) return hasClasses ? "Upcoming Class" : "No Class on This Day";
+  return hasClasses ? "Past Class" : "No Class on This Day";
 }
 
 /* ──────────────────────────────────────────────────────────────────────
