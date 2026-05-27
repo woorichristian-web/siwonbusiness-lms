@@ -42,9 +42,9 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
         : "/admin/messages";
 
   return (
-    <header className="relative bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-slate-200 shadow-lg">
-      {/* 상단 얇은 브랜드 색 액센트 */}
-      <div className="h-0.5 bg-gradient-to-r from-brand-500 via-brand-400 to-brand-600" />
+    <header className="relative bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-blue-100 shadow-lg">
+      {/* 상단 얇은 골드 액센트 */}
+      <div className="h-0.5 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400" />
 
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-3.5">
         {/* 좌측: 브랜드 + 메뉴 */}
@@ -54,7 +54,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
             className="shrink-0 text-lg font-bold tracking-tight transition hover:opacity-90"
           >
             <span className="text-white">Siwon Business</span>
-            <span className="ml-1.5 font-medium text-brand-300">
+            <span className="ml-2 font-medium tracking-wide text-amber-300">
               {profile.role === "teacher" ? "Teacher Portal" : "LMS"}
             </span>
           </Link>
@@ -94,13 +94,13 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
         <div className="flex items-center gap-3">
           <div className="hidden text-right text-sm sm:block">
             <div className="font-medium text-white">{profile.name}</div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-300">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-300">
               {roleLabel(profile.role)}
             </div>
           </div>
           <form action="/api/auth/signout" method="post">
             <button
-              className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+              className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-medium text-blue-50 transition hover:border-white/25 hover:bg-white/10 hover:text-white"
             >
               {profile.role === "teacher" ? "Sign out" : "로그아웃"}
             </button>
@@ -109,7 +109,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
       </div>
 
       {/* 하단 얇은 underline (메뉴 분리감) */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-300/20 to-transparent" />
 
       {/* Realtime 알림 — 새 메시지 도착 시 토스트 표시 */}
       <MessageNotifier userId={profile.id} />
@@ -136,11 +136,11 @@ function NavLink({
   return (
     <Link
       href={href}
-      className="relative rounded-md px-3 py-1.5 font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+      className="relative rounded-md px-3 py-1.5 font-medium text-blue-100 transition hover:bg-white/10 hover:text-white"
     >
       {children}
       {badge != null && badge > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow-md ring-2 ring-slate-900">
+        <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow-md ring-2 ring-blue-900">
           {badge > 99 ? "99+" : badge}
         </span>
       )}
