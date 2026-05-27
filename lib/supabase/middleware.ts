@@ -33,7 +33,10 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
+  const isAuthPage =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/forgot-password");
   const isPublic = pathname === "/" || isAuthPage || pathname.startsWith("/api");
 
   // 로그인 안 되어 있는데 보호 페이지 접근 → /login

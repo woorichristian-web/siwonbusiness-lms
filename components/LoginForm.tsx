@@ -89,10 +89,14 @@ export default function LoginForm() {
         {loading ? "로그인 중..." : "로그인"}
       </button>
 
-      <p className="text-center text-sm text-slate-500">
-        계정이 없으신가요?{" "}
-        <a href="/signup" className="font-medium text-brand-600 hover:underline">회원가입</a>
-      </p>
+      <div className="flex items-center justify-between text-sm">
+        <a href="/forgot-password" className="text-slate-500 hover:text-brand-600 hover:underline">
+          🔑 비밀번호 찾기
+        </a>
+        <a href="/signup" className="font-medium text-brand-600 hover:underline">
+          회원가입
+        </a>
+      </div>
     </form>
   );
 }
