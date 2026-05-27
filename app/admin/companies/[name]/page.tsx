@@ -21,10 +21,9 @@ export default async function CompanyDetailPage({
   const profile = await requireRole(["admin"]);
   const supabase = createClient();
   const selectedCompany = decodeURIComponent(params.name);
-  const tab: "course" | "performance" =
-    searchParams.tab === "performance" ? "performance" : "course";
+  const isPerformance = searchParams.tab === "performance";
 
-  // 공통: 회원 목록
+  // ===== 공통 데이터 =====
   const { data: allProfiles } = await supabase
     .from("profiles")
     .select("*")
@@ -44,6 +43,51 @@ export default async function CompanyDetailPage({
     (u) => u.role === "student" && u.company_name === selectedCompany
   );
 
+  // ===== 과정관리 탭용 데이터 =====
+  let settings: CompanySettings | null = null;
+  let holidays: CompanyHoliday[] = [];
+  const bookingsByMember: Record<string, string[]> = {};
+
+  if (!isPerformance) {
+    const [{ data: s }, { data: h }] = await Promise.all([
+      supabase.from("company_settings").select("*").eq("company_name", selectedCompany).maybeSingle(),
+      supabase.from("company_holidays").select("*").eq("company_name", selectedCompany)
+        .order("holiday_date", { ascending: true }),
+    ]);
+    settings = (s as CompanySettings) ?? null;
+    holidays = (h as CompanyHoliday[]) ?? [];
+
+    const memberIds = members.map((m) => m.id);
+    if (memberIds.length > 0) {
+      const { data: bookings } = await supabase
+        .from("bookings")
+        .select("student_id, start_at")
+        .in("student_id", memberIds)
+        .eq("status", "confirmed")
+        .order("start_at", { ascending: true });
+      for (const b of bookings ?? []) {
+        if (!bookingsByMember[b.student_id]) bookingsByMember[b.student_id] = [];
+        bookingsByMember[b.student_id].push(b.start_at);
+      }
+    }
+  }
+
+  // ===== 성과관리 탭용 데이터 =====
+  let performanceData: Awaited<ReturnType<typeof getCompanyPerformance>> | null = null;
+  if (isPerformance) {
+    const now = new Date();
+    let year = now.getFullYear();
+    let month = now.getMonth() + 1;
+    if (searchParams.month) {
+      const [y, m] = searchParams.month.split("-").map(Number);
+      if (Number.isInteger(y) && Number.isInteger(m) && m >= 1 && m <= 12) {
+        year = y;
+        month = m;
+      }
+    }
+    performanceData = await getCompanyPerformance(selectedCompany, year, month);
+  }
+
   return (
     <>
       <AppHeader profile={profile} />
@@ -61,102 +105,39 @@ export default async function CompanyDetailPage({
           </p>
         </header>
 
-        <CompanyDetailTabs companyName={selectedCompany} current={tab} />
+        <CompanyDetailTabs
+          companyName={selectedCompany}
+          current={isPerformance ? "performance" : "course"}
+        />
 
-        {tab === "course" ? (
-          <CourseManagementTab
-            selectedCompany={selectedCompany}
-            companies={companies}
-            teachers={teachers}
-            members={members}
-          />
-        ) : (
-          <PerformanceTab
-            selectedCompany={selectedCompany}
-            monthParam={searchParams.month}
+        {!isPerformance && (
+          <>
+            <div className="mb-6">
+              <CompanyCoursesList
+                companyName={selectedCompany}
+                members={members}
+                teachers={teachers}
+              />
+            </div>
+            <CompanyAdminClient
+              companies={companies}
+              selectedCompany={selectedCompany}
+              teachers={teachers}
+              members={members}
+              settings={settings}
+              holidays={holidays}
+              bookingsByMember={bookingsByMember}
+            />
+          </>
+        )}
+
+        {isPerformance && performanceData && (
+          <CompanyPerformanceView
+            companyName={selectedCompany}
+            data={performanceData}
           />
         )}
       </main>
     </>
   );
-}
-
-async function CourseManagementTab({
-  selectedCompany, companies, teachers, members,
-}: {
-  selectedCompany: string;
-  companies: string[];
-  teachers: Profile[];
-  members: Profile[];
-}) {
-  const supabase = createClient();
-
-  // 회사 설정/휴일
-  const [{ data: s }, { data: h }] = await Promise.all([
-    supabase.from("company_settings").select("*").eq("company_name", selectedCompany).maybeSingle(),
-    supabase.from("company_holidays").select("*").eq("company_name", selectedCompany)
-      .order("holiday_date", { ascending: true }),
-  ]);
-  const settings = (s as CompanySettings) ?? null;
-  const holidays = (h as CompanyHoliday[]) ?? [];
-
-  // 회원별 예약 날짜
-  const memberIds = members.map((m) => m.id);
-  const bookingsByMember: Record<string, string[]> = {};
-  if (memberIds.length > 0) {
-    const { data: bookings } = await supabase
-      .from("bookings")
-      .select("student_id, start_at")
-      .in("student_id", memberIds)
-      .eq("status", "confirmed")
-      .order("start_at", { ascending: true });
-    for (const b of bookings ?? []) {
-      if (!bookingsByMember[b.student_id]) bookingsByMember[b.student_id] = [];
-      bookingsByMember[b.student_id].push(b.start_at);
-    }
-  }
-
-  return (
-    <>
-      <div className="mb-6">
-        <CompanyCoursesList
-          companyName={selectedCompany}
-          members={members}
-          teachers={teachers}
-        />
-      </div>
-
-      <CompanyAdminClient
-        companies={companies}
-        selectedCompany={selectedCompany}
-        teachers={teachers}
-        members={members}
-        settings={settings}
-        holidays={holidays}
-        bookingsByMember={bookingsByMember}
-      />
-    </>
-  );
-}
-
-async function PerformanceTab({
-  selectedCompany, monthParam,
-}: {
-  selectedCompany: string;
-  monthParam?: string;
-}) {
-  // monthParam: "YYYY-MM" or undefined → current month
-  const now = new Date();
-  let year = now.getFullYear();
-  let month = now.getMonth() + 1;
-  if (monthParam) {
-    const [y, m] = monthParam.split("-").map(Number);
-    if (Number.isInteger(y) && Number.isInteger(m) && m >= 1 && m <= 12) {
-      year = y;
-      month = m;
-    }
-  }
-
-  const data = await getCompanyPerformance(selectedCompany, year, month);
-  return <CompanyPerformanceView companyName={selectedCompany} data={data} />;
 }
