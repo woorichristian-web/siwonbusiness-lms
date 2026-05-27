@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 type Tab = "course" | "performance";
 
@@ -11,43 +11,30 @@ export default function CompanyDetailTabs({
   companyName: string;
   current: Tab;
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  function switchTab(t: Tab) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (t === "course") {
-      params.delete("tab");
-      params.delete("month");
-    } else {
-      params.set("tab", "performance");
-    }
-    const q = params.toString();
-    router.push(`/admin/companies/${encodeURIComponent(companyName)}${q ? `?${q}` : ""}`);
-  }
+  const base = `/admin/companies/${encodeURIComponent(companyName)}`;
 
   return (
     <div className="mb-6 flex gap-1 border-b border-slate-200">
-      <TabBtn active={current === "course"} onClick={() => switchTab("course")}>
+      <TabLink href={base} active={current === "course"}>
         📚 기업별 과정관리
-      </TabBtn>
-      <TabBtn active={current === "performance"} onClick={() => switchTab("performance")}>
+      </TabLink>
+      <TabLink href={`${base}?tab=performance`} active={current === "performance"}>
         📊 기업별 성과관리
-      </TabBtn>
+      </TabLink>
     </div>
   );
 }
 
-function TabBtn({
-  active, onClick, children,
+function TabLink({
+  href, active, children,
 }: {
+  href: string;
   active: boolean;
-  onClick: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <button
-      onClick={onClick}
+    <Link
+      href={href}
       className={
         "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition " +
         (active
@@ -56,6 +43,6 @@ function TabBtn({
       }
     >
       {children}
-    </button>
+    </Link>
   );
 }

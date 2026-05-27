@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import {
-  ComposedChart, Line, Area, XAxis, YAxis,
+  ComposedChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import type { CompanyPerformanceData } from "@/lib/company-performance";
@@ -54,7 +54,6 @@ export default function CompanyPerformanceView({
     avg: s.avg,
     min: s.min,
     max: s.max,
-    range: s.range,
     count: s.count,
   }));
 
@@ -124,25 +123,20 @@ export default function CompanyPerformanceView({
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis domain={[yMin, yMax]} tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    formatter={(v: any, name: string) => {
-                      if (Array.isArray(v)) return [`${v[0].toFixed(2)} ~ ${v[1].toFixed(2)}`, "범위 (Min ~ Max)"];
-                      return [typeof v === "number" ? v.toFixed(2) : v, name];
-                    }}
-                  />
+                  <Tooltip formatter={(v: any) => typeof v === "number" ? v.toFixed(2) : v} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
 
-                  {/* Min-Max 범위 영역 */}
-                  <Area
+                  {/* 최고 점수 (점선) */}
+                  <Line
                     type="monotone"
-                    dataKey="range"
-                    fill="#bfdbfe"
-                    stroke="#93c5fd"
-                    strokeWidth={1}
-                    name="Min~Max 범위"
-                    activeDot={false}
+                    dataKey="max"
+                    stroke="#10b981"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                    dot={{ r: 3 }}
+                    name="최고"
                   />
-                  {/* 평균 라인 */}
+                  {/* 평균 라인 (메인) */}
                   <Line
                     type="monotone"
                     dataKey="avg"
@@ -151,6 +145,16 @@ export default function CompanyPerformanceView({
                     dot={{ r: 4 }}
                     activeDot={{ r: 6 }}
                     name="평균"
+                  />
+                  {/* 최저 점수 (점선) */}
+                  <Line
+                    type="monotone"
+                    dataKey="min"
+                    stroke="#ef4444"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                    dot={{ r: 3 }}
+                    name="최저"
                   />
                 </ComposedChart>
               </ResponsiveContainer>
