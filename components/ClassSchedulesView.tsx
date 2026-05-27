@@ -67,10 +67,12 @@ export default function ClassSchedulesView({ events }: { events: BookingEvent[] 
         </h2>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-4">
         <style>{`
           .fc-event { cursor: pointer; }
           .fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; }
+          .fc { min-width: 640px; }
+          @media (min-width: 768px) { .fc { min-width: 0; } }
         `}</style>
         <FullCalendar
           plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
@@ -99,7 +101,12 @@ export default function ClassSchedulesView({ events }: { events: BookingEvent[] 
               <div style={{ padding: "2px 4px", lineHeight: 1.2 }}>
                 <div style={{ fontSize: "0.7rem", opacity: 0.9 }}>{arg.timeText}</div>
                 <div style={{ fontSize: "0.8rem", fontWeight: 700 }}>{e.student_name}</div>
-                <div style={{ fontSize: "0.65rem", opacity: 0.85 }}>
+                {e.student_company && (
+                  <div style={{ fontSize: "0.62rem", opacity: 0.9, fontStyle: "italic" }}>
+                    {e.student_company}
+                  </div>
+                )}
+                <div style={{ fontSize: "0.62rem", opacity: 0.85 }}>
                   {e.class_type === "1on1" ? "1:1" : "Group"} · {e.format === "online" ? "Online" : "Offline"}
                 </div>
               </div>

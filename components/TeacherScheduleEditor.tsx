@@ -95,11 +95,13 @@ export default function TeacherScheduleEditor({
       )}
 
       {/* Calendar view — Day / Week / Month */}
-      <div className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
+      <div className="mb-6 overflow-x-auto rounded-lg border border-slate-200 bg-white p-4">
         <style>{`
           .fc-event { cursor: pointer; }
           .fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; }
           .fc-past { opacity: 0.5; }
+          .fc { min-width: 640px; }
+          @media (min-width: 768px) { .fc { min-width: 0; } }
         `}</style>
         <FullCalendar
           plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}

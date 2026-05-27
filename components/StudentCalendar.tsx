@@ -67,7 +67,7 @@ export default function StudentCalendar({ slots }: { slots: BookableSlot[] }) {
   }
 
   return (
-    <div>
+    <div className="overflow-x-auto">
       <style>{calendarStyles}</style>
       <FullCalendar
         plugins={[timeGridPlugin, dayGridPlugin, multiMonthPlugin, interactionPlugin]}
@@ -242,4 +242,6 @@ const calendarStyles = `
 .fc-event { cursor: pointer; }
 .fc-past { opacity: 0.5; }                         /* 지나간 슬롯 반투명 */
 .fc-past .fc-event { cursor: default; }
+.fc { min-width: 640px; }
+@media (min-width: 768px) { .fc { min-width: 0; } }
 `;
