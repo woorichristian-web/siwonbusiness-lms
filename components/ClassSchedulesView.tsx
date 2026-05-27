@@ -275,10 +275,15 @@ function StudentDetailModal({
       {/* Nested feedback modal */}
       {feedbackOpen && (
         <FeedbackModal
-          bookingId={event.id}
           studentName={event.student_name}
-          classInfo={classInfo}
-          existing={event.feedback}
+          studentSessions={[{
+            booking_id: event.id,
+            start_at: event.start_at,
+            end_at: event.end_at,
+            attendance_marked: event.attendance_status !== null,
+            feedback: event.feedback,
+          }]}
+          initialBookingId={event.id}
           onClose={() => setFeedbackOpen(false)}
         />
       )}

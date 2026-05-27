@@ -8,18 +8,25 @@ import { FEEDBACK_KEYS } from "@/lib/types";
 /**
  * Teacher (or admin) saves per-class feedback for a booking.
  * Upserts on booking_id so re-submitting just overwrites.
+ *
+ * status: "draft" = 임시저장 (progress 평균 계산에서 제외)
+ *         "submitted" = 제출 완료 (default)
  */
-export async function saveFeedback(bookingId: string, input: FeedbackInput) {
+export async function saveFeedback(
+  bookingId: string,
+  input: FeedbackInput,
+  status: "draft" | "submitted" = "submitted"
+) {
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Login required." };
 
-  // Build a clean payload — only known keys, validate 1-5 range or null
   const row: Record<string, any> = {
     booking_id: bookingId,
     created_by: user.id,
+    status,
   };
   for (const k of FEEDBACK_KEYS) {
     const v = input[k];

@@ -106,6 +106,8 @@ export const FEEDBACK_KEYS: FeedbackKey[] = [
   "preparation",
 ];
 
+export type FeedbackStatus = "draft" | "submitted";
+
 export interface Feedback {
   id: string;
   booking_id: string;
@@ -120,6 +122,7 @@ export interface Feedback {
   tone_manner: number | null;
   preparation: number | null;
   comment: string | null;
+  status: FeedbackStatus;
   created_by: string | null;
   created_at: string;
   updated_at: string;

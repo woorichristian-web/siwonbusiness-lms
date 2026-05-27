@@ -44,7 +44,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
             {profile.role === "teacher" && (
               <>
                 <NavLink href="/teacher/schedule">My Classes</NavLink>
-                <NavLink href="/teacher/class-manage">Class Manage</NavLink>
+                <NavLink href="/teacher/class-manage">Management</NavLink>
                 <NavLink href="/teacher/messages" badge={unreadCount ?? 0}>Messages</NavLink>
                 <NavLink href="/teacher/profile">My Page</NavLink>
               </>

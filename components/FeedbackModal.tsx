@@ -1,65 +1,135 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import LikertScale from "@/components/LikertScale";
+import StarRating from "@/components/StarRating";
 import { saveFeedback } from "@/lib/actions/feedback";
 import type { Feedback, FeedbackKey } from "@/lib/types";
 
+export interface SessionEntry {
+  booking_id: string;
+  start_at: string;
+  end_at: string;
+  attendance_marked: boolean;
+  feedback: Feedback | null;
+}
+
 interface Props {
-  bookingId: string;
   studentName: string;
-  classInfo?: string; // e.g. "Tue, May 19 · 09:00 - 10:00"
-  existing: Partial<Feedback> | null;
+  studentSessions: SessionEntry[];   // 학생의 모든 과거 수업 (이 강사)
+  initialBookingId: string;
   onClose: () => void;
 }
 
 type Ratings = Partial<Record<FeedbackKey, number | null>>;
 
+function isComplete(fb: Feedback | null | undefined): boolean {
+  if (!fb) return false;
+  if (fb.status !== "submitted") return false;
+  return true;
+}
+
+function ratingsFromFeedback(fb: Feedback | null): Ratings {
+  return {
+    grammar_accuracy:     fb?.grammar_accuracy     ?? null,
+    grammar_complexity:   fb?.grammar_complexity   ?? null,
+    vocabulary_diversity: fb?.vocabulary_diversity ?? null,
+    vocabulary_relevancy: fb?.vocabulary_relevancy ?? null,
+    comprehension:        fb?.comprehension        ?? null,
+    content_clarity:      fb?.content_clarity      ?? null,
+    content_organization: fb?.content_organization ?? null,
+    participation:        fb?.participation        ?? null,
+    tone_manner:          fb?.tone_manner          ?? null,
+    preparation:          fb?.preparation          ?? null,
+  };
+}
+
 export default function FeedbackModal({
-  bookingId, studentName, classInfo, existing, onClose,
+  studentName, studentSessions, initialBookingId, onClose,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  const init: Ratings = {
-    grammar_accuracy:     existing?.grammar_accuracy     ?? null,
-    grammar_complexity:   existing?.grammar_complexity   ?? null,
-    vocabulary_diversity: existing?.vocabulary_diversity ?? null,
-    vocabulary_relevancy: existing?.vocabulary_relevancy ?? null,
-    comprehension:        existing?.comprehension        ?? null,
-    content_clarity:      existing?.content_clarity      ?? null,
-    content_organization: existing?.content_organization ?? null,
-    participation:        existing?.participation        ?? null,
-    tone_manner:          existing?.tone_manner          ?? null,
-    preparation:          existing?.preparation          ?? null,
-  };
+  // 과거 수업만 필터 (미래 수업은 평가 불가)
+  const pastSessions = useMemo(() => {
+    const now = Date.now();
+    return studentSessions
+      .filter((s) => new Date(s.end_at).getTime() <= now)
+      .sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime());
+  }, [studentSessions]);
 
-  const [ratings, setRatings] = useState<Ratings>(init);
-  // 기본 코멘트: 기존 값이 있으면 그걸 쓰고, 없으면 자동 생성 메시지 (수정 가능)
-  const [comment, setComment] = useState(
-    existing?.comment ?? `Hi ${studentName}, you did a great job today. `
+  // 현재 선택된 세션
+  const [selectedBookingId, setSelectedBookingId] = useState(initialBookingId);
+  const selectedSession = pastSessions.find((s) => s.booking_id === selectedBookingId)
+    ?? pastSessions[0];
+
+  // 현재 세션의 ratings, comment 상태
+  const [ratings, setRatings] = useState<Ratings>(() =>
+    ratingsFromFeedback(selectedSession?.feedback ?? null)
   );
+  const [comment, setComment] = useState(
+    selectedSession?.feedback?.comment ?? `Hi ${studentName}, you did a great job today. `
+  );
+
+  // 세션 전환 시 상태 갱신
+  useEffect(() => {
+    if (!selectedSession) return;
+    setRatings(ratingsFromFeedback(selectedSession.feedback));
+    setComment(
+      selectedSession.feedback?.comment
+        ?? `Hi ${studentName}, you did a great job today. `
+    );
+    setMsg(null);
+  }, [selectedBookingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(key: FeedbackKey, v: number | null) {
     setRatings((r) => ({ ...r, [key]: v }));
   }
 
-  // Average of provided ratings (preview only)
   const filled = Object.values(ratings).filter((v) => v != null) as number[];
   const avg = filled.length === 0 ? null : (filled.reduce((s, n) => s + n, 0) / filled.length);
 
-  function save() {
+  function save(status: "draft" | "submitted") {
+    if (!selectedSession) return;
     setMsg(null);
     startTransition(async () => {
-      const r = await saveFeedback(bookingId, { ...ratings, comment });
+      const r = await saveFeedback(
+        selectedSession.booking_id,
+        { ...ratings, comment },
+        status,
+      );
       if (!r.ok) { setMsg({ type: "err", text: r.error ?? "Failed to save" }); return; }
-      setMsg({ type: "ok", text: "Saved." });
+      setMsg({
+        type: "ok",
+        text: status === "draft" ? "Draft saved." : "Submitted.",
+      });
       router.refresh();
-      setTimeout(onClose, 600);
+      if (status === "submitted") {
+        setTimeout(onClose, 700);
+      }
     });
   }
+
+  if (!selectedSession) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+        <div onClick={(e) => e.stopPropagation()} className="rounded-lg bg-white p-6 shadow-xl">
+          <p className="text-sm text-slate-600">No past sessions for this student.</p>
+          <button className="btn-ghost mt-4" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    );
+  }
+
+  const start = new Date(selectedSession.start_at);
+  const end = new Date(selectedSession.end_at);
+  const classInfo =
+    start.toLocaleDateString("en-US", { weekday: "short", month: "2-digit", day: "2-digit" })
+    + " · "
+    + start.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+    + " - "
+    + end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -68,10 +138,7 @@ export default function FeedbackModal({
         <header className="mb-4 flex items-start justify-between">
           <div>
             <h3 className="text-lg font-bold text-slate-800">📝 Class Feedback</h3>
-            <p className="mt-0.5 text-sm text-slate-500">
-              <b>{studentName}</b>
-              {classInfo ? ` · ${classInfo}` : ""}
-            </p>
+            <p className="mt-0.5 text-sm text-slate-500"><b>{studentName}</b> · {classInfo}</p>
           </div>
           {filled.length > 0 && (
             <div className="rounded-md bg-amber-50 px-3 py-1.5 text-right text-xs">
@@ -84,9 +151,51 @@ export default function FeedbackModal({
           )}
         </header>
 
+        {/* 날짜 strip — 학생의 모든 과거 수업, 미평가는 빨강 */}
+        <section className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              📅 수업 선택
+            </h4>
+            <span className="text-xs text-slate-400">
+              총 {pastSessions.length}회 · 🔴 미평가
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {pastSessions.map((s) => {
+              const isSelected = s.booking_id === selectedBookingId;
+              const complete = isComplete(s.feedback) && s.attendance_marked;
+              const d = new Date(s.start_at);
+              const label = d.toLocaleDateString("en-US", {
+                month: "2-digit", day: "2-digit",
+              }) + " · " + d.toLocaleTimeString("en-US", {
+                hour: "2-digit", minute: "2-digit", hour12: false,
+              });
+              return (
+                <button
+                  key={s.booking_id}
+                  type="button"
+                  onClick={() => setSelectedBookingId(s.booking_id)}
+                  className={
+                    "rounded-md border px-3 py-1.5 text-xs font-medium transition " +
+                    (isSelected
+                      ? "border-brand-600 bg-brand-600 text-white"
+                      : complete
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:border-emerald-500"
+                        : "border-red-300 bg-red-50 text-red-700 hover:border-red-500")
+                  }
+                >
+                  {!complete && <span className="mr-1">🔴</span>}
+                  {complete && <span className="mr-1">✓</span>}
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
         <p className="mb-4 text-xs text-slate-500">
-          Click a number from 1 to 10 to rate each item. Click the same number again to clear.
-          Unrated items are excluded from the average.
+          1~10점으로 평가. 같은 숫자를 다시 클릭하면 해제. 미평가 항목은 평균에서 제외.
         </p>
 
         {/* LANGUAGE */}
@@ -146,10 +255,29 @@ export default function FeedbackModal({
           }>{msg.text}</div>
         )}
 
-        <div className="mt-6 flex justify-end gap-2">
+        {selectedSession.feedback?.status === "draft" && (
+          <p className="mt-3 text-xs text-amber-700">
+            ⚠️ 현재 임시저장 상태입니다. 평균/리포트에 반영되지 않아요. Submit 해주세요.
+          </p>
+        )}
+
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
           <button type="button" className="btn-ghost" onClick={onClose}>Close</button>
-          <button type="button" className="btn" disabled={pending} onClick={save}>
-            {pending ? "Saving..." : "Save feedback"}
+          <button
+            type="button"
+            className="btn-ghost border border-slate-300"
+            disabled={pending}
+            onClick={() => save("draft")}
+          >
+            {pending ? "Saving..." : "💾 임시저장"}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={pending}
+            onClick={() => save("submitted")}
+          >
+            {pending ? "Submitting..." : "✓ Submit"}
           </button>
         </div>
       </div>
@@ -183,9 +311,9 @@ function RatingRow({
   onChange: (v: number | null) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex items-center justify-between gap-3">
       <span className="text-sm text-slate-700">{label}</span>
-      <LikertScale value={value} onChange={onChange} />
+      <StarRating value={value} onChange={onChange} />
     </div>
   );
 }

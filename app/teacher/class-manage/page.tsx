@@ -90,10 +90,9 @@ export default async function TeacherClassManagePage() {
       <AppHeader profile={profile} />
       <main className="mx-auto max-w-5xl px-4 py-6">
         <header className="mb-6">
-          <h1 className="text-xl font-bold text-slate-800">Class Manage</h1>
+          <h1 className="text-xl font-bold text-slate-800">Management</h1>
           <p className="text-sm text-slate-500">
-            Mark attendance for each session and view each student's overall rate.
-            Grouped by course.
+            Handle pending evaluations first, then mark attendance and feedback for each course.
           </p>
         </header>
         <ClassManageView rows={classRows} />
