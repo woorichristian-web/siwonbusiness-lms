@@ -1,10 +1,9 @@
 import { ImageResponse } from "next/og";
 import { pretendardBold } from "@/lib/ogFont";
+import { LOGO_S_PATH } from "@/lib/logoS";
 
 // PWA 192x192 아이콘 (maskable 호환)
 export const runtime = "edge";
-
-const S_PATH = "M 75 28 Q 75 10 50 10 Q 25 10 25 30 Q 25 50 50 50 Q 75 50 75 70 Q 75 90 50 90 Q 25 90 25 72";
 
 export async function GET() {
   const font = await pretendardBold();
@@ -26,14 +25,7 @@ export async function GET() {
           viewBox="0 0 100 100"
           style={{ position: "absolute", top: 26, left: 46 }}
         >
-          <path
-            d={S_PATH}
-            stroke="#fbbf24"
-            strokeWidth="18"
-            strokeLinecap="butt"
-            strokeLinejoin="miter"
-            fill="none"
-          />
+          <path d={LOGO_S_PATH} fill="#fbbf24" />
         </svg>
 
         <div

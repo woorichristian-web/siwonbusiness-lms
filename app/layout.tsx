@@ -44,7 +44,7 @@ export default function RootLayout({
             전체 페이지 로드 시에만 나타나며 (SPA 내부 이동에서는 재생 안 됨) CSS 만으로 동작. */}
         <div className="app-splash" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/512?v=4" alt="" width={176} height={176} />
+          <img src="/icons/512?v=5" alt="" width={176} height={176} />
         </div>
         <PwaRegister />
       </body>
