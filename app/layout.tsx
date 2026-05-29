@@ -40,6 +40,12 @@ export default function RootLayout({
     <html lang="ko">
       <body>
         {children}
+        {/* 앱 실행 스플래시 — 네이티브 스플래시 뒤 약 1.8초 더 로고를 보여준 뒤 페이드아웃.
+            전체 페이지 로드 시에만 나타나며 (SPA 내부 이동에서는 재생 안 됨) CSS 만으로 동작. */}
+        <div className="app-splash" aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/512?v=4" alt="" width={176} height={176} />
+        </div>
         <PwaRegister />
       </body>
     </html>

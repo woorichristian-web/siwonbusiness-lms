@@ -58,3 +58,31 @@ body {
 
 /* 긴 글이 줄바꿈되어야 할 때 */
 .wrap-anywhere { overflow-wrap: anywhere; word-break: break-word; }
+
+/* ===== 앱 실행 스플래시 =====
+   네이티브 PWA 스플래시가 사라진 직후 동일한 로고를 약 1.8초 더 보여준 뒤
+   부드럽게 페이드아웃. 전체 페이지 로드 때만 재생되고 SPA 내부 이동에서는
+   레이아웃이 유지되므로 다시 나타나지 않는다. JS 없이 CSS 애니메이션만 사용. */
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1e3a8a;
+  pointer-events: none;
+  animation: appSplashFade 1.8s ease-in forwards;
+}
+.app-splash img {
+  width: 176px;
+  height: 176px;
+}
+@keyframes appSplashFade {
+  0%, 68%   { opacity: 1; visibility: visible; }
+  100%      { opacity: 0; visibility: hidden; }
+}
+/* 접근성: 모션 최소화 설정 시 즉시 사라지게 */
+@media (prefers-reduced-motion: reduce) {
+  .app-splash { animation: none; opacity: 0; visibility: hidden; }
+}
