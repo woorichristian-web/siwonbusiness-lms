@@ -137,6 +137,12 @@ export interface SlotImportRow {
   teacher_username: string;
   start_at: string;
   end_at: string;
+  /** 요일 (예: mon/tue…) — 참고용 표기 */
+  day?: string;
+  /** 시작 시각 (예: 09:00) — 참고용 표기 */
+  time?: string;
+  /** 수업 길이(분) — 참고용 표기 */
+  duration_min?: number;
   format: ClassFormat;
   class_type: ClassType;
   capacity: number;
@@ -440,6 +446,7 @@ export interface TeacherImportRow {
   residence_area?: string;
   specialty?: string;
   bio?: string;
+  number_of_classes?: string | number;
   hourly_rate?: string | number;
   bank_name?: string;
   bank_account?: string;
@@ -480,6 +487,10 @@ export async function adminBulkUploadTeachers(
     const hourlyRate =
       r.hourly_rate != null && String(r.hourly_rate).trim() !== ""
         ? Number(r.hourly_rate)
+        : null;
+    const numberOfClasses =
+      r.number_of_classes != null && String(r.number_of_classes).trim() !== ""
+        ? Number(r.number_of_classes)
         : null;
 
     // 기존 사용자 조회 — username 으로
@@ -564,6 +575,7 @@ export async function adminBulkUploadTeachers(
       profile_id: userId,
       specialty: r.specialty || null,
       bio: r.bio || null,
+      number_of_classes: Number.isFinite(numberOfClasses as number) ? numberOfClasses : null,
       hourly_rate: Number.isFinite(hourlyRate as number) ? hourlyRate : null,
       bank_name: r.bank_name || null,
       bank_account: r.bank_account || null,

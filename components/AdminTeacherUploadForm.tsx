@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { adminBulkUploadTeachers, type TeacherImportRow } from "@/lib/actions/admin";
+import { downloadStyledTemplate } from "@/lib/templateDownload";
 
 export default function AdminTeacherUploadForm() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function AdminTeacherUploadForm() {
         residence_area: String(r.residence_area ?? "").trim() || undefined,
         specialty: String(r.specialty ?? "").trim() || undefined,
         bio: String(r.bio ?? "").trim() || undefined,
+        number_of_classes: String(r["number of classes"] ?? "").trim() || undefined,
         hourly_rate: String(r.hourly_rate ?? "").trim() || undefined,
         bank_name: String(r.bank_name ?? "").trim() || undefined,
         bank_account: String(r.bank_account ?? "").trim() || undefined,
@@ -64,28 +66,26 @@ export default function AdminTeacherUploadForm() {
   }
 
   function downloadTemplate() {
-    const sample = [
-      {
-        username: "jane_kim",
-        password: "Teacher1234!",
-        name: "Jane Kim",
-        birth_date: "1985-03-12",
-        phone: "010-1111-2222",
-        residence_area: "서울",
-        specialty: "Business Conversation",
-        bio: "Native English speaker with 8 years of corporate ESL experience.",
-        hourly_rate: "35000",
-        bank_name: "신한은행",
-        bank_account: "110-123-456789",
-        account_holder: "김제인",
-        zoom_url: "https://zoom.us/j/9876543210?pwd=abcd1234",
-        teams_url: "https://teams.microsoft.com/l/meetup-join/19%3ameeting...",
-      },
-    ];
-    const ws = XLSX.utils.json_to_sheet(sample);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Teachers");
-    XLSX.writeFile(wb, "teachers_template.xlsx");
+    downloadStyledTemplate({
+      headers: [
+        "username", "password", "name", "birth_date", "phone",
+        "residence_area", "specialty", "bio", "number of classes",
+        "hourly_rate", "bank_name", "bank_account", "account_holder",
+        "zoom_url", "teams_url",
+      ],
+      sample: [
+        [
+          "jane_kim", "Teacher1234!", "Jane Kim", "1985-03-12", "010-1111-2222",
+          "서울", "Business Conversation",
+          "Native English speaker with 8 years of corporate ESL experience.", 20,
+          "35000", "신한은행", "110-123-456789", "김제인",
+          "https://zoom.us/j/9876543210?pwd=abcd1234",
+          "https://teams.microsoft.com/l/meetup-join/19%3ameeting...",
+        ],
+      ],
+      sheetName: "Teachers",
+      fileName: "teachers_template.xlsx",
+    });
   }
 
   return (
