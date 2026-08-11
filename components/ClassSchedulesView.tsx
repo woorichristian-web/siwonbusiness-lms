@@ -34,15 +34,34 @@ export interface BookingEvent {
   teams_url: string | null;
 }
 
+/** An assigned class (time slot) the teacher is scheduled for, regardless of bookings. */
+export interface ClassSlotEvent {
+  id: string;
+  start_at: string;
+  end_at: string;
+  format: "online" | "offline";
+  class_type: "1on1" | "small_group";
+  capacity: number;
+  booked_count: number;
+}
+
 /**
- * Read-only calendar showing students that have booked this teacher's classes.
- * Day / Week / Month tabs. Click → student detail modal.
+ * Read-only calendar showing the teacher's assigned classes + students that
+ * booked them. Day / Week / Month tabs. Click a student → detail modal.
  */
-export default function ClassSchedulesView({ events }: { events: BookingEvent[] }) {
+export default function ClassSchedulesView({
+  events,
+  classSlots = [],
+}: {
+  events: BookingEvent[];
+  classSlots?: ClassSlotEvent[];
+}) {
   const [selected, setSelected] = useState<BookingEvent | null>(null);
   const [view, setView] = useState<"day" | "week" | "month">("day");
   // 초기 Day 날짜: 오늘 수업이 있으면 오늘, 없으면 다음 예정 수업 날짜로 자동 점프
-  const [dayDate, setDayDate] = useState<Date>(() => pickInitialDayDate(events));
+  const [dayDate, setDayDate] = useState<Date>(() =>
+    pickInitialDayDate(events, classSlots),
+  );
   const calRef = useRef<FullCalendar | null>(null);
 
   // Day 뷰 — 선택한 날짜의 수업만 시간순으로 정렬
@@ -60,6 +79,22 @@ export default function ClassSchedulesView({ events }: { events: BookingEvent[] 
         (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
       );
   }, [events, dayDate]);
+
+  // Day 뷰 — 해당 날짜의 배정 수업(예약 유무 무관) 슬롯
+  const dayClassSlots = useMemo(() => {
+    const start = new Date(dayDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return classSlots
+      .filter((s) => {
+        const t = new Date(s.start_at).getTime();
+        return t >= start.getTime() && t < end.getTime();
+      })
+      .sort(
+        (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
+      );
+  }, [classSlots, dayDate]);
 
   function navigate(action: "prev" | "today" | "next") {
     if (view === "day") {
@@ -80,8 +115,8 @@ export default function ClassSchedulesView({ events }: { events: BookingEvent[] 
   }
 
   const fcEvents: EventInput[] = useMemo(
-    () =>
-      events.map((e) => ({
+    () => [
+      ...events.map((e) => ({
         id: e.id,
         title: e.student_name,
         start: e.start_at,
@@ -89,13 +124,29 @@ export default function ClassSchedulesView({ events }: { events: BookingEvent[] 
         backgroundColor: "#1d4ed8",
         borderColor: "#1d4ed8",
         textColor: "#ffffff",
-        extendedProps: e,
+        extendedProps: { kind: "booking", data: e },
       })),
-    [events]
+      // Assigned classes with no bookings yet — outlined amber block
+      ...classSlots.map((s) => ({
+        id: "slot-" + s.id,
+        title: s.class_type === "1on1" ? "1:1 class" : "Small Group class",
+        start: s.start_at,
+        end: s.end_at,
+        backgroundColor: "#fffbeb",
+        borderColor: "#f59e0b",
+        textColor: "#92400e",
+        extendedProps: { kind: "slot", data: s },
+      })),
+    ],
+    [events, classSlots]
   );
 
   function onEventClick(arg: EventClickArg) {
-    setSelected(arg.event.extendedProps as BookingEvent);
+    const ext = arg.event.extendedProps as
+      | { kind: "booking"; data: BookingEvent }
+      | { kind: "slot"; data: ClassSlotEvent };
+    if (ext.kind === "booking") setSelected(ext.data);
+    // slot(예약 없는 배정 수업)은 상세 모달 없음 — 학생이 없으므로 클릭 무시
   }
 
   return (
@@ -137,13 +188,17 @@ export default function ClassSchedulesView({ events }: { events: BookingEvent[] 
           {/* 카드 위 헤딩 — Today's Class / Upcoming Class / Past Class */}
           <div className="mb-3 flex items-baseline gap-3">
             <h3 className="text-lg font-bold text-slate-800">
-              {dayLabelEn(dayDate, dayEvents.length > 0)}
+              {dayLabelEn(dayDate, dayEvents.length + dayClassSlots.length > 0)}
             </h3>
             <span className="text-xs text-slate-500">
               {dayDate.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "long", day: "numeric" })}
             </span>
           </div>
-          <DayCardList events={dayEvents} onSelect={setSelected} />
+          <DayCardList
+            events={dayEvents}
+            classSlots={dayClassSlots}
+            onSelect={setSelected}
+          />
         </>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-4">
@@ -179,7 +234,24 @@ export default function ClassSchedulesView({ events }: { events: BookingEvent[] 
             dayHeaderFormat={{ month: "2-digit", day: "2-digit", weekday: "short" }}
             slotDuration="00:30:00"
             eventContent={(arg) => {
-              const e = arg.event.extendedProps as BookingEvent;
+              const ext = arg.event.extendedProps as
+                | { kind: "booking"; data: BookingEvent }
+                | { kind: "slot"; data: ClassSlotEvent };
+              if (ext.kind === "slot") {
+                const s = ext.data;
+                return (
+                  <div style={{ padding: "4px 6px", lineHeight: 1.3, height: "100%", display: "flex", flexDirection: "column", gap: 1, overflow: "hidden" }}>
+                    <div style={{ fontSize: "0.72rem", opacity: 0.95, fontWeight: 500 }}>{arg.timeText}</div>
+                    <div style={{ fontSize: "0.82rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {s.class_type === "1on1" ? "1:1" : "Small Group"}
+                    </div>
+                    <div style={{ fontSize: "0.68rem", opacity: 0.9 }}>
+                      {s.format === "online" ? "Online" : "Offline"} · {s.booked_count}/{s.capacity} booked
+                    </div>
+                  </div>
+                );
+              }
+              const e = ext.data;
               return (
                 <div style={{ padding: "4px 6px", lineHeight: 1.3, height: "100%", display: "flex", flexDirection: "column", gap: 1, overflow: "hidden" }}>
                   <div style={{ fontSize: "0.72rem", opacity: 0.95, fontWeight: 500 }}>{arg.timeText}</div>
@@ -201,9 +273,10 @@ export default function ClassSchedulesView({ events }: { events: BookingEvent[] 
         </div>
       )}
 
-      {events.length === 0 && (
+      {events.length === 0 && classSlots.length === 0 && (
         <p className="mt-4 text-center text-sm text-slate-400">
-          No student bookings yet. Add availability so students can book classes with you.
+          No assigned classes or bookings yet. Assigned classes and student
+          bookings will appear here.
         </p>
       )}
 
@@ -430,21 +503,29 @@ function Row({ k, v }: { k: string; v: string }) {
 /* ──────────────────────────────────────────────────────────────────────
    Day 초기 날짜 선택 — 오늘 수업이 있으면 오늘, 없으면 다음 예정 수업 날짜
    ────────────────────────────────────────────────────────────────────── */
-function pickInitialDayDate(events: BookingEvent[]): Date {
+function pickInitialDayDate(
+  events: BookingEvent[],
+  classSlots: ClassSlotEvent[] = [],
+): Date {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const hasToday = events.some((e) => {
-    const t = new Date(e.start_at).getTime();
+  const allStarts = [
+    ...events.map((e) => e.start_at),
+    ...classSlots.map((s) => s.start_at),
+  ];
+
+  const hasToday = allStarts.some((iso) => {
+    const t = new Date(iso).getTime();
     return t >= today.getTime() && t < tomorrow.getTime();
   });
   if (hasToday) return today;
 
   const nowMs = Date.now();
-  const upcoming = events
-    .map((e) => new Date(e.start_at).getTime())
+  const upcoming = allStarts
+    .map((iso) => new Date(iso).getTime())
     .filter((t) => t >= nowMs)
     .sort((a, b) => a - b);
   if (upcoming.length === 0) return today;
@@ -472,23 +553,105 @@ function dayLabelEn(dayDate: Date, hasClasses: boolean): string {
    ────────────────────────────────────────────────────────────────────── */
 function DayCardList({
   events,
+  classSlots,
   onSelect,
 }: {
   events: BookingEvent[];
+  classSlots: ClassSlotEvent[];
   onSelect: (e: BookingEvent) => void;
 }) {
-  if (events.length === 0) {
+  if (events.length === 0 && classSlots.length === 0) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-12 text-center text-sm text-slate-400">
         📭 No classes on this day.
       </div>
     );
   }
+  // 예약(학생) 카드 + 배정 수업(슬롯) 카드를 시작시간순으로 병합
+  type Item =
+    | { kind: "booking"; start: number; data: BookingEvent }
+    | { kind: "slot"; start: number; data: ClassSlotEvent };
+  const items: Item[] = [
+    ...events.map((e) => ({
+      kind: "booking" as const,
+      start: new Date(e.start_at).getTime(),
+      data: e,
+    })),
+    ...classSlots.map((s) => ({
+      kind: "slot" as const,
+      start: new Date(s.start_at).getTime(),
+      data: s,
+    })),
+  ].sort((a, b) => a.start - b.start);
+
   return (
     <div className="space-y-2">
-      {events.map((e) => (
-        <ClassCard key={e.id} event={e} onClick={() => onSelect(e)} />
-      ))}
+      {items.map((it) =>
+        it.kind === "booking" ? (
+          <ClassCard
+            key={it.data.id}
+            event={it.data}
+            onClick={() => onSelect(it.data)}
+          />
+        ) : (
+          <ClassSlotCard key={"slot-" + it.data.id} slot={it.data} />
+        ),
+      )}
+    </div>
+  );
+}
+
+/** 예약이 아직 없는 배정 수업 카드 (학생 없음 → 클릭 상세 없음). */
+function ClassSlotCard({ slot }: { slot: ClassSlotEvent }) {
+  const start = new Date(slot.start_at);
+  const end = new Date(slot.end_at);
+  const now = Date.now();
+  const isPast = end.getTime() <= now;
+  const isOngoing = start.getTime() <= now && end.getTime() > now;
+  const timeFmt = (d: Date) =>
+    d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+
+  return (
+    <div
+      className={
+        "block w-full rounded-lg border border-dashed bg-amber-50/40 p-4 text-left shadow-sm " +
+        (isOngoing ? "border-blue-400 ring-2 ring-blue-100" : "border-amber-300")
+      }
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-20 flex-shrink-0 text-center sm:w-24">
+          <div className="text-base font-bold text-amber-700 sm:text-lg">
+            {timeFmt(start)}
+          </div>
+          <div className="text-xs text-slate-400">{timeFmt(end)}</div>
+        </div>
+        <div className="min-w-0 flex-1 border-l border-amber-200 pl-3">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            <span className="text-base font-bold text-slate-800">
+              {slot.class_type === "1on1" ? "1:1 Class" : "Small Group Class"}
+            </span>
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+              Assigned
+            </span>
+            {isOngoing && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                ● LIVE
+              </span>
+            )}
+            {isPast && !isOngoing && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                Done
+              </span>
+            )}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <Pill>{slot.format === "online" ? "💻 Online" : "🏫 Offline"}</Pill>
+            <Pill>
+              👥 {slot.booked_count}/{slot.capacity} booked
+            </Pill>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

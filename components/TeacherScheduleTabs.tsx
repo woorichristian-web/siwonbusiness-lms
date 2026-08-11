@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { TimeSlot } from "@/lib/types";
 import TeacherScheduleEditor from "@/components/TeacherScheduleEditor";
-import ClassSchedulesView, { type BookingEvent } from "@/components/ClassSchedulesView";
+import ClassSchedulesView, { type BookingEvent, type ClassSlotEvent } from "@/components/ClassSchedulesView";
 import TeacherCoursesView, { type TeacherCourse } from "@/components/TeacherCoursesView";
 
 type Tab = "availability" | "schedules" | "courses";
@@ -12,11 +12,13 @@ export default function TeacherScheduleTabs({
   slots,
   bookingCounts,
   bookingEvents,
+  classSlots,
   courses,
 }: {
   slots: TimeSlot[];
   bookingCounts: Record<string, number>;
   bookingEvents: BookingEvent[];
+  classSlots: ClassSlotEvent[];
   courses: TeacherCourse[];
 }) {
   const [tab, setTab] = useState<Tab>("schedules");
@@ -35,7 +37,9 @@ export default function TeacherScheduleTabs({
         </TabBtn>
       </div>
 
-      {tab === "schedules" && <ClassSchedulesView events={bookingEvents} />}
+      {tab === "schedules" && (
+        <ClassSchedulesView events={bookingEvents} classSlots={classSlots} />
+      )}
       {tab === "availability" && (
         <TeacherScheduleEditor slots={slots} bookingCounts={bookingCounts} />
       )}

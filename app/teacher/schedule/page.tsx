@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import TeacherScheduleTabs from "@/components/TeacherScheduleTabs";
 import type { TimeSlot } from "@/lib/types";
-import type { BookingEvent } from "@/components/ClassSchedulesView";
+import type { BookingEvent, ClassSlotEvent } from "@/components/ClassSchedulesView";
 import type { TeacherCourse, CoursePattern } from "@/components/TeacherCoursesView";
 
 export const dynamic = "force-dynamic";
@@ -107,6 +107,20 @@ export default async function TeacherSchedulePage() {
     };
   });
 
+  // 6b) Assigned classes (teacher's slots) with no confirmed bookings yet —
+  //     so they still appear on the Class Schedules calendar/day view.
+  const classSlots: ClassSlotEvent[] = (slots ?? [])
+    .filter((s: any) => !((bookingCounts[s.id] ?? 0) > 0))
+    .map((s: any) => ({
+      id: s.id,
+      start_at: s.start_at,
+      end_at: s.end_at,
+      format: s.format,
+      class_type: s.class_type,
+      capacity: s.capacity,
+      booked_count: bookingCounts[s.id] ?? 0,
+    }));
+
   // 7) Build per-student "course" info (bookings-based) for the Course Information tab.
   //    A real courses entity doesn't exist yet, so we derive from bookings + student
   //    profiles. course_code / course_name / language have no DB source → null ("—").
@@ -189,6 +203,7 @@ export default async function TeacherSchedulePage() {
           slots={(slots ?? []) as TimeSlot[]}
           bookingCounts={bookingCounts}
           bookingEvents={bookingEvents}
+          classSlots={classSlots}
           courses={courses}
         />
       </main>
