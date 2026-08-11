@@ -71,6 +71,7 @@ export default function AdminUploadTabs({ companies }: { companies: string[] }) 
               ["residence_area", "주거 지역", "서울"],
               ["specialty", "전문 분야", "Business Conversation"],
               ["bio", "강사 소개 (자유 텍스트)", "Native speaker, 8 yrs ESL"],
+              ["number of classes", "담당 수업 수 (정수)", "20"],
               ["hourly_rate", "시급 (원, 정수)", "35000"],
               ["bank_name", "정산 계좌 은행", "신한은행"],
               ["bank_account", "정산 계좌 번호", "110-123-456789"],
@@ -87,14 +88,17 @@ export default function AdminUploadTabs({ companies }: { companies: string[] }) 
         <>
           <FormatGuide
             title="강사 시간표 업로드"
-            description="강사의 가능 시간 슬롯을 일괄 등록. 강사가 직접 시간을 입력하지 않을 때 사용."
+            description="강사의 가능 시간 슬롯을 일괄 등록. day·time 을 채우면 start_at~end_at 기간 동안 매주 해당 요일·시각에 수업이 자동 반복 생성됩니다(요일 여러 개는 콤마로 구분: tue,thu). day·time 이 비어 있으면 start_at/end_at 을 단일 수업 1건으로 등록합니다. 시각은 한국시간(KST) 기준."
             rows={[
-              ["teacher_username", "강사 아이디 (사전 등록 필요)", "jane_kim"],
-              ["start_at", "시작 (Excel datetime 또는 ISO)", "2026-06-01 09:00"],
-              ["end_at", "종료", "2026-06-01 10:00"],
-              ["format", "online 또는 offline", "online"],
-              ["class_type", "1on1 또는 small_group", "1on1"],
-              ["capacity", "정원 (정수)", "1"],
+              ["teacher_username", "강사 아이디 (사전 등록 필요)", "jayrho"],
+              ["start_at", "기간 시작 (반복) / 수업 시작 (단일)", "2026-08-11"],
+              ["end_at", "기간 끝 (반복) / 수업 종료 (단일)", "2026-12-31"],
+              ["day", "요일 — mon~sun, 여러 개는 콤마", "tue,thu"],
+              ["time", "시작 시각 (HH:mm, KST)", "09:00"],
+              ["duration(min)", "수업 길이 (분)", "60"],
+              ["format", "online 또는 offline", "offline"],
+              ["class_type", "1on1 또는 small_group", "small_group"],
+              ["capacity", "정원 (정수)", "6"],
             ]}
           />
           <AdminUploadForm />
