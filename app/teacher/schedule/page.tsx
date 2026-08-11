@@ -4,6 +4,7 @@ import AppHeader from "@/components/AppHeader";
 import TeacherScheduleTabs from "@/components/TeacherScheduleTabs";
 import type { TimeSlot } from "@/lib/types";
 import type { BookingEvent } from "@/components/ClassSchedulesView";
+import type { TeacherCourse, CoursePattern } from "@/components/TeacherCoursesView";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,73 @@ export default async function TeacherSchedulePage() {
     };
   });
 
+  // 7) Build per-student "course" info (bookings-based) for the Course Information tab.
+  //    A real courses entity doesn't exist yet, so we derive from bookings + student
+  //    profiles. course_code / course_name / language have no DB source → null ("—").
+  const courseByStudent = new Map<string, any>();
+  for (const b of bookingsRaw) {
+    const s = studentById.get(b.student_id);
+    const slot = slotById.get(b.slot_id);
+    let c = courseByStudent.get(b.student_id);
+    if (!c) {
+      c = {
+        student_id: b.student_id,
+        student_name: s?.name ?? "Unknown",
+        company: s?.company_name ?? null,
+        course_code: null as string | null,
+        course_name: (s?.course_name ?? null) as string | null,
+        language: null as string | null,
+        class_types: new Set<string>(),
+        formats: new Set<string>(),
+        period_start: b.start_at as string,
+        period_end: b.end_at as string,
+        sessions_count: 0,
+        patterns: new Map<
+          string,
+          { weekday: number; time: string; duration_min: number; count: number }
+        >(),
+      };
+      courseByStudent.set(b.student_id, c);
+    }
+    if (slot?.class_type) c.class_types.add(slot.class_type);
+    if (slot?.format) c.formats.add(slot.format);
+    if (b.start_at < c.period_start) c.period_start = b.start_at;
+    if (b.end_at > c.period_end) c.period_end = b.end_at;
+    c.sessions_count++;
+    // Weekly pattern in KST (UTC+9)
+    const kst = new Date(new Date(b.start_at).getTime() + 9 * 3600 * 1000);
+    const weekday = kst.getUTCDay();
+    const time = `${String(kst.getUTCHours()).padStart(2, "0")}:${String(
+      kst.getUTCMinutes(),
+    ).padStart(2, "0")}`;
+    const duration_min = Math.round(
+      (new Date(b.end_at).getTime() - new Date(b.start_at).getTime()) / 60000,
+    );
+    const key = `${weekday}-${time}-${duration_min}`;
+    const p = c.patterns.get(key);
+    if (p) p.count++;
+    else c.patterns.set(key, { weekday, time, duration_min, count: 1 });
+  }
+
+  const courses: TeacherCourse[] = Array.from(courseByStudent.values())
+    .map((c) => ({
+      student_id: c.student_id,
+      student_name: c.student_name,
+      company: c.company,
+      course_code: c.course_code,
+      course_name: c.course_name,
+      language: c.language,
+      class_types: Array.from(c.class_types) as string[],
+      formats: Array.from(c.formats) as string[],
+      period_start: c.period_start,
+      period_end: c.period_end,
+      sessions_count: c.sessions_count,
+      patterns: (Array.from(c.patterns.values()) as CoursePattern[]).sort(
+        (a, b) => a.weekday - b.weekday || a.time.localeCompare(b.time),
+      ),
+    }))
+    .sort((a, b) => a.student_name.localeCompare(b.student_name));
+
   return (
     <>
       <AppHeader profile={profile} />
@@ -121,6 +189,7 @@ export default async function TeacherSchedulePage() {
           slots={(slots ?? []) as TimeSlot[]}
           bookingCounts={bookingCounts}
           bookingEvents={bookingEvents}
+          courses={courses}
         />
       </main>
     </>
