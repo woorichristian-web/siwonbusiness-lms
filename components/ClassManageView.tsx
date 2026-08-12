@@ -5,7 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markAttendance, clearAttendance } from "@/lib/actions/attendance";
 import type { AttendanceStatus, ClassFormat, ClassType, Feedback } from "@/lib/types";
-import { ATTENDANCE_LABELS_EN } from "@/lib/types";
+import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS } from "@/lib/types";
 import FeedbackModal, { type SessionEntry } from "@/components/FeedbackModal";
 
 export interface ClassRow {
@@ -246,11 +246,9 @@ function UnevaluatedRow({
             onChange={onAttChange}
           >
             <option value="">Not marked</option>
-            <option value="present">{ATTENDANCE_LABELS_EN.present}</option>
-            <option value="late">{ATTENDANCE_LABELS_EN.late}</option>
-            <option value="absent">{ATTENDANCE_LABELS_EN.absent}</option>
-            <option value="reschedule">{ATTENDANCE_LABELS_EN.reschedule}</option>
-            <option value="other">{ATTENDANCE_LABELS_EN.other}</option>
+            {ATTENDANCE_OPTIONS.map((s) => (
+              <option key={s} value={s}>{ATTENDANCE_LABELS_EN[s]}</option>
+            ))}
           </select>
         </td>
         <td className="px-4 py-2.5">
@@ -498,11 +496,9 @@ function StudentRow({
               onChange={onChange}
             >
               <option value="">Not marked</option>
-              <option value="present">{ATTENDANCE_LABELS_EN.present}</option>
-              <option value="late">{ATTENDANCE_LABELS_EN.late}</option>
-              <option value="absent">{ATTENDANCE_LABELS_EN.absent}</option>
-              <option value="reschedule">{ATTENDANCE_LABELS_EN.reschedule}</option>
-              <option value="other">{ATTENDANCE_LABELS_EN.other}</option>
+              {ATTENDANCE_OPTIONS.map((s) => (
+                <option key={s} value={s}>{ATTENDANCE_LABELS_EN[s]}</option>
+              ))}
             </select>
           ) : (
             <span className="text-xs text-slate-400">— (upcoming)</span>

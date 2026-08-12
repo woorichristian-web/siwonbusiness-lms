@@ -8,7 +8,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventClickArg, EventInput } from "@fullcalendar/core";
 import type { AttendanceStatus, Feedback } from "@/lib/types";
-import { ATTENDANCE_LABELS_EN } from "@/lib/types";
+import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS } from "@/lib/types";
 import { markAttendance, clearAttendance } from "@/lib/actions/attendance";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -407,11 +407,9 @@ function StudentDetailModal({
             onChange={(e) => setStatus(e.target.value as AttendanceStatus | "")}
           >
             <option value="">Not marked</option>
-            <option value="present">{ATTENDANCE_LABELS_EN.present}</option>
-            <option value="late">{ATTENDANCE_LABELS_EN.late}</option>
-            <option value="absent">{ATTENDANCE_LABELS_EN.absent}</option>
-            <option value="reschedule">{ATTENDANCE_LABELS_EN.reschedule}</option>
-            <option value="other">{ATTENDANCE_LABELS_EN.other}</option>
+            {ATTENDANCE_OPTIONS.map((s) => (
+              <option key={s} value={s}>{ATTENDANCE_LABELS_EN[s]}</option>
+            ))}
           </select>
 
           <label className="label mt-3">Memo (optional)</label>

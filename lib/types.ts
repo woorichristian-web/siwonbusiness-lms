@@ -70,6 +70,19 @@ export const ATTENDANCE_LABELS_KO: Record<AttendanceStatus, string> = {
   other: "기타",
 };
 
+/**
+ * 출석 상태 선택 옵션의 단일 소스(순서 포함).
+ * 모든 출석 드롭다운(수업 카드 모달 · Management)이 이 목록을 사용해야
+ * 화면 간 옵션이 항상 동일하게 유지된다.
+ */
+export const ATTENDANCE_OPTIONS: AttendanceStatus[] = [
+  "present",
+  "late",
+  "absent",
+  "reschedule",
+  "other",
+];
+
 export interface Attendance {
   id: string;
   booking_id: string;
