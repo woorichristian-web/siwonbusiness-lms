@@ -2,7 +2,8 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import TeacherProfileTabs from "@/components/TeacherProfileTabs";
-import type { Teacher } from "@/lib/types";
+import type { Teacher, AttendanceStatus } from "@/lib/types";
+import { ATTENDANCE_ATTENDED } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export default async function TeacherProfilePage({
       .eq("status", "confirmed");
 
     const bookingIds = (bookings ?? []).map((b: any) => b.id);
-    const attendanceMap = new Map<string, "present" | "absent" | "late" | "reschedule" | "other">();
+    const attendanceMap = new Map<string, AttendanceStatus>();
     if (bookingIds.length > 0) {
       const { data: atts } = await supabase
         .from("attendance")
@@ -62,7 +63,7 @@ export default async function TeacherProfilePage({
 
     for (const b of bookings ?? []) {
       const status = attendanceMap.get(b.id);
-      if (status !== "present" && status !== "late") continue;
+      if (!status || !ATTENDANCE_ATTENDED.includes(status)) continue;
 
       const slot = slotById.get(b.slot_id);
       const hours = (slot?.slot_duration_minutes ?? 60) / 60;

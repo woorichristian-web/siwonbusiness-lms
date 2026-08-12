@@ -2,7 +2,12 @@
 // Used by /admin/companies/[name]/courses/[course] page.
 
 import { createClient } from "@/lib/supabase/server";
-import { FEEDBACK_KEYS, type FeedbackKey } from "@/lib/types";
+import {
+  FEEDBACK_KEYS,
+  ATTENDANCE_ATTENDED,
+  type FeedbackKey,
+  type AttendanceStatus,
+} from "@/lib/types";
 
 export interface CourseReportData {
   companyName: string;
@@ -135,8 +140,9 @@ export async function getCourseReport(
 
   for (const b of allBookings) {
     const s = attMap.get(b.id);
-    if (s === "present" || s === "late") result.totalAttended++;
+    if (s && ATTENDANCE_ATTENDED.includes(s as AttendanceStatus)) result.totalAttended++;
     else if (s === "absent") result.totalAbsent++;
+    // absent_business / reschedule / company_vacation → 분모 제외
   }
   const markedTotal = result.totalAttended + result.totalAbsent;
   result.attendanceRate = markedTotal === 0 ? null : Math.round((result.totalAttended / markedTotal) * 100);

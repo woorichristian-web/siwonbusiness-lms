@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import StudentTeacherFeedbackForm from "@/components/StudentTeacherFeedbackForm";
+import { computeAttendanceRate, type AttendanceStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +31,8 @@ export default async function StudentStatusPage() {
     ? null
     : Math.max(0, totalSessions - confirmed.length);
 
-  // 실제 출석 기록 조회 (5가지 상태)
-  type AttStatus = "present" | "late" | "absent" | "reschedule" | "other";
-  const attendanceByBooking = new Map<string, AttStatus>();
+  // 실제 출석 기록 조회
+  const attendanceByBooking = new Map<string, AttendanceStatus>();
   const pastBookingIds = past.map((b: any) => b.id);
   if (pastBookingIds.length > 0) {
     const { data: atts } = await supabase
@@ -44,20 +44,12 @@ export default async function StudentStatusPage() {
     }
   }
 
-  // 출석률 = 출석(present+late) / (present + late + absent) * 100
-  // reschedule, other 는 분자/분모 모두에서 제외
-  let presentCount = 0, lateCount = 0, absentCount = 0;
-  for (const b of past) {
-    const status = attendanceByBooking.get(b.id);
-    if (status === "present") presentCount++;
-    else if (status === "late") lateCount++;
-    else if (status === "absent") absentCount++;
-  }
-  const attendedCount = presentCount + lateCount;
-  const markedTotal = presentCount + lateCount + absentCount;
-  const attendanceRate = markedTotal === 0
-    ? null
-    : Math.round((attendedCount / markedTotal) * 100);
+  // 출석률 = 출석 인정 / (분모 — 면제성 상태 제외). 공용 헬퍼 사용.
+  const {
+    attended: attendedCount,
+    denominator: markedTotal,
+    rate: attendanceRate,
+  } = computeAttendanceRate(past.map((b: any) => attendanceByBooking.get(b.id)));
 
   // 배정 강사
   let assignedTeacherName: string | null = null;
@@ -251,15 +243,17 @@ function BookingList({
 }: {
   items: any[];
   slotInfo: Map<string, { teacher: string; format: string; class_type: string }>;
-  attendance?: Map<string, "present" | "late" | "absent" | "reschedule" | "other">;
+  attendance?: Map<string, AttendanceStatus>;
   muted?: boolean;
 }) {
   const attLabel: Record<string, { text: string; cls: string }> = {
     present: { text: "출석", cls: "bg-emerald-100 text-emerald-700" },
-    late: { text: "지각", cls: "bg-amber-100 text-amber-700" },
+    late_within_10: { text: "지각(10분 이내)", cls: "bg-amber-100 text-amber-700" },
+    late_over_10: { text: "지각(10분 초과) 🚩", cls: "bg-red-100 text-red-700" },
     absent: { text: "결석", cls: "bg-red-100 text-red-700" },
+    absent_business: { text: "결석(업무)", cls: "bg-slate-100 text-slate-600" },
     reschedule: { text: "일정 변경", cls: "bg-blue-100 text-blue-700" },
-    other: { text: "기타", cls: "bg-slate-100 text-slate-700" },
+    company_vacation: { text: "회사 휴가", cls: "bg-slate-100 text-slate-600" },
   };
   return (
     <ul className={"divide-y divide-slate-100 text-sm " + (muted ? "opacity-70" : "")}>

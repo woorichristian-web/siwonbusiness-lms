@@ -52,22 +52,33 @@ export interface Teacher {
   created_at: string;
 }
 
-export type AttendanceStatus = "present" | "late" | "absent" | "reschedule" | "other";
+export type AttendanceStatus =
+  | "present"
+  | "late_within_10"
+  | "late_over_10"
+  | "absent"
+  | "absent_business"
+  | "reschedule"
+  | "company_vacation";
 
 export const ATTENDANCE_LABELS_EN: Record<AttendanceStatus, string> = {
-  present: "Attended on time",
-  late: "Late (up to 15 mins)",
+  present: "Present",
+  late_within_10: "Late (within 10 min)",
+  late_over_10: "Late (over 10 min) 🚩",
   absent: "Absent",
+  absent_business: "Absent (business)",
   reschedule: "Reschedule",
-  other: "Other",
+  company_vacation: "Company vacation",
 };
 
 export const ATTENDANCE_LABELS_KO: Record<AttendanceStatus, string> = {
   present: "출석",
-  late: "지각 (15분 이내)",
+  late_within_10: "지각 (10분 이내)",
+  late_over_10: "지각 (10분 초과) 🚩",
   absent: "결석",
+  absent_business: "결석 (업무)",
   reschedule: "일정 변경",
-  other: "기타",
+  company_vacation: "회사 휴가",
 };
 
 /**
@@ -77,11 +88,49 @@ export const ATTENDANCE_LABELS_KO: Record<AttendanceStatus, string> = {
  */
 export const ATTENDANCE_OPTIONS: AttendanceStatus[] = [
   "present",
-  "late",
+  "late_within_10",
+  "late_over_10",
   "absent",
+  "absent_business",
   "reschedule",
-  "other",
+  "company_vacation",
 ];
+
+/** 출석으로 인정(출석률 분자에 포함). */
+export const ATTENDANCE_ATTENDED: AttendanceStatus[] = [
+  "present",
+  "late_within_10",
+  "late_over_10",
+];
+
+/** 출석률 분모에서 제외(면제성 — 업무 결석 · 일정 변경 · 회사 휴가). */
+export const ATTENDANCE_EXCLUDED_FROM_RATE: AttendanceStatus[] = [
+  "absent_business",
+  "reschedule",
+  "company_vacation",
+];
+
+/** 출석이지만 경고(red flag) 표시가 필요한 상태. */
+export const ATTENDANCE_RED_FLAG: AttendanceStatus[] = ["late_over_10"];
+
+/** 출석률 계산 헬퍼 — attended / (attended + absent), 면제성 상태는 분모에서 제외. */
+export function computeAttendanceRate(
+  statuses: (AttendanceStatus | null | undefined)[],
+): { attended: number; denominator: number; rate: number | null } {
+  let attended = 0;
+  let denominator = 0;
+  for (const s of statuses) {
+    if (!s) continue;
+    if (ATTENDANCE_EXCLUDED_FROM_RATE.includes(s)) continue; // 분모 제외
+    denominator++;
+    if (ATTENDANCE_ATTENDED.includes(s)) attended++;
+  }
+  return {
+    attended,
+    denominator,
+    rate: denominator === 0 ? null : Math.round((attended / denominator) * 100),
+  };
+}
 
 export interface Attendance {
   id: string;

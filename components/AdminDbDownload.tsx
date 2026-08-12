@@ -3,6 +3,11 @@
 import { useState, useTransition } from "react";
 import * as XLSX from "xlsx";
 import { createClient } from "@/lib/supabase/client";
+import {
+  ATTENDANCE_ATTENDED,
+  ATTENDANCE_EXCLUDED_FROM_RATE,
+  type AttendanceStatus,
+} from "@/lib/types";
 
 /**
  * Comprehensive DB download:
@@ -123,16 +128,17 @@ export default function AdminDbDownload({
           const pastBookings = myBookings.filter((b: any) => new Date(b.start_at) <= today);
           const totalSessionsToDate = pastBookings.length;
 
-          // 출석 count: attendance.status = present or late
-          let presentCount = 0;
+          // 출석률: 출석 인정(present/late) / (분모 — 면제성 상태 제외)
+          let attended = 0;
+          let rateDenom = 0;
           for (const b of pastBookings) {
-            const st = attendanceByBooking.get(b.id);
-            if (st === "present" || st === "late") presentCount++;
+            const st = attendanceByBooking.get(b.id) as AttendanceStatus | undefined;
+            if (st && ATTENDANCE_EXCLUDED_FROM_RATE.includes(st)) continue;
+            rateDenom++;
+            if (st && ATTENDANCE_ATTENDED.includes(st)) attended++;
           }
           const attendanceRate =
-            totalSessionsToDate === 0
-              ? null
-              : Math.round((presentCount / totalSessionsToDate) * 100);
+            rateDenom === 0 ? null : Math.round((attended / rateDenom) * 100);
 
           // Teacher feedback averages (Language / Attitude)
           const fbs = feedbackByStudent.get(s.id) ?? [];

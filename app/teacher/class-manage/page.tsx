@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import ClassManageView, { type ClassRow } from "@/components/ClassManageView";
+import type { AttendanceStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export default async function TeacherClassManagePage() {
 
   // Attendance
   const bookingIds = bookingsRaw.map((b) => b.id);
-  const attendanceByBooking = new Map<string, "present" | "absent" | "late" | "reschedule" | "other">();
+  const attendanceByBooking = new Map<string, AttendanceStatus>();
   if (bookingIds.length > 0) {
     const { data: atts } = await supabase
       .from("attendance")

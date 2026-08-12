@@ -2,8 +2,8 @@
 // Used by teacher / admin / student progress reports.
 
 import { createClient } from "@/lib/supabase/server";
-import type { FeedbackKey } from "@/lib/types";
-import { FEEDBACK_KEYS } from "@/lib/types";
+import type { FeedbackKey, AttendanceStatus } from "@/lib/types";
+import { FEEDBACK_KEYS, ATTENDANCE_ATTENDED } from "@/lib/types";
 
 export interface FeedbackPoint {
   date: string; // ISO date of the booking (start_at)
@@ -55,8 +55,9 @@ export async function getStudentProgress(studentId: string): Promise<ProgressDat
   let attendedCount = 0, absentCount = 0;
   for (const b of confirmed) {
     const s = attMap.get(b.id);
-    if (s === "present" || s === "late") attendedCount++;
+    if (s && ATTENDANCE_ATTENDED.includes(s as AttendanceStatus)) attendedCount++;
     else if (s === "absent") absentCount++;
+    // absent_business / reschedule / company_vacation → 분모 제외
   }
   const markedTotal = attendedCount + absentCount;
   const attendanceRate = markedTotal === 0 ? null : Math.round((attendedCount / markedTotal) * 100);

@@ -5,7 +5,13 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markAttendance, clearAttendance } from "@/lib/actions/attendance";
 import type { AttendanceStatus, ClassFormat, ClassType, Feedback } from "@/lib/types";
-import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS } from "@/lib/types";
+import {
+  ATTENDANCE_LABELS_EN,
+  ATTENDANCE_OPTIONS,
+  ATTENDANCE_ATTENDED,
+  ATTENDANCE_EXCLUDED_FROM_RATE,
+  ATTENDANCE_RED_FLAG,
+} from "@/lib/types";
 import FeedbackModal, { type SessionEntry } from "@/components/FeedbackModal";
 
 export interface ClassRow {
@@ -25,13 +31,9 @@ export interface ClassRow {
 }
 
 interface StudentRate {
-  total: number;
-  attended: number;
-  present: number;
-  late: number;
-  absent: number;
-  reschedule: number;
-  other: number;
+  total: number; // 분모 (면제성 상태 제외)
+  attended: number; // 출석 인정 (present + late_within_10 + late_over_10)
+  redFlags: number; // red flag 상태 수 (late_over_10)
   rate: number | null;
 }
 
@@ -46,13 +48,16 @@ export default function ClassManageView({ rows }: { rows: ClassRow[] }) {
     const map = new Map<string, StudentRate>();
     for (const r of rows) {
       const cur = map.get(r.student_id) ?? {
-        total: 0, attended: 0, present: 0, late: 0, absent: 0, reschedule: 0, other: 0, rate: null,
+        total: 0, attended: 0, redFlags: 0, rate: null,
       };
-      if (r.attendance === "present") { cur.present++; cur.attended++; cur.total++; }
-      else if (r.attendance === "late") { cur.late++; cur.attended++; cur.total++; }
-      else if (r.attendance === "absent") { cur.absent++; cur.total++; }
-      else if (r.attendance === "reschedule") { cur.reschedule++; }
-      else if (r.attendance === "other") { cur.other++; }
+      const s = r.attendance;
+      if (s) {
+        if (ATTENDANCE_RED_FLAG.includes(s)) cur.redFlags++;
+        if (!ATTENDANCE_EXCLUDED_FROM_RATE.includes(s)) {
+          cur.total++; // 분모 (면제성 제외)
+          if (ATTENDANCE_ATTENDED.includes(s)) cur.attended++;
+        }
+      }
       map.set(r.student_id, cur);
     }
     for (const [, v] of map) {
@@ -550,6 +555,14 @@ function StudentRow({
               <span className="text-xs text-slate-500">
                 ({rate.attended}/{rate.total})
               </span>
+              {rate.redFlags > 0 && (
+                <span
+                  title="Late (over 10 min) — flagged"
+                  className="rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-semibold text-red-700"
+                >
+                  🚩 {rate.redFlags}
+                </span>
+              )}
             </span>
           ) : (
             <span className="text-xs text-slate-400">—</span>
