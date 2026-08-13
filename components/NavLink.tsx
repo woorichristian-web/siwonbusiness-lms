@@ -24,13 +24,13 @@ export default function NavLink({
       className={
         "relative rounded-md px-3 py-1.5 font-medium transition " +
         (active
-          ? "bg-white text-blue-800 shadow-sm"
+          ? "font-semibold text-amber-300 [text-shadow:0_1px_6px_rgba(252,211,77,0.5)]"
           : "text-blue-100 hover:bg-white/10 hover:text-white")
       }
     >
       {children}
       {active && (
-        <span className="absolute inset-x-2 -bottom-[7px] h-0.5 rounded-full bg-amber-300" />
+        <span className="absolute inset-x-2 -bottom-[7px] h-0.5 rounded-full bg-amber-300 shadow-[0_0_8px_1px_rgba(252,211,77,0.8)]" />
       )}
       {badge != null && badge > 0 && (
         <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow-md ring-2 ring-blue-900">
