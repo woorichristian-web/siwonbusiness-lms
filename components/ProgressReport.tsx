@@ -9,6 +9,7 @@ import {
 } from "recharts";
 import type { FeedbackKey } from "@/lib/types";
 import type { ProgressData, FeedbackPoint } from "@/lib/progress";
+import HelpTooltip from "@/components/HelpTooltip";
 
 /**
  * High-level areas shown on the chart (5 lines instead of 10 leaf categories).
@@ -118,6 +119,10 @@ const T_KO = {
   reportTitle: (n: string) => `📊 학습 리포트 — ${n}`,
   booked: "예약", attended: "출석", absent: "결석", feedback: "피드백",
   attendanceTitle: "출석율",
+  attendanceHelp:
+    "• 업무를 위한 결석인 경우는 출석율에 영향을 미치지 않으나 자료제출이 필수입니다.\n" +
+    "• 수업시간 조정은 강사에게 직접 연락하세요.\n" +
+    "• 기타 문의는 b2b@siwonschool.com 으로 연락주세요.",
   attendancePending: "대기 중 — 아직 체크된 수업 없음",
   attendanceValue: (r: number, a: number, t: number) => `${r}% (${a} / ${t})`,
   attendanceNote: "체크된 출석 기준 (리스케쥴·기타 제외).",
@@ -140,6 +145,10 @@ const T_EN: typeof T_KO = {
   reportTitle: (n) => `📊 Progress Report — ${n}`,
   booked: "Booked", attended: "Attended", absent: "Absent", feedback: "Feedback",
   attendanceTitle: "Attendance Rate",
+  attendanceHelp:
+    "• Business-related absences do not affect the attendance rate, but documentation is required.\n" +
+    "• For class-time changes, contact your teacher directly.\n" +
+    "• Other inquiries: b2b@siwonschool.com",
   attendancePending: "Pending — no marked sessions yet",
   attendanceValue: (r, a, t) => `${r}% (${a} of ${t})`,
   attendanceNote: "Based on marked attendance (Reschedule and Other are excluded).",
@@ -265,7 +274,10 @@ export default function ProgressReport({
       {/* Attendance progress bar */}
       <section className="card">
         <header className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-700">{t.attendanceTitle}</h3>
+          <h3 className="flex items-center gap-1 text-sm font-semibold text-slate-700">
+            {t.attendanceTitle}
+            <HelpTooltip text={t.attendanceHelp} />
+          </h3>
           <span className="text-sm text-slate-500">
             {data.attendanceRate != null
               ? t.attendanceValue(data.attendanceRate, data.attendedCount, data.markedTotal)
