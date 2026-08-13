@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition, useRef } from "react";
+import Link from "next/link";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -236,6 +237,7 @@ function SlotModal({
   const isFull = slot.booked_count >= slot.capacity && !slot.i_am_booked;
   const isClosed = slot.status === "closed";
   const isPast = slot.is_past;
+  const [showChange, setShowChange] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -296,16 +298,41 @@ function SlotModal({
           </div>
         )}
 
-        <div className="mt-6 flex justify-end gap-2">
+        {/* 스케줄 변경 요청 안내 패널 */}
+        {showChange && slot.i_am_booked && !isPast && (
+          <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/60 p-3 text-sm">
+            <p className="font-semibold text-slate-800">🗓️ 수업 시간 변경 요청</p>
+            <p className="mt-1 text-xs text-slate-600">
+              수업 시간 변경은 담당 강사(<b>{slot.teacher_name}</b>)에게 직접 요청해 주세요.
+              아래 대화방에서 바로 요청할 수 있습니다.
+            </p>
+            <Link
+              href="/chat"
+              className="mt-2 inline-flex items-center gap-1 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+            >
+              💬 대화방에서 강사에게 요청하기
+            </Link>
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
           <button className="btn-ghost" onClick={onClose}>닫기</button>
           {isPast ? (
             // 지나간 슬롯 — 신청/취소 모두 불가, 닫기만
             null
           ) : slot.i_am_booked ? (
-            <button className="btn !bg-red-600 hover:!bg-red-700" disabled={pending}
-              onClick={onCancel}>
-              {pending ? "취소 중..." : "수업 취소"}
-            </button>
+            <>
+              <button
+                className="btn-ghost !border !border-slate-300 !text-slate-700"
+                onClick={() => setShowChange((v) => !v)}
+              >
+                스케줄 변경
+              </button>
+              <button className="btn !bg-red-600 hover:!bg-red-700" disabled={pending}
+                onClick={onCancel}>
+                {pending ? "취소 중..." : "수업 취소"}
+              </button>
+            </>
           ) : (
             <button className="btn" disabled={pending || isFull || isClosed}
               onClick={onBook}>
