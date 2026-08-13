@@ -3,7 +3,15 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { updateMyProfile, updateMyTeacher, changeMyPassword } from "@/lib/actions/profile";
+import {
+  updateMyProfile,
+  updateMyTeacher,
+  changeMyPassword,
+  agreePayroll,
+  cancelPayrollAgreement,
+} from "@/lib/actions/profile";
+
+const CENTER_EMAIL = "b2b@siwonschool.com";
 import type { Profile, Teacher } from "@/lib/types";
 import BirthDateInput from "@/components/BirthDateInput";
 import PhoneInput from "@/components/PhoneInput";
@@ -27,12 +35,14 @@ export default function TeacherProfileTabs({
   tab,
   stats,
   monthly,
+  agreements,
 }: {
   profile: Profile;
   teacher: Teacher | null;
   tab: "info" | "payroll";
   stats: Stats;
   monthly: MonthlyRow[];
+  agreements: Record<string, string>;
 }) {
   return (
     <div>
@@ -49,7 +59,12 @@ export default function TeacherProfileTabs({
       {tab === "info" ? (
         <InfoSection profile={profile} teacher={teacher} />
       ) : (
-        <PayrollSection teacher={teacher} stats={stats} monthly={monthly} />
+        <PayrollSection
+          teacher={teacher}
+          stats={stats}
+          monthly={monthly}
+          agreements={agreements}
+        />
       )}
     </div>
   );
@@ -284,15 +299,47 @@ function InfoSection({
 // PAYROLL TAB
 // =====================================================================
 function PayrollSection({
-  teacher, stats, monthly,
+  teacher, stats, monthly, agreements,
 }: {
   teacher: Teacher | null;
   stats: Stats;
   monthly: MonthlyRow[];
+  agreements: Record<string, string>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [busyPeriod, setBusyPeriod] = useState<string | null>(null);
+  const [contactPeriod, setContactPeriod] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  function onAgree(period: string) {
+    setBusyPeriod(period);
+    startTransition(async () => {
+      const r = await agreePayroll(period);
+      setBusyPeriod(null);
+      if (!r.ok) { setMsg({ type: "err", text: r.error }); return; }
+      router.refresh();
+    });
+  }
+  function onCancelAgree(period: string) {
+    setBusyPeriod(period);
+    startTransition(async () => {
+      const r = await cancelPayrollAgreement(period);
+      setBusyPeriod(null);
+      if (!r.ok) { setMsg({ type: "err", text: r.error }); return; }
+      router.refresh();
+    });
+  }
+  async function copyEmail() {
+    try {
+      await navigator.clipboard.writeText(CENTER_EMAIL);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setMsg({ type: "err", text: "복사에 실패했습니다. 직접 복사해 주세요: " + CENTER_EMAIL });
+    }
+  }
 
   const [hourlyRate, setHourlyRate] = useState(
     teacher?.hourly_rate != null ? String(teacher.hourly_rate) : ""
@@ -359,12 +406,15 @@ function PayrollSection({
         )}
       </section>
 
-      {/* Monthly history */}
+      {/* Monthly settlement statement */}
       <section className="card">
-        <h2 className="mb-3 text-base font-semibold">📅 Monthly History</h2>
+        <h2 className="mb-1 text-base font-semibold">📅 Monthly Settlement</h2>
+        <p className="mb-3 text-xs text-slate-500">
+          월별 정산 내역입니다. 확인 후 <b>Agree</b> 를 눌러 동의해 주세요. 이의가 있으면 <b>Contact</b> 로 센터에 문의하세요.
+        </p>
         {monthly.length === 0 ? (
-          <p className="text-center text-sm text-slate-400 py-6">
-            No completed classes yet.
+          <p className="py-6 text-center text-sm text-slate-400">
+            아직 진행된(출석체크된) 수업이 없습니다.
           </p>
         ) : (
           <div className="overflow-x-auto rounded-md border border-slate-200">
@@ -372,21 +422,64 @@ function PayrollSection({
               <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-3 py-2">Month</th>
-                  <th className="px-3 py-2 text-right">Classes</th>
-                  <th className="px-3 py-2 text-right">Hours</th>
-                  <th className="px-3 py-2 text-right">Estimated payment</th>
+                  <th className="px-3 py-2 text-right">시수 (h)</th>
+                  <th className="px-3 py-2 text-right">단가 (KRW)</th>
+                  <th className="px-3 py-2 text-right">금액 (KRW)</th>
+                  <th className="px-3 py-2 text-center">확인 / Confirm</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {monthly.map((m) => {
                   const pay = Math.round(rate * m.hours);
+                  const agreedAt = agreements[m.yearMonth];
+                  const busy = busyPeriod === m.yearMonth;
                   return (
                     <tr key={m.yearMonth}>
                       <td className="px-3 py-2 font-medium text-slate-800">{m.yearMonth}</td>
-                      <td className="px-3 py-2 text-right text-slate-700">{m.classCount}</td>
                       <td className="px-3 py-2 text-right text-slate-700">{m.hours.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right text-slate-700">
+                        {rate > 0 ? rate.toLocaleString() : "—"}
+                      </td>
                       <td className="px-3 py-2 text-right font-semibold text-slate-800">
-                        {rate > 0 ? `${pay.toLocaleString()} KRW` : "—"}
+                        {rate > 0 ? pay.toLocaleString() : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {agreedAt ? (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                              ✓ Agreed
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {new Date(agreedAt).toLocaleDateString("ko-KR")}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => onCancelAgree(m.yearMonth)}
+                              disabled={busy}
+                              className="text-[10px] text-slate-400 underline hover:text-slate-600"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => onAgree(m.yearMonth)}
+                              disabled={busy}
+                              className="rounded-md bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                            >
+                              {busy ? "..." : "Agree"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setContactPeriod(m.yearMonth)}
+                              className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                            >
+                              Contact
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -395,7 +488,55 @@ function PayrollSection({
             </table>
           </div>
         )}
+        {rate <= 0 && (
+          <p className="mt-2 text-xs text-amber-600">
+            ※ 아래 <b>Payroll Info</b> 에서 시급(단가)을 먼저 입력하면 금액이 계산됩니다.
+          </p>
+        )}
       </section>
+
+      {/* Contact popover */}
+      {contactPeriod && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setContactPeriod(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-slate-800">정산 문의 / Contact</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              <b>{contactPeriod}</b> 정산 내역에 이의가 있으시면 아래 센터 이메일로 문의해 주세요.
+            </p>
+            <div className="mt-3 flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+              <code className="flex-1 text-sm text-slate-800">{CENTER_EMAIL}</code>
+              <button
+                type="button"
+                onClick={copyEmail}
+                className="rounded-md bg-brand-600 px-3 py-1 text-xs font-semibold text-white hover:bg-brand-700"
+              >
+                {copied ? "✓ 복사됨" : "복사"}
+              </button>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <a
+                href={`mailto:${CENTER_EMAIL}?subject=${encodeURIComponent(`[정산 문의] ${contactPeriod}`)}`}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                메일 보내기
+              </a>
+              <button
+                type="button"
+                onClick={() => setContactPeriod(null)}
+                className="rounded-md bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-700"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payroll info edit */}
       <form onSubmit={save} className="card space-y-4">

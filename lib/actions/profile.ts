@@ -93,3 +93,41 @@ export async function updateMyTeacher(input: MyTeacherInput) {
   revalidatePath("/teacher/profile");
   return { ok: true };
 }
+
+/** 강사 월별 정산 동의. period = 'YYYY-MM'. */
+export async function agreePayroll(period: string) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false as const, error: "로그인이 필요합니다." };
+  if (!/^\d{4}-\d{2}$/.test(period))
+    return { ok: false as const, error: "기간 형식 오류" };
+
+  const { error } = await supabase
+    .from("payroll_agreements")
+    .upsert({ teacher_id: user.id, period }, { onConflict: "teacher_id,period" });
+  if (error) return { ok: false as const, error: error.message };
+
+  revalidatePath("/teacher/profile");
+  return { ok: true as const };
+}
+
+/** 동의 취소. */
+export async function cancelPayrollAgreement(period: string) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false as const, error: "로그인이 필요합니다." };
+
+  const { error } = await supabase
+    .from("payroll_agreements")
+    .delete()
+    .eq("teacher_id", user.id)
+    .eq("period", period);
+  if (error) return { ok: false as const, error: error.message };
+
+  revalidatePath("/teacher/profile");
+  return { ok: true as const };
+}

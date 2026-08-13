@@ -3,6 +3,12 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import StudentTeacherFeedbackForm from "@/components/StudentTeacherFeedbackForm";
+import HelpTooltip from "@/components/HelpTooltip";
+
+const ATTENDANCE_HELP =
+  "• 업무를 위한 결석인 경우는 출석율에 영향을 미치지 않으나 자료제출이 필수입니다.\n" +
+  "• 수업시간 조정은 강사에게 직접 연락하세요.\n" +
+  "• 기타 문의는 b2b@siwonschool.com 으로 연락주세요.";
 
 export const dynamic = "force-dynamic";
 
@@ -149,7 +155,12 @@ export default async function StudentStatusPage() {
                 accent="text-amber-700"
               />
               <InfoRow
-                label="출석률"
+                label={
+                  <span className="inline-flex items-center gap-1">
+                    출석률
+                    <HelpTooltip text={ATTENDANCE_HELP} />
+                  </span>
+                }
                 value={
                   attendanceRate != null
                     ? `${attendanceRate}% (출석 ${attendedCount}/${markedTotal})`
@@ -232,7 +243,7 @@ export default async function StudentStatusPage() {
 function InfoRow({
   label, value, accent,
 }: {
-  label: string;
+  label: React.ReactNode;
   value: string;
   accent?: string;
 }) {

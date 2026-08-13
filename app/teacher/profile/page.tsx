@@ -92,6 +92,14 @@ export default async function TeacherProfilePage({
       hours: Math.round(v.hours * 100) / 100,
     }));
 
+  // 월별 정산 동의 상태 (period → agreed_at)
+  const { data: agreementRows } = await supabase
+    .from("payroll_agreements")
+    .select("period, agreed_at")
+    .eq("teacher_id", profile.id);
+  const agreements: Record<string, string> = {};
+  for (const a of agreementRows ?? []) agreements[a.period] = a.agreed_at;
+
   return (
     <>
       <AppHeader profile={profile} />
@@ -114,6 +122,7 @@ export default async function TeacherProfilePage({
             thisMonthHours,
           }}
           monthly={monthly}
+          agreements={agreements}
         />
       </main>
     </>
