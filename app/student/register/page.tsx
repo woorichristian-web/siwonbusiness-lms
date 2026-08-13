@@ -47,16 +47,23 @@ export default async function StudentRegisterPage() {
           </header>
 
           <section className="rounded-2xl border-2 border-amber-200 bg-amber-50/60 p-8 text-center shadow-sm">
-            <div className="mb-4 text-5xl">🏢</div>
+            <div className="mb-4 text-5xl">🔒</div>
             <h2 className="mb-2 text-lg font-bold text-slate-800">
-              귀하의 수강신청은 귀사에서 대신합니다.
+              수강신청은 시원스쿨 센터에서 배정합니다.
             </h2>
             <p className="text-sm leading-relaxed text-slate-600">
-              {profile.company_name ? <><b>{profile.company_name}</b>의 수강신청은 회사 담당자가</> : "수강신청은 소속 기업의 담당자가"} 일괄 진행합니다.<br />
-              개별 신청·변경 사항이 있으면 회사 교육 담당자에게 문의해 주세요.
+              강사·수업 배정은 <b>시원스쿨 센터</b>에서 진행하므로,
+              교육생이 직접 신청하지 않습니다.<br />
+              수강·시간표 관련 문의는 아래 시원스쿨 센터로 연락해 주세요.
             </p>
+            <div className="mt-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm">
+              <span className="text-slate-500">📧 시원스쿨 센터</span>
+              <a href="mailto:b2b@siwonschool.com" className="font-semibold text-brand-700 hover:underline">
+                b2b@siwonschool.com
+              </a>
+            </div>
             <div className="mt-6 inline-flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500">
-              <span>· 본인이 이미 신청된 수업은</span>
+              <span>· 이미 배정된 내 수업은</span>
               <a href="/student/calendar" className="rounded-md border border-brand-300 bg-white px-2.5 py-1 font-medium text-brand-700 hover:bg-brand-50">
                 내 수업 일정 →
               </a>

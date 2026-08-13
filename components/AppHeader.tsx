@@ -5,6 +5,7 @@ import type { Profile } from "@/lib/types";
 import MessageNotifier from "@/components/MessageNotifier";
 import MessagePopupOnLogin from "@/components/MessagePopupOnLogin";
 import MobileMenuDrawer, { type MobileMenuItem } from "@/components/MobileMenuDrawer";
+import NavLink from "@/components/NavLink";
 
 export default async function AppHeader({ profile }: { profile: Profile }) {
   // 안 읽은 메시지 (개수 + 최근 5건은 팝업에 사용)
@@ -145,28 +146,6 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
         />
       )}
     </header>
-  );
-}
-
-function NavLink({
-  href, children, badge,
-}: {
-  href: string;
-  children: React.ReactNode;
-  badge?: number;
-}) {
-  return (
-    <Link
-      href={href}
-      className="relative rounded-md px-3 py-1.5 font-medium text-blue-100 transition hover:bg-white/10 hover:text-white"
-    >
-      {children}
-      {badge != null && badge > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow-md ring-2 ring-blue-900">
-          {badge > 99 ? "99+" : badge}
-        </span>
-      )}
-    </Link>
   );
 }
 
