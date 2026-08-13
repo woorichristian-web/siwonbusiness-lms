@@ -9,6 +9,7 @@ export interface FeedbackPoint {
   date: string; // ISO date of the booking (start_at)
   scores: Partial<Record<FeedbackKey, number | null>>;
   avg: number | null;
+  comment: string | null; // 강사가 남긴 코멘트
 }
 
 export interface ProgressData {
@@ -19,6 +20,7 @@ export interface ProgressData {
   attendedCount: number;            // present + late
   absentCount: number;
   markedTotal: number;              // present + late + absent
+  progressedCount: number;          // 출석체크된 세션 (실제 진행 or 리스케쥴 = 진행된 것)
   attendanceRate: number | null;    // 0~100
   feedbackPoints: FeedbackPoint[];
 }
@@ -52,9 +54,10 @@ export async function getStudentProgress(studentId: string): Promise<ProgressDat
     for (const a of atts ?? []) attMap.set(a.booking_id, a.status);
   }
 
-  let attendedCount = 0, absentCount = 0;
+  let attendedCount = 0, absentCount = 0, progressedCount = 0;
   for (const b of confirmed) {
     const s = attMap.get(b.id);
+    if (s) progressedCount++; // 어떤 상태든 출석체크됨 = 진행(실제 수업/결석) 또는 리스케쥴 처리된 세션
     if (s === "present" || s === "late") attendedCount++;
     else if (s === "absent") absentCount++;
   }
@@ -86,6 +89,7 @@ export async function getStudentProgress(studentId: string): Promise<ProgressDat
         date: b.start_at,
         scores,
         avg: n === 0 ? null : sum / n,
+        comment: typeof fb.comment === "string" && fb.comment.trim() ? fb.comment : null,
       });
     }
   }
@@ -98,6 +102,7 @@ export async function getStudentProgress(studentId: string): Promise<ProgressDat
     attendedCount,
     absentCount,
     markedTotal,
+    progressedCount,
     attendanceRate,
     feedbackPoints,
   };

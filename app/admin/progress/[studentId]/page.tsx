@@ -24,7 +24,7 @@ export default async function AdminProgressPage({
           </Link>
         </div>
         {data ? (
-          <ProgressReport data={data} />
+          <ProgressReport data={data} lang="ko" />
         ) : (
           <div className="card text-center text-slate-500">교육생을 찾을 수 없습니다.</div>
         )}

@@ -114,17 +114,71 @@ function humanBucket(key: string, mode: "weekly" | "monthly") {
   return key; // e.g. 2026-W21
 }
 
+const T_KO = {
+  reportTitle: (n: string) => `📊 학습 리포트 — ${n}`,
+  booked: "예약", attended: "출석", absent: "결석", feedback: "피드백",
+  attendanceTitle: "출석율",
+  attendancePending: "대기 중 — 아직 체크된 수업 없음",
+  attendanceValue: (r: number, a: number, t: number) => `${r}% (${a} / ${t})`,
+  attendanceNote: "체크된 출석 기준 (리스케쥴·기타 제외).",
+  courseTitle: "과정 진행 상황",
+  courseValue: (p: number, b: number) => `${p} / ${b}회 진행`,
+  overallTitle: "영역별 점수 비교",
+  overallSub: "전체 피드백의 영역별 평균 점수 (1~10점)",
+  noFeedback: "아직 등록된 피드백이 없습니다.",
+  feedbackTitle: "피드백",
+  feedbackSub: "강사가 남긴 코멘트 (날짜별)",
+  noComment: "아직 강사가 남긴 코멘트가 없습니다.",
+  avg: "평균",
+  detailsTitle: (n: number) => `📋 피드백 상세 (${n}건)`,
+  dateCol: "날짜",
+  detailsNote: "각 행은 한 수업입니다. 영역 점수는 세션 평균 (Grammar = 정확성·복잡성 평균 등).",
+  download: "⬇ PNG 다운로드", downloading: "이미지 생성 중...",
+  locale: "ko-KR",
+};
+const T_EN: typeof T_KO = {
+  reportTitle: (n) => `📊 Progress Report — ${n}`,
+  booked: "Booked", attended: "Attended", absent: "Absent", feedback: "Feedback",
+  attendanceTitle: "Attendance Rate",
+  attendancePending: "Pending — no marked sessions yet",
+  attendanceValue: (r, a, t) => `${r}% (${a} of ${t})`,
+  attendanceNote: "Based on marked attendance (Reschedule and Other are excluded).",
+  courseTitle: "Course Progress",
+  courseValue: (p, b) => `${p} / ${b} sessions`,
+  overallTitle: "Overall Comparison",
+  overallSub: "Average score per area across all feedback (scale 1–10)",
+  noFeedback: "No feedback recorded yet.",
+  feedbackTitle: "Feedback",
+  feedbackSub: "Teacher comments by date",
+  noComment: "No teacher comments yet.",
+  avg: "Avg",
+  detailsTitle: (n) => `📋 Feedback Details (${n} entries)`,
+  dateCol: "Date",
+  detailsNote: "Each row is one class. Areas show per-session averages (Grammar = avg of Accuracy + Complexity, etc.).",
+  download: "⬇ Download PNG", downloading: "Generating...",
+  locale: "en-US",
+};
+
 export default function ProgressReport({
   data,
   hideDownload = false,
+  lang = "en",
 }: {
   data: ProgressData;
   /** true 면 PNG 다운로드 버튼을 숨김 (교육생 본인 화면 등) */
   hideDownload?: boolean;
+  /** 강사=영어, 교육생·센터=한글 */
+  lang?: "ko" | "en";
 }) {
-  const { mode, data: chartData } = useMemo(
-    () => bucketize(data.feedbackPoints),
-    [data.feedbackPoints]
+  const t = lang === "ko" ? T_KO : T_EN;
+
+  // 강사 코멘트가 있는 피드백만 (최신순)
+  const commentPoints = useMemo(
+    () =>
+      data.feedbackPoints
+        .filter((p) => p.comment)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [data.feedbackPoints],
   );
 
   // Overall area averages across all feedback (used for top bar chart)
@@ -145,10 +199,12 @@ export default function ProgressReport({
     });
   }, [data.feedbackPoints]);
 
-  const sessionsLabel =
-    data.totalSessions != null
-      ? `${data.bookedCount} / ${data.totalSessions} sessions`
-      : `${data.bookedCount} sessions booked`;
+  // 과정 진행 = (진행된 수업 + 리스케쥴) / 예약 총수
+  const sessionsLabel = t.courseValue(data.progressedCount, data.bookedCount);
+  const courseProgressPct =
+    data.bookedCount > 0
+      ? Math.min(100, Math.round((data.progressedCount / data.bookedCount) * 100))
+      : 0;
 
   const reportRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
@@ -186,7 +242,7 @@ export default function ProgressReport({
             disabled={downloading}
             className="btn"
           >
-            {downloading ? "이미지 생성 중..." : "⬇ PNG 다운로드"}
+            {downloading ? t.downloading : t.download}
           </button>
         </div>
       )}
@@ -196,24 +252,24 @@ export default function ProgressReport({
       {/* Header info */}
       <section className="card">
         <h2 className="mb-3 text-base font-semibold text-slate-800">
-          📊 Progress Report — {data.studentName}
+          {t.reportTitle(data.studentName)}
         </h2>
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-          <Stat label="Booked" value={String(data.bookedCount)} />
-          <Stat label="Attended" value={String(data.attendedCount)} />
-          <Stat label="Absent" value={String(data.absentCount)} />
-          <Stat label="Feedback" value={String(data.feedbackPoints.length)} />
+          <Stat label={t.booked} value={String(data.bookedCount)} />
+          <Stat label={t.attended} value={String(data.attendedCount)} />
+          <Stat label={t.absent} value={String(data.absentCount)} />
+          <Stat label={t.feedback} value={String(data.feedbackPoints.length)} />
         </div>
       </section>
 
       {/* Attendance progress bar */}
       <section className="card">
         <header className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-700">Attendance Rate</h3>
+          <h3 className="text-sm font-semibold text-slate-700">{t.attendanceTitle}</h3>
           <span className="text-sm text-slate-500">
             {data.attendanceRate != null
-              ? `${data.attendanceRate}% (${data.attendedCount} of ${data.markedTotal})`
-              : "Pending — no marked sessions yet"}
+              ? t.attendanceValue(data.attendanceRate, data.attendedCount, data.markedTotal)
+              : t.attendancePending}
           </span>
         </header>
         <div className="h-4 w-full overflow-hidden rounded-full bg-slate-200">
@@ -229,22 +285,20 @@ export default function ProgressReport({
             style={{ width: `${data.attendanceRate ?? 0}%` }}
           />
         </div>
-        <p className="mt-2 text-xs text-slate-500">
-          Based on marked attendance (Reschedule and Other are excluded).
-        </p>
+        <p className="mt-2 text-xs text-slate-500">{t.attendanceNote}</p>
       </section>
 
       {/* Sessions summary */}
       <section className="card">
         <header className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-700">Course Progress</h3>
+          <h3 className="text-sm font-semibold text-slate-700">{t.courseTitle}</h3>
           <span className="text-sm text-slate-500">{sessionsLabel}</span>
         </header>
-        {data.totalSessions != null && data.totalSessions > 0 && (
+        {data.bookedCount > 0 && (
           <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200">
             <div
               className="h-full bg-brand-500 transition-all"
-              style={{ width: `${Math.min(100, (data.bookedCount / data.totalSessions) * 100)}%` }}
+              style={{ width: `${courseProgressPct}%` }}
             />
           </div>
         )}
@@ -253,16 +307,12 @@ export default function ProgressReport({
       {/* Overall comparison bar chart */}
       <section className="card">
         <header className="mb-3">
-          <h3 className="text-sm font-semibold text-slate-700">Overall Comparison</h3>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Average score per area across all feedback (scale 1–10)
-          </p>
+          <h3 className="text-sm font-semibold text-slate-700">{t.overallTitle}</h3>
+          <p className="mt-0.5 text-xs text-slate-500">{t.overallSub}</p>
         </header>
 
         {data.feedbackPoints.length === 0 ? (
-          <p className="text-center text-sm text-slate-400 py-8">
-            No feedback recorded yet.
-          </p>
+          <p className="text-center text-sm text-slate-400 py-8">{t.noFeedback}</p>
         ) : (
           <div className="w-full overflow-x-auto">
             <div style={{ minWidth: 460, height: 220 }}>
@@ -289,32 +339,35 @@ export default function ProgressReport({
         )}
       </section>
 
-      {/* Per-area mini line charts */}
+      {/* 피드백 — 강사 코멘트 (날짜별) */}
       <section className="card">
         <header className="mb-3">
-          <h3 className="text-sm font-semibold text-slate-700">
-            Trend by Area ({mode === "monthly" ? "Monthly avg." : "Weekly avg."})
-          </h3>
-          <p className="mt-0.5 text-xs text-slate-500">
-            {data.feedbackPoints.length} feedback entries
-            {data.feedbackPoints.length > 8 && " · auto-switched to monthly after 8 sessions"}
-          </p>
+          <h3 className="text-sm font-semibold text-slate-700">{t.feedbackTitle}</h3>
+          <p className="mt-0.5 text-xs text-slate-500">{t.feedbackSub}</p>
         </header>
 
-        {chartData.length === 0 ? (
-          <p className="text-center text-sm text-slate-400 py-8">
-            No feedback recorded yet. Once your teacher saves feedback, charts will appear.
-          </p>
+        {commentPoints.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-400">{t.noComment}</p>
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {AREAS.map((area) => (
-              <MiniAreaChart
-                key={area.key}
-                area={area}
-                data={chartData}
-              />
+          <ul className="space-y-3">
+            {commentPoints.map((p, i) => (
+              <li key={i} className="rounded-lg border border-slate-200 bg-white p-3">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-slate-600">
+                    {new Date(p.date).toLocaleDateString(t.locale, {
+                      year: "numeric", month: "2-digit", day: "2-digit", weekday: "short",
+                    })}
+                  </span>
+                  {p.avg != null && (
+                    <span className="shrink-0 text-xs font-semibold text-amber-700">
+                      {t.avg} {p.avg.toFixed(1)}
+                    </span>
+                  )}
+                </div>
+                <p className="whitespace-pre-wrap text-sm text-slate-800">{p.comment}</p>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </section>
 
@@ -322,13 +375,13 @@ export default function ProgressReport({
       {data.feedbackPoints.length > 0 && (
         <section className="card">
           <h3 className="mb-3 text-sm font-semibold text-slate-700">
-            📋 Feedback Details ({data.feedbackPoints.length} entries)
+            {t.detailsTitle(data.feedbackPoints.length)}
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="bg-slate-50 text-left text-slate-500">
                 <tr>
-                  <th className="px-2 py-1 whitespace-nowrap">Date</th>
+                  <th className="px-2 py-1 whitespace-nowrap">{t.dateCol}</th>
                   <th className="px-2 py-1">Grammar</th>
                   <th className="px-2 py-1">Vocab</th>
                   <th className="px-2 py-1">Comp</th>
@@ -348,7 +401,7 @@ export default function ProgressReport({
                   return (
                     <tr key={i}>
                       <td className="px-2 py-1 whitespace-nowrap text-slate-700">
-                        {d.toLocaleDateString("en-US", {
+                        {d.toLocaleDateString(t.locale, {
                           year: "2-digit", month: "2-digit", day: "2-digit", weekday: "short",
                         })}
                       </td>
@@ -366,9 +419,7 @@ export default function ProgressReport({
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-slate-400">
-            Each row is one class. Areas show per-session averages (Grammar = avg of Accuracy + Complexity, etc.).
-          </p>
+          <p className="mt-2 text-xs text-slate-400">{t.detailsNote}</p>
         </section>
       )}
 

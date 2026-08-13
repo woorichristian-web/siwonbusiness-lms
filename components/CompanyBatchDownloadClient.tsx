@@ -111,7 +111,7 @@ export default function CompanyBatchDownloadClient({
         <div ref={hiddenRef} className="space-y-10">
           {reports.map((r) => (
             <div key={r.studentId} data-report>
-              <ProgressReport data={r} />
+              <ProgressReport data={r} lang="ko" />
             </div>
           ))}
         </div>
