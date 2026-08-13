@@ -52,6 +52,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
           { href: "/student/status", label: "수강현황" },
           { href: "/student/progress", label: "진행 리포트" },
           { href: "/student/messages", label: "메시지", badge: unread },
+          { href: "/chat", label: "수업 대화방" },
           { href: "/student/profile", label: "마이페이지" },
         ]
       : profile.role === "teacher"
@@ -59,6 +60,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
             { href: "/teacher/schedule", label: "My Classes" },
             { href: "/teacher/class-manage", label: "Management" },
             { href: "/teacher/messages", label: "Messages", badge: unread },
+            { href: "/chat", label: "Class Chat" },
             { href: "/teacher/profile", label: "My Page" },
           ]
         : [
@@ -67,6 +69,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
             { href: "/admin/companies", label: "기업별 관리" },
             { href: "/admin/upload", label: "DB 관리" },
             { href: "/admin/messages", label: "메시지", badge: unread },
+            { href: "/chat", label: "대화방" },
             { href: "/admin/profile", label: "마이페이지" },
           ];
 
