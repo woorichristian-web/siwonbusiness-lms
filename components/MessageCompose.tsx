@@ -35,6 +35,8 @@ export default function MessageCompose({
   groups,
   bulkOptions = [],
   lang = "ko",
+  initialRecipientId = "",
+  initialBody = "",
 }: {
   title: string;
   description?: string;
@@ -43,11 +45,13 @@ export default function MessageCompose({
   groups: RecipientGroup[];
   bulkOptions?: BulkOption[];
   lang?: "ko" | "en";
+  initialRecipientId?: string;
+  initialBody?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [recipientId, setRecipientId] = useState("");
-  const [body, setBody] = useState("");
+  const [recipientId, setRecipientId] = useState(initialRecipientId);
+  const [body, setBody] = useState(initialBody);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const t = lang === "en" ? {

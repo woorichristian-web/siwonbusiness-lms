@@ -7,7 +7,11 @@ import type { Message } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function StudentMessagesPage() {
+export default async function StudentMessagesPage({
+  searchParams,
+}: {
+  searchParams: { to?: string; body?: string };
+}) {
   const profile = await requireRole(["student", "admin"]);
   const supabase = createClient();
 
@@ -97,6 +101,8 @@ export default async function StudentMessagesPage() {
           recipientLabel="받는 사람"
           placeholder="예: 이번 주 수업 시간 변경이 가능할까요?"
           groups={groups}
+          initialRecipientId={searchParams.to ?? ""}
+          initialBody={searchParams.body ?? ""}
         />
 
         {/* 받은 메시지 */}

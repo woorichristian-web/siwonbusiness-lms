@@ -298,19 +298,21 @@ function SlotModal({
           </div>
         )}
 
-        {/* 스케줄 변경 요청 안내 패널 */}
+        {/* 스케줄 변경 요청 안내 패널 — 담당 강사에게 1:1 메시지 */}
         {showChange && slot.i_am_booked && !isPast && (
           <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/60 p-3 text-sm">
             <p className="font-semibold text-slate-800">🗓️ 수업 시간 변경 요청</p>
             <p className="mt-1 text-xs text-slate-600">
               수업 시간 변경은 담당 강사(<b>{slot.teacher_name}</b>)에게 직접 요청해 주세요.
-              아래 대화방에서 바로 요청할 수 있습니다.
+              아래 버튼을 누르면 강사에게 보내는 메시지 화면이 열립니다.
             </p>
             <Link
-              href="/chat"
+              href={`/student/messages?to=${slot.teacher_id}&body=${encodeURIComponent(
+                `[수업 시간 변경 요청]\n수업: ${format(start)} ~ ${formatTime(end)} (${slot.teacher_name} 강사)\n\n변경 희망 시간 / 사유: `,
+              )}`}
               className="mt-2 inline-flex items-center gap-1 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
             >
-              💬 대화방에서 강사에게 요청하기
+              ✉️ 강사에게 메시지 보내기
             </Link>
           </div>
         )}
