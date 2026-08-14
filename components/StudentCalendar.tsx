@@ -267,29 +267,48 @@ function SlotModal({
           } />
         </div>
 
-        {/* 내가 신청한 온라인 수업 — Zoom / Teams 입장 버튼 */}
-        {slot.i_am_booked && !isPast && slot.format === "online" && (slot.zoom_url || slot.teams_url) && (
-          <div className="mt-4 flex flex-wrap gap-2 rounded-md border border-blue-200 bg-blue-50/40 p-3">
+        {/* 내가 신청한 예정 수업 — 수업 입장. 온라인+강사링크면 활성, 오프라인이면 비활성 */}
+        {slot.i_am_booked && !isPast && (
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md border border-blue-200 bg-blue-50/40 p-3">
             <span className="self-center text-xs font-semibold text-slate-600">🎥 수업 입장:</span>
-            {slot.zoom_url && (
-              <a
-                href={slot.zoom_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
-              >
-                Zoom 열기 ↗
-              </a>
-            )}
-            {slot.teams_url && (
-              <a
-                href={slot.teams_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-purple-700"
-              >
-                Teams 열기 ↗
-              </a>
+            {slot.format === "online" && (slot.zoom_url || slot.teams_url) ? (
+              <>
+                {slot.zoom_url && (
+                  <a
+                    href={slot.zoom_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                  >
+                    Zoom 열기 ↗
+                  </a>
+                )}
+                {slot.teams_url && (
+                  <a
+                    href={slot.teams_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-purple-700"
+                  >
+                    Teams 열기 ↗
+                  </a>
+                )}
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled
+                  className="cursor-not-allowed rounded-md bg-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-400"
+                >
+                  Zoom 입장
+                </button>
+                <span className="self-center text-xs text-slate-400">
+                  {slot.format === "offline"
+                    ? "오프라인 수업입니다."
+                    : "강사가 아직 입장 링크를 등록하지 않았습니다."}
+                </span>
+              </>
             )}
           </div>
         )}
