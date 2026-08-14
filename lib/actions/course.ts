@@ -168,3 +168,127 @@ export async function replaceCourseTeacher(
   revalidatePath(`/admin/courses/${courseId}`);
   return { ok: true as const };
 }
+
+// ---------------------------------------------------------------------
+// 과정 데이터 리포트 (엑셀 다운로드용 집계): 주차별 점수 추이 + 출석율
+// ---------------------------------------------------------------------
+import { FEEDBACK_KEYS } from "@/lib/types";
+
+export interface CourseReportStudent {
+  name: string;
+  weeklyAvg: (number | null)[];
+  attended: number;
+  markedTotal: number;
+  rate: number | null;
+}
+export interface CourseReportData {
+  courseName: string;
+  code: string | null;
+  company: string | null;
+  weeks: string[]; // 주 시작일(월요일) 라벨
+  courseWeeklyAvg: (number | null)[];
+  attended: number;
+  markedTotal: number;
+  rate: number | null;
+  students: CourseReportStudent[];
+}
+
+function mondayKST(iso: string): string {
+  const kst = new Date(new Date(iso).getTime() + 9 * 3600 * 1000);
+  const dow = kst.getUTCDay() || 7; // 1=Mon..7=Sun
+  const monday = new Date(kst.getTime() - (dow - 1) * 86400000);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${monday.getUTCFullYear()}-${p(monday.getUTCMonth() + 1)}-${p(monday.getUTCDate())}`;
+}
+function fbAvg(fb: any): number | null {
+  const vals = FEEDBACK_KEYS.map((k) => fb[k]).filter((v: any): v is number => typeof v === "number");
+  return vals.length ? vals.reduce((s: number, n: number) => s + n, 0) / vals.length : null;
+}
+
+export async function getCourseReportData(courseId: string) {
+  let supabase;
+  try { supabase = await assertAdmin(); }
+  catch (e: any) { return { ok: false as const, error: e.message }; }
+
+  const { data: course } = await supabase
+    .from("courses").select("name, code, company_name").eq("id", courseId).maybeSingle();
+  if (!course) return { ok: false as const, error: "과정을 찾을 수 없습니다." };
+
+  const { data: cs } = await supabase
+    .from("course_students").select("student_id").eq("course_id", courseId);
+  const studentIds = (cs ?? []).map((r: any) => r.student_id);
+  const nameById = new Map<string, string>();
+  if (studentIds.length > 0) {
+    const { data: ps } = await supabase.from("profiles").select("id, name").in("id", studentIds);
+    for (const p of ps ?? []) nameById.set(p.id, p.name);
+  }
+
+  const { data: bookings } = await supabase
+    .from("bookings").select("id, student_id, start_at")
+    .eq("course_id", courseId).eq("status", "confirmed");
+  const bks = bookings ?? [];
+  const bookingIds = bks.map((b: any) => b.id);
+
+  const attByBk = new Map<string, string>();
+  const fbByBk = new Map<string, number | null>();
+  if (bookingIds.length > 0) {
+    const [{ data: atts }, { data: fbs }] = await Promise.all([
+      supabase.from("attendance").select("booking_id, status").in("booking_id", bookingIds),
+      supabase.from("feedback").select("*").in("booking_id", bookingIds),
+    ]);
+    for (const a of atts ?? []) attByBk.set(a.booking_id, a.status);
+    for (const f of fbs ?? []) fbByBk.set(f.booking_id, fbAvg(f));
+  }
+
+  // 주차 집합
+  const weekSet = new Set<string>();
+  for (const b of bks) weekSet.add(mondayKST(b.start_at));
+  const weeks = Array.from(weekSet).sort();
+  const wIdx = new Map(weeks.map((w, i) => [w, i]));
+
+  // 누적자
+  const courseWeekSum = weeks.map(() => 0);
+  const courseWeekCnt = weeks.map(() => 0);
+  let attended = 0, markedTotal = 0;
+  const perStudent = new Map<string, { sum: number[]; cnt: number[]; att: number; marked: number }>();
+  for (const id of studentIds)
+    perStudent.set(id, { sum: weeks.map(() => 0), cnt: weeks.map(() => 0), att: 0, marked: 0 });
+
+  for (const b of bks) {
+    const wi = wIdx.get(mondayKST(b.start_at))!;
+    const score = fbByBk.get(b.id) ?? null;
+    const st = perStudent.get(b.student_id);
+    if (score != null) {
+      courseWeekSum[wi] += score; courseWeekCnt[wi]++;
+      if (st) { st.sum[wi] += score; st.cnt[wi]++; }
+    }
+    const status = attByBk.get(b.id);
+    if (status && status !== "reschedule" && status !== "other") {
+      markedTotal++; if (status === "present" || status === "late") attended++;
+      if (st) { st.marked++; if (status === "present" || status === "late") st.att++; }
+    }
+  }
+
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const students: CourseReportStudent[] = studentIds.map((id: string) => {
+    const s = perStudent.get(id)!;
+    return {
+      name: nameById.get(id) ?? "(알 수 없음)",
+      weeklyAvg: weeks.map((_, i) => (s.cnt[i] ? round2(s.sum[i] / s.cnt[i]) : null)),
+      attended: s.att, markedTotal: s.marked,
+      rate: s.marked ? Math.round((s.att / s.marked) * 100) : null,
+    };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+
+  return {
+    ok: true as const,
+    data: {
+      courseName: course.name, code: course.code, company: course.company_name,
+      weeks,
+      courseWeeklyAvg: weeks.map((_, i) => (courseWeekCnt[i] ? round2(courseWeekSum[i] / courseWeekCnt[i]) : null)),
+      attended, markedTotal,
+      rate: markedTotal ? Math.round((attended / markedTotal) * 100) : null,
+      students,
+    } as CourseReportData,
+  };
+}
