@@ -11,6 +11,7 @@ import type { EventClickArg, EventInput } from "@fullcalendar/core";
 import koLocale from "@fullcalendar/core/locales/ko";
 import type { BookableSlot } from "@/lib/types";
 import { bookSlot, cancelBooking } from "@/lib/actions/booking";
+import ClassReviewModal from "@/components/ClassReviewModal";
 
 export default function StudentCalendar({ slots }: { slots: BookableSlot[] }) {
   const [selected, setSelected] = useState<BookableSlot | null>(null);
@@ -238,6 +239,7 @@ function SlotModal({
   const isClosed = slot.status === "closed";
   const isPast = slot.is_past;
   const [showChange, setShowChange] = useState(false);
+  const [showReview, setShowReview] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -320,8 +322,15 @@ function SlotModal({
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           <button className="btn-ghost" onClick={onClose}>닫기</button>
           {isPast ? (
-            // 지나간 슬롯 — 신청/취소 모두 불가, 닫기만
-            null
+            // 완료된 수업 — 내가 들은 수업이면 수업후기 작성 가능
+            slot.i_am_booked ? (
+              <button
+                className="btn !bg-amber-500 hover:!bg-amber-600"
+                onClick={() => setShowReview(true)}
+              >
+                ⭐ 수업후기
+              </button>
+            ) : null
           ) : slot.i_am_booked ? (
             <>
               <button
@@ -343,6 +352,16 @@ function SlotModal({
           )}
         </div>
       </div>
+
+      {showReview && (
+        <ClassReviewModal
+          slotId={slot.availability_id}
+          teacherId={slot.teacher_id}
+          teacherName={slot.teacher_name}
+          classInfo={`${format(start)} ~ ${formatTime(end)}`}
+          onClose={() => setShowReview(false)}
+        />
+      )}
     </div>
   );
 }
