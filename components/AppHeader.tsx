@@ -66,6 +66,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
           ]
         : [
             { href: "/admin", label: "관리자 홈" },
+            { href: "/admin/courses", label: "과정 관리" },
             { href: "/admin/users", label: "회원 관리" },
             { href: "/admin/companies", label: "기업별 관리" },
             { href: "/admin/upload", label: "DB 관리" },
