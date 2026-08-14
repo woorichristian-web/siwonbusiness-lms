@@ -19,13 +19,52 @@ export default async function AdminMessagesPage() {
     .order("created_at", { ascending: false });
 
   const senderIds = Array.from(new Set((messages ?? []).map((m: any) => m.sender_id)));
-  const senderNames = new Map<string, { name: string; role: string }>();
+  const senderNames = new Map<
+    string,
+    { name: string; role: string; href?: string; context?: string }
+  >();
   if (senderIds.length > 0) {
     const { data: senders } = await supabase
       .from("profiles")
-      .select("id, name, role")
+      .select("id, name, role, company_name, course_name")
       .in("id", senderIds);
-    for (const s of senders ?? []) senderNames.set(s.id, { name: s.name, role: s.role });
+
+    // 강사 발신자의 담당 과정명 (course_teachers → courses)
+    const teacherSenderIds = (senders ?? [])
+      .filter((s: any) => s.role === "teacher")
+      .map((s: any) => s.id);
+    const coursesByTeacher = new Map<string, string[]>();
+    if (teacherSenderIds.length > 0) {
+      const { data: cts } = await supabase
+        .from("course_teachers")
+        .select("teacher_id, course_id")
+        .in("teacher_id", teacherSenderIds)
+        .is("assigned_until", null);
+      const cIds = Array.from(new Set((cts ?? []).map((r: any) => r.course_id)));
+      const nameById = new Map<string, string>();
+      if (cIds.length > 0) {
+        const { data: cs } = await supabase.from("courses").select("id, name").in("id", cIds);
+        for (const c of cs ?? []) nameById.set(c.id, c.name);
+      }
+      for (const r of cts ?? []) {
+        const nm = nameById.get(r.course_id);
+        if (nm) (coursesByTeacher.get(r.teacher_id) ?? coursesByTeacher.set(r.teacher_id, []).get(r.teacher_id)!).push(nm);
+      }
+    }
+
+    for (const s of senders ?? []) {
+      let href: string | undefined;
+      let context: string | undefined;
+      if (s.role === "student") {
+        href = `/admin/progress/${s.id}`;
+        context = [s.company_name, s.course_name].filter(Boolean).join(" · ") || undefined;
+      } else if (s.role === "teacher") {
+        href = `/admin/teachers/${s.id}`;
+        const cs = coursesByTeacher.get(s.id);
+        context = cs && cs.length ? cs.join(", ") : undefined;
+      }
+      senderNames.set(s.id, { name: s.name, role: s.role, href, context });
+    }
   }
 
   // 모든 사용자 (자기 자신 제외)

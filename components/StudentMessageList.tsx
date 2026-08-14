@@ -2,8 +2,43 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type { Message } from "@/lib/types";
 import { markMessageRead, markAllMessagesRead } from "@/lib/actions/message";
+
+export interface SenderInfo {
+  name: string;
+  role: string;
+  /** 이름 클릭 시 이동할 상세 경로 (관리자만 전달) */
+  href?: string;
+  /** 강의정보 등 부가 표시 (예: "Afinit · Topical Conversations") */
+  context?: string;
+}
+
+function roleKo(role?: string) {
+  return role === "teacher" ? "강사" : role === "admin" ? "관리자" : "교육생";
+}
+
+function SenderName({ sender }: { sender?: SenderInfo }) {
+  const label = (
+    <>
+      {sender?.name ?? "—"}
+      <span className="ml-1 text-xs font-normal text-slate-400">({roleKo(sender?.role)})</span>
+    </>
+  );
+  if (sender?.href) {
+    return (
+      <Link
+        href={sender.href}
+        onClick={(e) => e.stopPropagation()}
+        className="text-brand-700 underline decoration-dotted underline-offset-2 hover:text-brand-800"
+      >
+        {label}
+      </Link>
+    );
+  }
+  return <span>{label}</span>;
+}
 
 /**
  * Inbox displayed as a board-style list:
@@ -15,7 +50,7 @@ export default function StudentMessageList({
   senderInfo,
 }: {
   messages: Message[];
-  senderInfo: Record<string, { name: string; role: string }>;
+  senderInfo: Record<string, SenderInfo>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -90,11 +125,13 @@ export default function StudentMessageList({
                       <span className="text-xs text-slate-300">읽음</span>
                     )}
                   </td>
-                  <td className={"px-4 py-3 whitespace-nowrap " + (isUnread ? "font-semibold text-slate-800" : "text-slate-600")}>
-                    {sender?.name ?? "—"}
-                    <span className="ml-1 text-xs text-slate-400">
-                      ({sender?.role === "teacher" ? "강사" : sender?.role === "admin" ? "관리자" : "교육생"})
-                    </span>
+                  <td className={"px-4 py-3 " + (isUnread ? "font-semibold text-slate-800" : "text-slate-600")}>
+                    <SenderName sender={sender} />
+                    {sender?.context && (
+                      <div className="mt-0.5 text-[11px] font-normal text-slate-400">
+                        📘 {sender.context}
+                      </div>
+                    )}
                   </td>
                   <td className={"px-4 py-3 truncate max-w-md " + (isUnread ? "font-medium text-slate-800" : "text-slate-600")}>
                     {firstLine(m.body)}
@@ -124,7 +161,7 @@ function MessageDetailModal({
   message, sender, onClose,
 }: {
   message: Message;
-  sender?: { name: string; role: string };
+  sender?: SenderInfo;
   onClose: () => void;
 }) {
   return (
@@ -133,14 +170,21 @@ function MessageDetailModal({
       <div onClick={(e) => e.stopPropagation()}
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
         <header className="mb-4 border-b border-slate-100 pb-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-slate-800">
-              {sender?.name ?? "—"}
-              <span className="ml-2 text-xs font-normal text-slate-500">
-                {sender?.role === "teacher" ? "강사" : sender?.role === "admin" ? "관리자" : "교육생"}
-              </span>
-            </h3>
-            <span className="text-xs text-slate-400">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="text-lg font-bold text-slate-800">
+                <SenderName sender={sender} />
+              </h3>
+              {sender?.context && (
+                <p className="mt-0.5 text-xs text-slate-500">📘 {sender.context}</p>
+              )}
+              {sender?.href && (
+                <Link href={sender.href} className="mt-1 inline-block text-xs text-brand-700 underline">
+                  상세 정보·수업 보기 →
+                </Link>
+              )}
+            </div>
+            <span className="shrink-0 text-xs text-slate-400">
               {new Date(message.created_at).toLocaleString("ko-KR")}
             </span>
           </div>
