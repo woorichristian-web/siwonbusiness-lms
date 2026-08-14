@@ -27,18 +27,23 @@ export default function MessagePopupOnLogin({
 }) {
   const [visible, setVisible] = useState(false);
 
+  // 안 읽은 메시지 조합의 서명 — 새 메시지가 오면 값이 바뀌어 다시 팝업됨
+  const signature = unreadMessages
+    .map((m) => m.id)
+    .sort()
+    .join(",");
+
   useEffect(() => {
     if (unreadMessages.length === 0) return;
-    // 세션당 1회만 표시
-    const key = "message_popup_dismissed";
     if (typeof window === "undefined") return;
-    const dismissed = sessionStorage.getItem(key);
-    if (!dismissed) setVisible(true);
-  }, [unreadMessages.length]);
+    // 이 조합을 이미 닫았으면 재표시 안 함. 새 메시지 → 서명 변경 → 다시 표시.
+    const dismissed = sessionStorage.getItem("message_popup_dismissed_sig");
+    if (dismissed !== signature) setVisible(true);
+  }, [signature, unreadMessages.length]);
 
   function dismiss() {
     if (typeof window !== "undefined") {
-      sessionStorage.setItem("message_popup_dismissed", "1");
+      sessionStorage.setItem("message_popup_dismissed_sig", signature);
     }
     setVisible(false);
   }
@@ -73,25 +78,41 @@ export default function MessagePopupOnLogin({
         </header>
 
         <ul className="mb-5 max-h-64 space-y-2 overflow-y-auto">
-          {unreadMessages.slice(0, 5).map((m) => (
-            <li
-              key={m.id}
-              className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm"
-            >
-              <div className="mb-0.5 flex items-center justify-between">
-                <span className="font-semibold text-slate-700">
-                  {m.sender_name}
-                  <span className="ml-1 text-xs font-normal text-slate-400">
-                    ({m.sender_role === "teacher" ? "Teacher" : m.sender_role === "admin" ? "Admin" : "Student"})
-                  </span>
-                </span>
-                <span className="text-xs text-slate-400">
-                  {timeAgo(m.created_at, isTeacher)}
-                </span>
-              </div>
-              <p className="line-clamp-2 text-slate-600">{m.body}</p>
-            </li>
-          ))}
+          {[...unreadMessages]
+            .sort((a, b) => (b.sender_role === "admin" ? 1 : 0) - (a.sender_role === "admin" ? 1 : 0))
+            .slice(0, 5)
+            .map((m) => {
+              const isCenter = m.sender_role === "admin";
+              return (
+                <li
+                  key={m.id}
+                  className={
+                    "rounded-md border p-3 text-sm " +
+                    (isCenter
+                      ? "border-amber-300 bg-amber-50"
+                      : "border-slate-200 bg-slate-50")
+                  }
+                >
+                  <div className="mb-0.5 flex items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-700">
+                      {isCenter && (
+                        <span className="mr-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                          📢 {isTeacher ? "CENTER" : "센터 안내"}
+                        </span>
+                      )}
+                      {m.sender_name}
+                      <span className="ml-1 text-xs font-normal text-slate-400">
+                        ({m.sender_role === "teacher" ? "Teacher" : isCenter ? "Admin" : "Student"})
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-xs text-slate-400">
+                      {timeAgo(m.created_at, isTeacher)}
+                    </span>
+                  </div>
+                  <p className="line-clamp-2 text-slate-600">{m.body}</p>
+                </li>
+              );
+            })}
           {unreadMessages.length > 5 && (
             <li className="text-center text-xs text-slate-400">
               ... and {unreadMessages.length - 5} more
