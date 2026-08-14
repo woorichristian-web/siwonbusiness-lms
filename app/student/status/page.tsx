@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import StudentTeacherFeedbackForm from "@/components/StudentTeacherFeedbackForm";
 import HelpTooltip from "@/components/HelpTooltip";
+import CurriculumManager, { type CurriculumItem } from "@/components/CurriculumManager";
 
 const ATTENDANCE_HELP =
   "• 업무를 위한 결석인 경우는 출석율에 영향을 미치지 않으나 자료제출이 필수입니다.\n" +
@@ -115,6 +116,36 @@ export default async function StudentStatusPage() {
   }
 
   const hasEnrollment = !!profile.course_name;
+
+  // 수강 과정 커리큘럼 (읽기 전용)
+  const { data: myCs } = await supabase
+    .from("course_students")
+    .select("course_id")
+    .eq("student_id", profile.id);
+  const myCourseIds = Array.from(new Set((myCs ?? []).map((r: any) => r.course_id)));
+  let curricula: {
+    id: string; name: string; curriculum_updated_at: string | null; items: CurriculumItem[];
+  }[] = [];
+  if (myCourseIds.length > 0) {
+    const [{ data: cs }, { data: cur }] = await Promise.all([
+      supabase.from("courses").select("id, name, curriculum_updated_at").in("id", myCourseIds),
+      supabase
+        .from("course_curriculum")
+        .select("course_id, session_no, session_date, topic, details, materials, sort_order")
+        .in("course_id", myCourseIds)
+        .order("sort_order", { ascending: true }),
+    ]);
+    const byCourse = new Map<string, CurriculumItem[]>();
+    for (const r of cur ?? [])
+      (byCourse.get(r.course_id) ?? byCourse.set(r.course_id, []).get(r.course_id)!).push({
+        session_no: r.session_no, session_date: r.session_date, topic: r.topic,
+        details: r.details, materials: r.materials,
+      });
+    curricula = (cs ?? []).map((c: any) => ({
+      id: c.id, name: c.name, curriculum_updated_at: c.curriculum_updated_at,
+      items: byCourse.get(c.id) ?? [],
+    }));
+  }
 
   return (
     <>
@@ -235,6 +266,18 @@ export default async function StudentStatusPage() {
             <BookingList items={cancelled} slotInfo={slotInfo} muted />
           </section>
         )}
+
+        {curricula.map((c) => (
+          <div key={c.id} className="mt-6">
+            <CurriculumManager
+              courseId={c.id}
+              courseName={c.name}
+              rows={c.items}
+              canEdit={false}
+              updatedAt={c.curriculum_updated_at}
+            />
+          </div>
+        ))}
       </main>
     </>
   );

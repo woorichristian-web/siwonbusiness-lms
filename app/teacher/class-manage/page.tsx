@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import ClassManageView, { type ClassRow } from "@/components/ClassManageView";
+import CurriculumManager, { type CurriculumItem } from "@/components/CurriculumManager";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +86,37 @@ export default async function TeacherClassManagePage() {
     };
   });
 
+  // 담당 과정 + 커리큘럼 (강사가 확인·업로드)
+  const { data: myCts } = await supabase
+    .from("course_teachers")
+    .select("course_id")
+    .eq("teacher_id", profile.id)
+    .is("assigned_until", null);
+  const myCourseIds = Array.from(new Set((myCts ?? []).map((r: any) => r.course_id)));
+  let myCourses: {
+    id: string; name: string; curriculum_updated_at: string | null; items: CurriculumItem[];
+  }[] = [];
+  if (myCourseIds.length > 0) {
+    const [{ data: cs }, { data: cur }] = await Promise.all([
+      supabase.from("courses").select("id, name, curriculum_updated_at").in("id", myCourseIds),
+      supabase
+        .from("course_curriculum")
+        .select("course_id, session_no, session_date, topic, details, materials, sort_order")
+        .in("course_id", myCourseIds)
+        .order("sort_order", { ascending: true }),
+    ]);
+    const byCourse = new Map<string, CurriculumItem[]>();
+    for (const r of cur ?? [])
+      (byCourse.get(r.course_id) ?? byCourse.set(r.course_id, []).get(r.course_id)!).push({
+        session_no: r.session_no, session_date: r.session_date, topic: r.topic,
+        details: r.details, materials: r.materials,
+      });
+    myCourses = (cs ?? []).map((c: any) => ({
+      id: c.id, name: c.name, curriculum_updated_at: c.curriculum_updated_at,
+      items: byCourse.get(c.id) ?? [],
+    }));
+  }
+
   return (
     <>
       <AppHeader profile={profile} />
@@ -96,6 +128,21 @@ export default async function TeacherClassManagePage() {
           </p>
         </header>
         <ClassManageView rows={classRows} />
+
+        {myCourses.length > 0 && (
+          <div className="mt-8 space-y-4">
+            {myCourses.map((c) => (
+              <CurriculumManager
+                key={c.id}
+                courseId={c.id}
+                courseName={c.name}
+                rows={c.items}
+                canEdit
+                updatedAt={c.curriculum_updated_at}
+              />
+            ))}
+          </div>
+        )}
       </main>
     </>
   );
