@@ -25,7 +25,7 @@ export default async function TeacherProgressPage({
           </Link>
         </div>
         {data ? (
-          <ProgressReport data={data} />
+          <ProgressReport data={data} hideDownload />
         ) : (
           <div className="card text-center text-slate-500">
             Student not found.
