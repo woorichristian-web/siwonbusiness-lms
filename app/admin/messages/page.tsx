@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import StudentMessageList from "@/components/StudentMessageList";
+import AdminSentList, { type SentGroup } from "@/components/AdminSentList";
 import MessageCompose, { type RecipientGroup, type BulkOption } from "@/components/MessageCompose";
 import type { Message } from "@/lib/types";
 
@@ -66,6 +67,79 @@ export default async function AdminMessagesPage() {
       senderNames.set(s.id, { name: s.name, role: s.role, href, context });
     }
   }
+
+  // ====================================================================
+  // 보낸 메시지 — 같은 시각·같은 내용(단체 발송)은 1건으로 묶는다.
+  // 수신자 전원이 같은 과정 수강생이면 과정명을 표시.
+  // ====================================================================
+  const { data: sentRows } = await supabase
+    .from("messages")
+    .select("id, recipient_id, body, read_at, created_at")
+    .eq("sender_id", profile.id)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  const sentRecipientIds = Array.from(
+    new Set((sentRows ?? []).map((m: any) => m.recipient_id)),
+  );
+  const recipientNameById = new Map<string, string>();
+  if (sentRecipientIds.length > 0) {
+    const { data: rp } = await supabase
+      .from("profiles")
+      .select("id, name")
+      .in("id", sentRecipientIds);
+    for (const r of rp ?? []) recipientNameById.set(r.id, r.name);
+  }
+  // 수신자별 수강 과정 (과정 전체 발송 판별용)
+  const coursesByStudent = new Map<string, Set<string>>();
+  const courseNameById = new Map<string, string>();
+  if (sentRecipientIds.length > 0) {
+    const { data: enr } = await supabase
+      .from("course_students")
+      .select("course_id, student_id")
+      .in("student_id", sentRecipientIds);
+    const cIds = Array.from(new Set((enr ?? []).map((r: any) => r.course_id)));
+    if (cIds.length > 0) {
+      const { data: cs } = await supabase.from("courses").select("id, name").in("id", cIds);
+      for (const c of cs ?? []) courseNameById.set(c.id, c.name);
+    }
+    for (const r of enr ?? []) {
+      (coursesByStudent.get(r.student_id) ?? coursesByStudent.set(r.student_id, new Set()).get(r.student_id)!).add(r.course_id);
+    }
+  }
+
+  const groupMap = new Map<string, SentGroup>();
+  for (const m of sentRows ?? []) {
+    const key = `${m.created_at}|${m.body}`;
+    let g = groupMap.get(key);
+    if (!g) {
+      g = { key, body: m.body, created_at: m.created_at, course_name: null, recipients: [] };
+      groupMap.set(key, g);
+    }
+    g.recipients.push({
+      name: recipientNameById.get(m.recipient_id) ?? "—",
+      read: !!m.read_at,
+    });
+    // 과정 판별용 임시 저장
+    (g as any)._ids = [...((g as any)._ids ?? []), m.recipient_id];
+  }
+  for (const g of groupMap.values()) {
+    const ids: string[] = (g as any)._ids ?? [];
+    delete (g as any)._ids;
+    if (ids.length < 2) continue;
+    // 모든 수신자가 공통으로 속한 과정이 있으면 그 과정명 표시
+    let common: Set<string> | null = null;
+    for (const id of ids) {
+      const cs = coursesByStudent.get(id);
+      if (!cs) { common = null; break; }
+      common = common === null ? new Set(cs) : new Set([...common].filter((c) => cs.has(c)));
+      if (common.size === 0) { common = null; break; }
+    }
+    if (common && common.size > 0) {
+      g.course_name = courseNameById.get([...common][0]) ?? null;
+    }
+  }
+  const sentGroups = Array.from(groupMap.values()).slice(0, 30);
 
   // 모든 사용자 (자기 자신 제외)
   const { data: allUsers } = await supabase
@@ -155,6 +229,14 @@ export default async function AdminMessagesPage() {
             messages={(messages ?? []) as Message[]}
             senderInfo={Object.fromEntries(senderNames)}
           />
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-base font-semibold text-slate-700">보낸 메시지</h2>
+          <p className="mb-2 text-xs text-slate-500">
+            같은 내용으로 여러 명에게 발송한 메시지는 1건으로 묶여 표시됩니다. 클릭하면 받은 사람 명단이 보입니다.
+          </p>
+          <AdminSentList groups={sentGroups} />
         </section>
       </main>
     </>

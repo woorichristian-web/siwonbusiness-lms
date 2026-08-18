@@ -68,10 +68,13 @@ export default async function TeacherMessagesPage() {
   // ====================================================================
   // 3) 보낸 메시지 (최근 30건)
   // ====================================================================
+  // 자동 발송 메시지(수업 알림·커리큘럼 알림)는 제외 — 직접 보낸 메시지만 표시
   const { data: sent } = await supabase
     .from("messages")
     .select("id, recipient_id, body, read_at, created_at")
     .eq("sender_id", profile.id)
+    .not("body", "like", "[수업 24시간 전 알림]%")
+    .not("body", "like", "[커리큘럼 업데이트]%")
     .order("created_at", { ascending: false })
     .limit(30);
 
