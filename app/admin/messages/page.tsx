@@ -129,13 +129,19 @@ export default async function AdminMessagesPage() {
     if (ids.length < 2) continue;
     // 모든 수신자가 공통으로 속한 과정이 있으면 그 과정명 표시
     let common: Set<string> | null = null;
+    let allEnrolled = true;
     for (const id of ids) {
       const cs = coursesByStudent.get(id);
-      if (!cs) { common = null; break; }
-      common = common === null ? new Set(cs) : new Set([...common].filter((c) => cs.has(c)));
-      if (common.size === 0) { common = null; break; }
+      if (!cs || cs.size === 0) { allEnrolled = false; break; }
+      if (common === null) {
+        common = new Set<string>(cs);
+      } else {
+        const prev: Set<string> = common;
+        common = new Set<string>([...prev].filter((c) => cs.has(c)));
+      }
+      if (common.size === 0) { allEnrolled = false; break; }
     }
-    if (common && common.size > 0) {
+    if (allEnrolled && common && common.size > 0) {
       g.course_name = courseNameById.get([...common][0]) ?? null;
     }
   }

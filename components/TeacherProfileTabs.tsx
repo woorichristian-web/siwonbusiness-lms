@@ -337,7 +337,7 @@ function PayrollSection({
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      setMsg({ type: "err", text: "복사에 실패했습니다. 직접 복사해 주세요: " + CENTER_EMAIL });
+      setMsg({ type: "err", text: "Copy failed. Please copy manually: " + CENTER_EMAIL });
     }
   }
 
@@ -410,11 +410,12 @@ function PayrollSection({
       <section className="card">
         <h2 className="mb-1 text-base font-semibold">📅 Monthly Settlement</h2>
         <p className="mb-3 text-xs text-slate-500">
-          월별 정산 내역입니다. 확인 후 <b>Agree</b> 를 눌러 동의해 주세요. 이의가 있으면 <b>Contact</b> 로 센터에 문의하세요.
+          Your monthly settlement statement. Review each month and press <b>Agree</b> to confirm.
+          If something looks wrong, use <b>Contact</b> to reach the center.
         </p>
         {monthly.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-400">
-            아직 진행된(출석체크된) 수업이 없습니다.
+            No completed (attendance-checked) classes yet.
           </p>
         ) : (
           <div className="overflow-x-auto rounded-md border border-slate-200">
@@ -422,10 +423,10 @@ function PayrollSection({
               <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-3 py-2">Month</th>
-                  <th className="px-3 py-2 text-right">시수 (h)</th>
-                  <th className="px-3 py-2 text-right">단가 (KRW)</th>
-                  <th className="px-3 py-2 text-right">금액 (KRW)</th>
-                  <th className="px-3 py-2 text-center">확인 / Confirm</th>
+                  <th className="px-3 py-2 text-right">Hours (h)</th>
+                  <th className="px-3 py-2 text-right">Rate (KRW)</th>
+                  <th className="px-3 py-2 text-right">Amount (KRW)</th>
+                  <th className="px-3 py-2 text-center">Confirm</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -450,7 +451,7 @@ function PayrollSection({
                               ✓ Agreed
                             </span>
                             <span className="text-[10px] text-slate-400">
-                              {new Date(agreedAt).toLocaleDateString("ko-KR")}
+                              {new Date(agreedAt).toLocaleDateString("en-US")}
                             </span>
                             <button
                               type="button"
@@ -458,7 +459,7 @@ function PayrollSection({
                               disabled={busy}
                               className="text-[10px] text-slate-400 underline hover:text-slate-600"
                             >
-                              취소
+                              Cancel
                             </button>
                           </div>
                         ) : (
@@ -490,7 +491,7 @@ function PayrollSection({
         )}
         {rate <= 0 && (
           <p className="mt-2 text-xs text-amber-600">
-            ※ 아래 <b>Payroll Info</b> 에서 시급(단가)을 먼저 입력하면 금액이 계산됩니다.
+            ※ Enter your hourly rate in <b>Payroll Info</b> below to calculate amounts.
           </p>
         )}
       </section>
@@ -505,9 +506,9 @@ function PayrollSection({
             className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-bold text-slate-800">정산 문의 / Contact</h3>
+            <h3 className="text-base font-bold text-slate-800">Settlement Inquiry — Contact</h3>
             <p className="mt-1 text-sm text-slate-500">
-              <b>{contactPeriod}</b> 정산 내역에 이의가 있으시면 아래 센터 이메일로 문의해 주세요.
+              If you have questions about the <b>{contactPeriod}</b> settlement, please contact the center at the email below.
             </p>
             <div className="mt-3 flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
               <code className="flex-1 text-sm text-slate-800">{CENTER_EMAIL}</code>
@@ -516,22 +517,22 @@ function PayrollSection({
                 onClick={copyEmail}
                 className="rounded-md bg-brand-600 px-3 py-1 text-xs font-semibold text-white hover:bg-brand-700"
               >
-                {copied ? "✓ 복사됨" : "복사"}
+                {copied ? "✓ Copied" : "Copy"}
               </button>
             </div>
             <div className="mt-4 flex justify-end gap-2">
               <a
-                href={`mailto:${CENTER_EMAIL}?subject=${encodeURIComponent(`[정산 문의] ${contactPeriod}`)}`}
+                href={`mailto:${CENTER_EMAIL}?subject=${encodeURIComponent(`[Settlement Inquiry] ${contactPeriod}`)}`}
                 className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
               >
-                메일 보내기
+                Send email
               </a>
               <button
                 type="button"
                 onClick={() => setContactPeriod(null)}
                 className="rounded-md bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-700"
               >
-                닫기
+                Close
               </button>
             </div>
           </div>
