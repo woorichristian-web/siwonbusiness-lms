@@ -27,6 +27,8 @@ interface MonthlyRow {
   yearMonth: string;
   classCount: number;
   hours: number;
+  /** 그 달의 첫 수업 ~ 마지막 수업 날짜 */
+  period: string;
 }
 
 export default function TeacherProfileTabs({
@@ -423,6 +425,7 @@ function PayrollSection({
               <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-3 py-2">Month</th>
+                  <th className="px-3 py-2">Period</th>
                   <th className="px-3 py-2 text-right">Hours (h)</th>
                   <th className="px-3 py-2 text-right">Rate (KRW)</th>
                   <th className="px-3 py-2 text-right">Amount (KRW)</th>
@@ -437,6 +440,7 @@ function PayrollSection({
                   return (
                     <tr key={m.yearMonth}>
                       <td className="px-3 py-2 font-medium text-slate-800">{m.yearMonth}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-slate-500">{m.period}</td>
                       <td className="px-3 py-2 text-right text-slate-700">{m.hours.toFixed(1)}</td>
                       <td className="px-3 py-2 text-right text-slate-700">
                         {rate > 0 ? rate.toLocaleString() : "—"}

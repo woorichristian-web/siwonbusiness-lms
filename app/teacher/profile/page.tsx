@@ -36,7 +36,7 @@ export default async function TeacherProfilePage({
   let totalHours = 0;
   let thisMonthCompleted = 0;
   let thisMonthHours = 0;
-  const monthlyMap = new Map<string, { count: number; hours: number }>();
+  const monthlyMap = new Map<string, { count: number; hours: number; first: string; last: string }>();
 
   if (slotIds.length > 0) {
     const { data: bookings } = await supabase
@@ -76,8 +76,10 @@ export default async function TeacherProfilePage({
 
       // 월별 그룹핑 (YYYY-MM)
       const ym = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}`;
-      if (!monthlyMap.has(ym)) monthlyMap.set(ym, { count: 0, hours: 0 });
+      if (!monthlyMap.has(ym)) monthlyMap.set(ym, { count: 0, hours: 0, first: b.start_at, last: b.start_at });
       const m = monthlyMap.get(ym)!;
+      if (b.start_at < m.first) m.first = b.start_at;
+      if (b.start_at > m.last) m.last = b.start_at;
       m.count++;
       m.hours += hours;
     }
@@ -86,11 +88,16 @@ export default async function TeacherProfilePage({
   // 월별 내역 — 최근순
   const monthly = Array.from(monthlyMap.entries())
     .sort(([a], [b]) => b.localeCompare(a))
-    .map(([yearMonth, v]) => ({
-      yearMonth,
-      classCount: v.count,
-      hours: Math.round(v.hours * 100) / 100,
-    }));
+    .map(([yearMonth, v]) => {
+      const fmt = (iso: string) =>
+        new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      return {
+        yearMonth,
+        classCount: v.count,
+        hours: Math.round(v.hours * 100) / 100,
+        period: `${fmt(v.first)} – ${fmt(v.last)}`,
+      };
+    });
 
   // 월별 정산 동의 상태 (period → agreed_at)
   const { data: agreementRows } = await supabase
