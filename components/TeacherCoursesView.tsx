@@ -10,22 +10,21 @@ export interface CoursePattern {
   count: number; // 이 패턴에 해당하는 세션 수
 }
 
-// 강사에게 배정된 "강좌" 1건. 정식 courses 엔티티가 생기기 전까지는
-// 예약(bookings) + 교육생 프로필에서 유도한다. course_code/name/language 는
-// 아직 DB에 없어 null(→ "—") 로 둔다.
+// 강사에게 배정된 "강좌" 1건 — 과정(courses) 단위. 그룹 수업이면 카드 1개에
+// 수강 교육생 전체가 표시된다. (과정 미배정 시 예약 기반 fallback)
 export interface TeacherCourse {
-  student_id: string;
-  student_name: string;
+  id: string; // course id (fallback 시 student id)
+  title: string; // 강좌명 (fallback 시 학생 이름)
   company: string | null;
   course_code: string | null;
-  course_name: string | null;
   language: string | null;
-  class_types: string[]; // 예: ["1on1"]
-  formats: string[]; // 예: ["online"]
-  period_start: string | null; // ISO
-  period_end: string | null; // ISO
-  sessions_count: number;
+  class_types: string[]; // 예: ["small_group"]
+  formats: string[]; // 예: ["offline"]
+  period_start: string | null; // ISO 또는 YYYY-MM-DD
+  period_end: string | null;
+  sessions_count: number | null; // 총 차시
   patterns: CoursePattern[];
+  students: string[]; // 수강 교육생 이름 목록
 }
 
 const WEEKDAYS = [
@@ -88,15 +87,15 @@ export default function TeacherCoursesView({
       </p>
 
       {courses.map((c) => {
-        const open = openIds.has(c.student_id);
-        const title = c.course_name ?? c.student_name;
+        const open = openIds.has(c.id);
+        const title = c.title;
         return (
           <div
-            key={c.student_id}
+            key={c.id}
             className="overflow-hidden rounded-lg border border-slate-200 bg-white"
           >
             <button
-              onClick={() => toggle(c.student_id)}
+              onClick={() => toggle(c.id)}
               className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-slate-50"
             >
               <div className="flex min-w-0 items-center gap-3">
@@ -109,6 +108,11 @@ export default function TeacherCoursesView({
                 {c.company && (
                   <span className="truncate text-xs text-slate-400">
                     · {c.company}
+                  </span>
+                )}
+                {c.students.length > 0 && (
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                    👥 {c.students.length}
                   </span>
                 )}
               </div>
@@ -132,8 +136,27 @@ export default function TeacherCoursesView({
 
                 <dl className="grid grid-cols-1 gap-y-2 sm:grid-cols-[150px_1fr]">
                   <Row label="Course Code" value={c.course_code ?? "—"} />
-                  <Row label="Course Name" value={c.course_name ?? "—"} />
+                  <Row label="Course Name" value={c.title} />
                   <Row label="Company" value={c.company ?? "—"} />
+                  <Row
+                    label={`Students (${c.students.length})`}
+                    value={
+                      c.students.length ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {c.students.map((name) => (
+                            <span
+                              key={name}
+                              className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-700"
+                            >
+                              {name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
                   <Row label="Language" value={c.language ?? "—"} />
                   <Row
                     label="Class Type"
@@ -152,7 +175,7 @@ export default function TeacherCoursesView({
                     label="Class Period"
                     value={`${fmtDate(c.period_start)} – ${fmtDate(c.period_end)}`}
                   />
-                  <Row label="Total Sessions" value={String(c.sessions_count)} />
+                  <Row label="Total Sessions" value={c.sessions_count != null ? String(c.sessions_count) : "—"} />
                   <Row
                     label="Days & Time"
                     value={

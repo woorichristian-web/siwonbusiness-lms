@@ -121,72 +121,127 @@ export default async function TeacherSchedulePage() {
       booked_count: bookingCounts[s.id] ?? 0,
     }));
 
-  // 7) Build per-student "course" info (bookings-based) for the Course Information tab.
-  //    A real courses entity doesn't exist yet, so we derive from bookings + student
-  //    profiles. course_code / course_name / language have no DB source → null ("—").
-  const courseByStudent = new Map<string, any>();
-  for (const b of bookingsRaw) {
-    const s = studentById.get(b.student_id);
-    const slot = slotById.get(b.slot_id);
-    let c = courseByStudent.get(b.student_id);
-    if (!c) {
-      c = {
-        student_id: b.student_id,
-        student_name: s?.name ?? "Unknown",
-        company: s?.company_name ?? null,
-        course_code: null as string | null,
-        course_name: (s?.course_name ?? null) as string | null,
-        language: null as string | null,
-        class_types: new Set<string>(),
-        formats: new Set<string>(),
-        period_start: b.start_at as string,
-        period_end: b.end_at as string,
-        sessions_count: 0,
-        patterns: new Map<
-          string,
-          { weekday: number; time: string; duration_min: number; count: number }
-        >(),
-      };
-      courseByStudent.set(b.student_id, c);
-    }
-    if (slot?.class_type) c.class_types.add(slot.class_type);
-    if (slot?.format) c.formats.add(slot.format);
-    if (b.start_at < c.period_start) c.period_start = b.start_at;
-    if (b.end_at > c.period_end) c.period_end = b.end_at;
-    c.sessions_count++;
-    // Weekly pattern in KST (UTC+9)
-    const kst = new Date(new Date(b.start_at).getTime() + 9 * 3600 * 1000);
-    const weekday = kst.getUTCDay();
-    const time = `${String(kst.getUTCHours()).padStart(2, "0")}:${String(
-      kst.getUTCMinutes(),
-    ).padStart(2, "0")}`;
-    const duration_min = Math.round(
-      (new Date(b.end_at).getTime() - new Date(b.start_at).getTime()) / 60000,
-    );
-    const key = `${weekday}-${time}-${duration_min}`;
-    const p = c.patterns.get(key);
-    if (p) p.count++;
-    else c.patterns.set(key, { weekday, time, duration_min, count: 1 });
-  }
+  // 7) Course Information — 정식 과정(courses) 기반. 과정당 카드 1개,
+  //    카드 안에 수강 교육생 전체 표시. (과정 미배정 강사는 예약 기반 fallback)
+  const WD_INDEX: Record<string, number> = {
+    sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
+  };
+  let courses: TeacherCourse[] = [];
 
-  const courses: TeacherCourse[] = Array.from(courseByStudent.values())
-    .map((c) => ({
-      student_id: c.student_id,
-      student_name: c.student_name,
-      company: c.company,
-      course_code: c.course_code,
-      course_name: c.course_name,
-      language: c.language,
-      class_types: Array.from(c.class_types) as string[],
-      formats: Array.from(c.formats) as string[],
-      period_start: c.period_start,
-      period_end: c.period_end,
-      sessions_count: c.sessions_count,
-      patterns: (Array.from(c.patterns.values()) as CoursePattern[]).sort(
-        (a, b) => a.weekday - b.weekday || a.time.localeCompare(b.time),
-      ),
-    }))
-    .sort((a, b) => a.student_name.localeCompare(b.student_name));
+  const { data: myCourseLinks } = await supabase
+    .from("course_teachers")
+    .select("course_id")
+    .eq("teacher_id", profile.id)
+    .is("assigned_until", null);
+  const myCourseIds = Array.from(
+    new Set((myCourseLinks ?? []).map((r: any) => r.course_id)),
+  );
+
+  if (myCourseIds.length > 0) {
+    const [{ data: courseRows }, { data: enrollRows }] = await Promise.all([
+      supabase.from("courses").select("*").in("id", myCourseIds),
+      supabase
+        .from("course_students")
+        .select("course_id, student_id")
+        .in("course_id", myCourseIds),
+    ]);
+    const enrollIds = Array.from(
+      new Set((enrollRows ?? []).map((r: any) => r.student_id)),
+    );
+    const nameById = new Map<string, string>();
+    if (enrollIds.length > 0) {
+      const { data: ps } = await supabase
+        .from("profiles")
+        .select("id, name")
+        .in("id", enrollIds);
+      for (const p of ps ?? []) nameById.set(p.id, p.name);
+    }
+    const studentsByCourse = new Map<string, string[]>();
+    for (const r of enrollRows ?? []) {
+      const nm = nameById.get(r.student_id);
+      if (!nm) continue;
+      (studentsByCourse.get(r.course_id) ??
+        studentsByCourse.set(r.course_id, []).get(r.course_id)!).push(nm);
+    }
+
+    courses = (courseRows ?? [])
+      .map((c: any) => ({
+        id: c.id,
+        title: c.name,
+        company: c.company_name ?? null,
+        course_code: c.code ?? null,
+        language: c.language ?? null,
+        class_types: c.class_type ? [c.class_type] : [],
+        formats: c.format ? [c.format] : [],
+        period_start: c.start_date ?? null,
+        period_end: c.end_date ?? null,
+        sessions_count: c.total_sessions ?? null,
+        patterns: ((c.weekdays ?? []) as string[])
+          .map((d) => ({
+            weekday: WD_INDEX[d] ?? 0,
+            time: c.class_time ?? "—",
+            duration_min: c.duration_min ?? 60,
+            count: 1,
+          }))
+          .sort((a, b) => a.weekday - b.weekday) as CoursePattern[],
+        students: (studentsByCourse.get(c.id) ?? []).sort((a, b) =>
+          a.localeCompare(b),
+        ),
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  } else {
+    // fallback — 과정 미배정: 예약 기반으로 학생별 카드 (기존 동작)
+    const courseByStudent = new Map<string, any>();
+    for (const b of bookingsRaw) {
+      const s = studentById.get(b.student_id);
+      const slot = slotById.get(b.slot_id);
+      let c = courseByStudent.get(b.student_id);
+      if (!c) {
+        c = {
+          id: b.student_id,
+          title: (s?.course_name ?? s?.name ?? "Unknown") as string,
+          company: s?.company_name ?? null,
+          course_code: null as string | null,
+          language: null as string | null,
+          class_types: new Set<string>(),
+          formats: new Set<string>(),
+          period_start: b.start_at as string,
+          period_end: b.end_at as string,
+          sessions_count: 0,
+          patterns: new Map<string, CoursePattern>(),
+          students: [s?.name ?? "Unknown"],
+        };
+        courseByStudent.set(b.student_id, c);
+      }
+      if (slot?.class_type) c.class_types.add(slot.class_type);
+      if (slot?.format) c.formats.add(slot.format);
+      if (b.start_at < c.period_start) c.period_start = b.start_at;
+      if (b.end_at > c.period_end) c.period_end = b.end_at;
+      c.sessions_count++;
+      const kst = new Date(new Date(b.start_at).getTime() + 9 * 3600 * 1000);
+      const weekday = kst.getUTCDay();
+      const time = `${String(kst.getUTCHours()).padStart(2, "0")}:${String(
+        kst.getUTCMinutes(),
+      ).padStart(2, "0")}`;
+      const duration_min = Math.round(
+        (new Date(b.end_at).getTime() - new Date(b.start_at).getTime()) / 60000,
+      );
+      const key = `${weekday}-${time}-${duration_min}`;
+      const p = c.patterns.get(key);
+      if (p) p.count++;
+      else c.patterns.set(key, { weekday, time, duration_min, count: 1 });
+    }
+    courses = Array.from(courseByStudent.values())
+      .map((c) => ({
+        ...c,
+        class_types: Array.from(c.class_types) as string[],
+        formats: Array.from(c.formats) as string[],
+        patterns: (Array.from(c.patterns.values()) as CoursePattern[]).sort(
+          (a, b) => a.weekday - b.weekday || a.time.localeCompare(b.time),
+        ),
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }
 
   return (
     <>
