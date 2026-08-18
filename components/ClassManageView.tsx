@@ -311,9 +311,16 @@ function CourseCard({
       map.get(key)!.push(r);
     }
     const entries = Array.from(map.entries());
-    entries.sort(([, a], [, b]) =>
-      new Date(b[0].start_at).getTime() - new Date(a[0].start_at).getTime()
-    );
+    // 정렬: 지난(진행된) 수업이 위 — 최신순. 예정 수업은 아래 — 가까운 순
+    // (먼 미래일수록 맨 뒤). 출석체크된 최근 수업이 항상 상단에 온다.
+    const now = Date.now();
+    entries.sort(([, a], [, b]) => {
+      const ta = new Date(a[0].start_at).getTime();
+      const tb = new Date(b[0].start_at).getTime();
+      const aPast = ta <= now, bPast = tb <= now;
+      if (aPast !== bPast) return aPast ? -1 : 1; // 지난 수업 먼저
+      return aPast ? tb - ta : ta - tb; // 지난: 최신순 / 예정: 가까운 순
+    });
     return entries;
   }, [items]);
 
