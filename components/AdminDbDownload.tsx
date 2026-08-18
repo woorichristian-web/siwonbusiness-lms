@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -202,11 +202,58 @@ export default function AdminDbDownload({
         });
 
         const ws = XLSX.utils.json_to_sheet(rows);
-        // 컬럼 너비 자동 조절
+        // ---------- 디자인 적용 ----------
         const headers = Object.keys(rows[0] ?? {});
-        ws["!cols"] = headers.map((h) => ({
-          wch: Math.min(28, Math.max(10, h.length + 2)),
-        }));
+        // 헤더: 브랜드 블루 배경 + 흰색 볼드 + 테두리
+        const HEADER_STYLE = {
+          font: { bold: true, sz: 11, color: { rgb: "FFFFFF" }, name: "맑은 고딕" },
+          fill: { patternType: "solid", fgColor: { rgb: "1E40AF" } },
+          alignment: { horizontal: "center", vertical: "center", wrapText: true },
+          border: {
+            top: { style: "thin", color: { rgb: "172554" } },
+            bottom: { style: "thin", color: { rgb: "172554" } },
+            left: { style: "thin", color: { rgb: "172554" } },
+            right: { style: "thin", color: { rgb: "172554" } },
+          },
+        };
+        const BODY_BORDER = {
+          top: { style: "thin", color: { rgb: "E2E8F0" } },
+          bottom: { style: "thin", color: { rgb: "E2E8F0" } },
+          left: { style: "thin", color: { rgb: "E2E8F0" } },
+          right: { style: "thin", color: { rgb: "E2E8F0" } },
+        };
+        headers.forEach((_, c) => {
+          const addr = XLSX.utils.encode_cell({ r: 0, c });
+          if (ws[addr]) ws[addr].s = HEADER_STYLE;
+        });
+        // 데이터 행: 얇은 테두리 + 짝수행 옅은 배경(줄무늬)
+        for (let r = 1; r <= rows.length; r++) {
+          for (let c = 0; c < headers.length; c++) {
+            const addr = XLSX.utils.encode_cell({ r, c });
+            if (!ws[addr]) continue;
+            ws[addr].s = {
+              font: { sz: 10, name: "맑은 고딕" },
+              border: BODY_BORDER,
+              alignment: { vertical: "center" },
+              ...(r % 2 === 0
+                ? { fill: { patternType: "solid", fgColor: { rgb: "F1F5F9" } } }
+                : {}),
+            };
+          }
+        }
+        // 컬럼 너비: 헤더/데이터 중 긴 쪽 기준 (한글 폭 보정)
+        ws["!cols"] = headers.map((h, c) => {
+          let maxLen = h.length * 2; // 한글 헤더 폭 보정
+          for (let r = 1; r <= Math.min(rows.length, 100); r++) {
+            const addr = XLSX.utils.encode_cell({ r, c });
+            const v = ws[addr]?.v;
+            if (v != null) maxLen = Math.max(maxLen, String(v).length);
+          }
+          return { wch: Math.min(36, Math.max(10, maxLen + 2)) };
+        });
+        // 헤더 행 높이 + 첫 행 고정(스크롤 시 헤더 유지)
+        ws["!rows"] = [{ hpt: 24 }];
+        (ws as any)["!freeze"] = { xSplit: 0, ySplit: 1 };
         const wb = XLSX.utils.book_new();
         const sheetName = scope === "company" && company ? company.slice(0, 28) : "전체교육생";
         XLSX.utils.book_append_sheet(wb, ws, sheetName);
