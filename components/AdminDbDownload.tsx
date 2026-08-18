@@ -278,19 +278,19 @@ export default function AdminDbDownload({
           <label className="inline-flex items-center gap-1 text-sm">
             <input
               type="radio"
-              checked={scope === "all"}
-              onChange={() => setScope("all")}
-            />
-            <span>전체 교육생</span>
-          </label>
-          <label className="inline-flex items-center gap-1 text-sm">
-            <input
-              type="radio"
               checked={scope === "company"}
               onChange={() => setScope("company")}
               disabled={companies.length === 0}
             />
             <span>기업별</span>
+          </label>
+          <label className="inline-flex items-center gap-1 text-sm">
+            <input
+              type="radio"
+              checked={scope === "all"}
+              onChange={() => setScope("all")}
+            />
+            <span>전체 교육생</span>
           </label>
           {scope === "company" && (
             <select
