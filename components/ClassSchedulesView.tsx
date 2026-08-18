@@ -8,7 +8,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventClickArg, EventInput } from "@fullcalendar/core";
 import type { AttendanceStatus, Feedback } from "@/lib/types";
-import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS } from "@/lib/types";
+import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS, FEEDBACK_KEYS, feedbackTotal10 } from "@/lib/types";
 import { markAttendance, clearAttendance } from "@/lib/actions/attendance";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -306,18 +306,8 @@ function StudentDetailModal({
 
   // Feedback summary (if any leaf ratings are filled)
   const fb = event.feedback;
-  const fbValues = fb
-    ? [
-        fb.grammar_accuracy, fb.grammar_complexity,
-        fb.vocabulary_diversity, fb.vocabulary_relevancy,
-        fb.comprehension,
-        fb.content_clarity, fb.content_organization,
-        fb.participation, fb.tone_manner, fb.preparation,
-      ].filter((v): v is number => typeof v === "number")
-    : [];
-  const fbAvg = fbValues.length === 0
-    ? null
-    : fbValues.reduce((s, n) => s + n, 0) / fbValues.length;
+  const fbValues = fb ? FEEDBACK_KEYS.map((k) => (fb as any)[k]).filter((v): v is number => typeof v === "number") : [];
+  const fbAvg = fb ? feedbackTotal10(fb as any) : null;
 
   const classInfo =
     start.toLocaleDateString("en-US", { weekday: "short", month: "2-digit", day: "2-digit" })
@@ -436,7 +426,7 @@ function StudentDetailModal({
                 <h4 className="text-sm font-semibold text-slate-700">📝 Feedback</h4>
                 <p className="text-xs text-slate-500">
                   {fbAvg != null
-                    ? `Average: ${fbAvg.toFixed(2)}/10 · ${fbValues.length}/10 items rated`
+                    ? `Average: ${fbAvg.toFixed(2)}/10 · ${fbValues.length}/11 items rated`
                     : "Not evaluated yet."}
                 </p>
               </div>
@@ -669,18 +659,8 @@ function ClassCard({
 
   // Feedback summary (avg of completed ratings, if any)
   const fb = event.feedback;
-  const fbValues = fb
-    ? [
-        fb.grammar_accuracy, fb.grammar_complexity,
-        fb.vocabulary_diversity, fb.vocabulary_relevancy,
-        fb.comprehension,
-        fb.content_clarity, fb.content_organization,
-        fb.participation, fb.tone_manner, fb.preparation,
-      ].filter((v): v is number => typeof v === "number")
-    : [];
-  const fbAvg = fbValues.length === 0
-    ? null
-    : fbValues.reduce((s, n) => s + n, 0) / fbValues.length;
+  const fbValues = fb ? FEEDBACK_KEYS.map((k) => (fb as any)[k]).filter((v): v is number => typeof v === "number") : [];
+  const fbAvg = fb ? feedbackTotal10(fb as any) : null;
 
   const timeFmt = (d: Date) =>
     d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });

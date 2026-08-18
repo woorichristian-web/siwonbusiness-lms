@@ -2,7 +2,7 @@
 // Used by /admin/companies/[name]/courses/[course] page.
 
 import { createClient } from "@/lib/supabase/server";
-import { FEEDBACK_KEYS, type FeedbackKey } from "@/lib/types";
+import { FEEDBACK_KEYS, FEEDBACK_AREAS, feedbackAreaPoints, feedbackTotal10, type FeedbackKey } from "@/lib/types";
 
 export interface CourseReportData {
   companyName: string;
@@ -41,25 +41,15 @@ export interface CourseReportData {
   }>;
 }
 
-// Area definitions (must match ProgressReport)
-const AREAS: { key: string; label: string; color: string; leaves: FeedbackKey[] }[] = [
-  { key: "grammar",       label: "Grammar",           color: "#1d4ed8", leaves: ["grammar_accuracy", "grammar_complexity"] },
-  { key: "vocabulary",    label: "Vocabulary",        color: "#0891b2", leaves: ["vocabulary_diversity", "vocabulary_relevancy"] },
-  { key: "comprehension", label: "Comprehension",     color: "#059669", leaves: ["comprehension"] },
-  { key: "content",       label: "Content & Message", color: "#65a30d", leaves: ["content_clarity", "content_organization"] },
-  { key: "attitude",      label: "Attitude",          color: "#dc2626", leaves: ["participation", "tone_manner", "preparation"] },
-];
+// Area definitions — lib/types 의 단일 소스 사용 (6영역, 가중 배점)
+const AREAS = FEEDBACK_AREAS;
 
 function leafAvg(scores: Record<string, number | null>, leaves: FeedbackKey[]): number | null {
-  const vals = leaves.map((k) => scores[k]).filter((v): v is number => typeof v === "number");
-  if (vals.length === 0) return null;
-  return vals.reduce((s, n) => s + n, 0) / vals.length;
+  return feedbackAreaPoints(scores as any, leaves);
 }
 
 function overallAvg(scores: Record<string, number | null>): number | null {
-  const vals = FEEDBACK_KEYS.map((k) => scores[k]).filter((v): v is number => typeof v === "number");
-  if (vals.length === 0) return null;
-  return vals.reduce((s, n) => s + n, 0) / vals.length;
+  return feedbackTotal10(scores as any);
 }
 
 export async function getCourseReport(

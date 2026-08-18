@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import StarRating from "@/components/StarRating";
 import { saveFeedback } from "@/lib/actions/feedback";
 import type { Feedback, FeedbackKey } from "@/lib/types";
+import { feedbackTotal10, FEEDBACK_KEYS } from "@/lib/types";
 
 export interface SessionEntry {
   booking_id: string;
@@ -31,16 +32,17 @@ function isComplete(fb: Feedback | null | undefined): boolean {
 
 function ratingsFromFeedback(fb: Feedback | null): Ratings {
   return {
-    grammar_accuracy:     fb?.grammar_accuracy     ?? null,
-    grammar_complexity:   fb?.grammar_complexity   ?? null,
-    vocabulary_diversity: fb?.vocabulary_diversity ?? null,
-    vocabulary_relevancy: fb?.vocabulary_relevancy ?? null,
-    comprehension:        fb?.comprehension        ?? null,
-    content_clarity:      fb?.content_clarity      ?? null,
-    content_organization: fb?.content_organization ?? null,
-    participation:        fb?.participation        ?? null,
-    tone_manner:          fb?.tone_manner          ?? null,
-    preparation:          fb?.preparation          ?? null,
+    delivery_pronunciation: fb?.delivery_pronunciation ?? null,
+    delivery_pace:          fb?.delivery_pace          ?? null,
+    grammar_accuracy:       fb?.grammar_accuracy       ?? null,
+    grammar_complexity:     fb?.grammar_complexity     ?? null,
+    vocabulary_diversity:   fb?.vocabulary_diversity   ?? null,
+    vocabulary_relevancy:   fb?.vocabulary_relevancy   ?? null,
+    comprehension:          fb?.comprehension          ?? null,
+    content_clarity:        fb?.content_clarity        ?? null,
+    content_organization:   fb?.content_organization   ?? null,
+    participation:          fb?.participation          ?? null,
+    homework:               fb?.homework               ?? null,
   };
 }
 
@@ -87,8 +89,8 @@ export default function FeedbackModal({
     setRatings((r) => ({ ...r, [key]: v }));
   }
 
-  const filled = Object.values(ratings).filter((v) => v != null) as number[];
-  const avg = filled.length === 0 ? null : (filled.reduce((s, n) => s + n, 0) / filled.length);
+  const filledCount = FEEDBACK_KEYS.filter((k) => ratings[k] != null).length;
+  const total10 = feedbackTotal10(ratings);
 
   function save(status: "draft" | "submitted") {
     if (!selectedSession) return;
@@ -140,12 +142,12 @@ export default function FeedbackModal({
             <h3 className="text-lg font-bold text-slate-800">📝 Class Feedback</h3>
             <p className="mt-0.5 text-sm text-slate-500"><b>{studentName}</b> · {classInfo}</p>
           </div>
-          {filled.length > 0 && (
+          {total10 != null && (
             <div className="rounded-md bg-amber-50 px-3 py-1.5 text-right text-xs">
-              <div className="text-slate-500">Average</div>
+              <div className="text-slate-500">Score</div>
               <div className="text-lg font-bold text-amber-700">
-                {avg!.toFixed(2)}
-                <span className="text-xs font-normal text-slate-400"> / 10.00</span>
+                {total10.toFixed(2)}
+                <span className="text-xs font-normal text-slate-400"> / 10</span>
               </div>
             </div>
           )}
@@ -195,11 +197,20 @@ export default function FeedbackModal({
         </section>
 
         <p className="mb-4 text-xs text-slate-500">
-          Rate each item from 1 to 10. Click the same number again to clear. Unrated items are excluded from the average.
+          Rate each item with 1–5 stars (★4 = 0.8 of a 1-point item). Total score is out of 10:
+          Delivery 2 · Grammar 2 · Vocabulary 2 · Comprehension 1 · Content 2 · Attitude 1.
+          Unrated items are excluded.
         </p>
 
         {/* LANGUAGE */}
         <Section title="🗣️ Language">
+          <SubSection title="Delivery">
+            <RatingRow label="Pronunciation" value={ratings.delivery_pronunciation!}
+              onChange={(v) => set("delivery_pronunciation", v)} />
+            <RatingRow label="Pace" value={ratings.delivery_pace!}
+              onChange={(v) => set("delivery_pace", v)} />
+          </SubSection>
+
           <SubSection title="Grammar">
             <RatingRow label="Accuracy" value={ratings.grammar_accuracy!}
               onChange={(v) => set("grammar_accuracy", v)} />
@@ -231,10 +242,8 @@ export default function FeedbackModal({
         <Section title="🤝 Attitude">
           <RatingRow label="Participation" value={ratings.participation!}
             onChange={(v) => set("participation", v)} />
-          <RatingRow label="Tone & Manner" value={ratings.tone_manner!}
-            onChange={(v) => set("tone_manner", v)} />
-          <RatingRow label="Preparation" value={ratings.preparation!}
-            onChange={(v) => set("preparation", v)} />
+          <RatingRow label="Homework" value={ratings.homework!}
+            onChange={(v) => set("homework", v)} />
         </Section>
 
         {/* COMMENT */}

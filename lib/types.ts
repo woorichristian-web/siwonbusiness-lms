@@ -93,10 +93,19 @@ export interface Attendance {
 }
 
 /**
- * Per-class feedback. Only leaf categories are scored (1-5).
- * Total 10 ratings + free-form comment.
+ * Per-class feedback. Leaf 항목은 별점 1~5로 입력하고, 항목별 가중치를 곱해
+ * 점수화한다. 총점 10점 만점:
+ *   Delivery(Pronunciation 1 + Pace 1) = 2
+ *   Grammar(Accuracy 1 + Complexity 1) = 2
+ *   Vocabulary(Diversity 1 + Relevancy 1) = 2
+ *   Comprehension = 1
+ *   Content & Message(Clarity 1 + Organization 1) = 2
+ *   Attitude(Participation 0.5 + Homework 0.5) = 1
+ * (tone_manner / preparation 은 구버전 컬럼 — 더 이상 사용하지 않음)
  */
 export type FeedbackKey =
+  | "delivery_pronunciation"
+  | "delivery_pace"
   | "grammar_accuracy"
   | "grammar_complexity"
   | "vocabulary_diversity"
@@ -105,10 +114,11 @@ export type FeedbackKey =
   | "content_clarity"
   | "content_organization"
   | "participation"
-  | "tone_manner"
-  | "preparation";
+  | "homework";
 
 export const FEEDBACK_KEYS: FeedbackKey[] = [
+  "delivery_pronunciation",
+  "delivery_pace",
   "grammar_accuracy",
   "grammar_complexity",
   "vocabulary_diversity",
@@ -117,15 +127,79 @@ export const FEEDBACK_KEYS: FeedbackKey[] = [
   "content_clarity",
   "content_organization",
   "participation",
-  "tone_manner",
-  "preparation",
+  "homework",
 ];
+
+/** 항목별 배점 (별 5개 만점 = 이 점수). 합계 = 10. */
+export const FEEDBACK_WEIGHTS: Record<FeedbackKey, number> = {
+  delivery_pronunciation: 1,
+  delivery_pace: 1,
+  grammar_accuracy: 1,
+  grammar_complexity: 1,
+  vocabulary_diversity: 1,
+  vocabulary_relevancy: 1,
+  comprehension: 1,
+  content_clarity: 1,
+  content_organization: 1,
+  participation: 0.5,
+  homework: 0.5,
+};
+
+/** 상위 영역 정의 (표시 순서 고정). max = 영역 배점 합. */
+export const FEEDBACK_AREAS: {
+  key: string;
+  label: string;
+  color: string;
+  leaves: FeedbackKey[];
+  max: number;
+}[] = [
+  { key: "delivery",      label: "Delivery",          color: "#7c3aed", leaves: ["delivery_pronunciation", "delivery_pace"], max: 2 },
+  { key: "grammar",       label: "Grammar",           color: "#1d4ed8", leaves: ["grammar_accuracy", "grammar_complexity"], max: 2 },
+  { key: "vocabulary",    label: "Vocabulary",        color: "#0891b2", leaves: ["vocabulary_diversity", "vocabulary_relevancy"], max: 2 },
+  { key: "comprehension", label: "Comprehension",     color: "#059669", leaves: ["comprehension"], max: 1 },
+  { key: "content",       label: "Content & Message", color: "#65a30d", leaves: ["content_clarity", "content_organization"], max: 2 },
+  { key: "attitude",      label: "Attitude",          color: "#dc2626", leaves: ["participation", "homework"], max: 1 },
+];
+
+type ScoreMap = Partial<Record<FeedbackKey, number | null | undefined>>;
+
+/** 영역 획득 점수 (별 1~5 × 가중치/5). 미평가 항목 제외. 전부 미평가면 null. */
+export function feedbackAreaPoints(
+  scores: ScoreMap,
+  leaves: FeedbackKey[],
+): number | null {
+  let pts = 0, rated = false;
+  for (const k of leaves) {
+    const v = scores[k];
+    if (typeof v === "number") {
+      pts += (v / 5) * FEEDBACK_WEIGHTS[k];
+      rated = true;
+    }
+  }
+  return rated ? pts : null;
+}
+
+/** 총점 (10점 만점). 미평가 항목은 제외하고 평가된 배점 기준으로 10점 환산. */
+export function feedbackTotal10(scores: ScoreMap): number | null {
+  let pts = 0, w = 0;
+  for (const k of FEEDBACK_KEYS) {
+    const v = scores[k];
+    if (typeof v === "number") {
+      pts += (v / 5) * FEEDBACK_WEIGHTS[k];
+      w += FEEDBACK_WEIGHTS[k];
+    }
+  }
+  if (w === 0) return null;
+  return (pts / w) * 10;
+}
 
 export type FeedbackStatus = "draft" | "submitted";
 
 export interface Feedback {
   id: string;
   booking_id: string;
+  delivery_pronunciation: number | null;
+  delivery_pace: number | null;
   grammar_accuracy: number | null;
   grammar_complexity: number | null;
   vocabulary_diversity: number | null;
@@ -134,7 +208,10 @@ export interface Feedback {
   content_clarity: number | null;
   content_organization: number | null;
   participation: number | null;
+  homework: number | null;
+  /** @deprecated 구버전 항목 — 더 이상 입력받지 않음 */
   tone_manner: number | null;
+  /** @deprecated 구버전 항목 — 더 이상 입력받지 않음 */
   preparation: number | null;
   comment: string | null;
   status: FeedbackStatus;

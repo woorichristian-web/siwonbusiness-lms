@@ -3,7 +3,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type { FeedbackKey } from "@/lib/types";
-import { FEEDBACK_KEYS } from "@/lib/types";
+import { FEEDBACK_KEYS, feedbackTotal10 } from "@/lib/types";
 
 export interface FeedbackPoint {
   date: string; // ISO date of the booking (start_at)
@@ -88,7 +88,7 @@ export async function getStudentProgress(studentId: string): Promise<ProgressDat
       feedbackPoints.push({
         date: b.start_at,
         scores,
-        avg: n === 0 ? null : sum / n,
+        avg: feedbackTotal10(scores),
         comment: typeof fb.comment === "string" && fb.comment.trim() ? fb.comment : null,
       });
     }

@@ -11,45 +11,20 @@ import type { FeedbackKey } from "@/lib/types";
 import type { ProgressData, FeedbackPoint } from "@/lib/progress";
 import HelpTooltip from "@/components/HelpTooltip";
 
-/**
- * High-level areas shown on the chart (5 lines instead of 10 leaf categories).
- * Each area's score per session = average of its constituent leaf ratings.
- *
- *   Grammar          = avg(grammar_accuracy, grammar_complexity)
- *   Vocabulary       = avg(vocabulary_diversity, vocabulary_relevancy)
- *   Comprehension    = comprehension
- *   Content & Message = avg(content_clarity, content_organization)
- *   Attitude         = avg(participation, tone_manner, preparation)
- */
-type AreaKey =
-  | "grammar"
-  | "vocabulary"
-  | "comprehension"
-  | "content"
-  | "attitude";
+// 상위 6영역 + 배점(가중치)은 lib/types 의 단일 소스를 사용한다.
+// 영역 점수 = Σ(별/5 × 항목 배점) — Delivery 2, Grammar 2, Vocabulary 2,
+// Comprehension 1, Content 2, Attitude 1 → 총 10점.
+import { FEEDBACK_AREAS, feedbackAreaPoints } from "@/lib/types";
 
-const AREAS: { key: AreaKey; label: string; color: string; leaves: FeedbackKey[]; group: "Language" | "Attitude" }[] = [
-  { key: "grammar",       label: "Grammar",          color: "#1d4ed8", group: "Language",
-    leaves: ["grammar_accuracy", "grammar_complexity"] },
-  { key: "vocabulary",    label: "Vocabulary",       color: "#0891b2", group: "Language",
-    leaves: ["vocabulary_diversity", "vocabulary_relevancy"] },
-  { key: "comprehension", label: "Comprehension",    color: "#059669", group: "Language",
-    leaves: ["comprehension"] },
-  { key: "content",       label: "Content & Message", color: "#65a30d", group: "Language",
-    leaves: ["content_clarity", "content_organization"] },
-  { key: "attitude",      label: "Attitude",         color: "#dc2626", group: "Attitude",
-    leaves: ["participation", "tone_manner", "preparation"] },
-];
+const AREAS = FEEDBACK_AREAS;
 
 const LABEL_BY_KEY: Record<string, string> = Object.fromEntries(
   AREAS.map((a) => [a.key, a.label])
 );
 
-/** Per-session score for one area = mean of its leaf ratings (skip nulls). */
+/** Per-session earned points for one area (weighted, skip nulls). */
 function areaScore(scores: Partial<Record<FeedbackKey, number | null>>, leaves: FeedbackKey[]): number | null {
-  const vals = leaves.map((k) => scores[k]).filter((v): v is number => typeof v === "number");
-  if (vals.length === 0) return null;
-  return vals.reduce((s, n) => s + n, 0) / vals.length;
+  return feedbackAreaPoints(scores, leaves);
 }
 
 interface ChartPoint {
@@ -129,7 +104,7 @@ const T_KO = {
   courseTitle: "과정 진행 상황",
   courseValue: (p: number, b: number) => `${p} / ${b}회 진행`,
   overallTitle: "영역별 점수 비교",
-  overallSub: "전체 피드백의 영역별 평균 점수 (1~10점)",
+  overallSub: "영역별 평균 획득 점수 — Delivery 2 · Grammar 2 · Vocabulary 2 · Comprehension 1 · Content 2 · Attitude 1 (총 10점)",
   noFeedback: "아직 등록된 피드백이 없습니다.",
   feedbackTitle: "피드백",
   feedbackSub: "강사가 남긴 코멘트 (날짜별)",
@@ -137,7 +112,7 @@ const T_KO = {
   avg: "평균",
   detailsTitle: (n: number) => `📋 피드백 상세 (${n}건)`,
   dateCol: "날짜",
-  detailsNote: "각 행은 한 수업입니다. 영역 점수는 세션 평균 (Grammar = 정확성·복잡성 평균 등).",
+  detailsNote: "각 행은 한 수업입니다. 영역 점수 = Σ(별/5 × 배점), Total 은 10점 만점.",
   download: "⬇ PNG 다운로드", downloading: "이미지 생성 중...",
   locale: "ko-KR",
 };
@@ -155,7 +130,7 @@ const T_EN: typeof T_KO = {
   courseTitle: "Course Progress",
   courseValue: (p, b) => `${p} / ${b} sessions`,
   overallTitle: "Overall Comparison",
-  overallSub: "Average score per area across all feedback (scale 1–10)",
+  overallSub: "Average earned points per area — Delivery 2 · Grammar 2 · Vocabulary 2 · Comprehension 1 · Content 2 · Attitude 1 (total 10)",
   noFeedback: "No feedback recorded yet.",
   feedbackTitle: "Feedback",
   feedbackSub: "Teacher comments by date",
@@ -163,7 +138,7 @@ const T_EN: typeof T_KO = {
   avg: "Avg",
   detailsTitle: (n) => `📋 Feedback Details (${n} entries)`,
   dateCol: "Date",
-  detailsNote: "Each row is one class. Areas show per-session averages (Grammar = avg of Accuracy + Complexity, etc.).",
+  detailsNote: "Each row is one class. Area points = Σ(stars/5 × weight); Total is out of 10.",
   download: "⬇ Download PNG", downloading: "Generating...",
   locale: "en-US",
 };
@@ -335,9 +310,9 @@ export default function ProgressReport({
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={0} />
-                  <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 2]} tick={{ fontSize: 11 }} />
                   <Tooltip
-                    formatter={(v: any) => [typeof v === "number" ? v.toFixed(2) : v, "Avg"]}
+                    formatter={(v: any) => [typeof v === "number" ? v.toFixed(2) : v, "Points"]}
                   />
                   <Bar dataKey="score" radius={[4, 4, 0, 0]}>
                     {overallAverages.map((a) => (
@@ -394,6 +369,7 @@ export default function ProgressReport({
               <thead className="bg-slate-50 text-left text-slate-500">
                 <tr>
                   <th className="px-2 py-1 whitespace-nowrap">{t.dateCol}</th>
+                  <th className="px-2 py-1">Delivery</th>
                   <th className="px-2 py-1">Grammar</th>
                   <th className="px-2 py-1">Vocab</th>
                   <th className="px-2 py-1">Comp</th>
@@ -404,11 +380,12 @@ export default function ProgressReport({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {data.feedbackPoints.map((p, i) => {
+                  const delivery = areaScore(p.scores, ["delivery_pronunciation", "delivery_pace"]);
                   const grammar = areaScore(p.scores, ["grammar_accuracy", "grammar_complexity"]);
                   const vocab = areaScore(p.scores, ["vocabulary_diversity", "vocabulary_relevancy"]);
                   const comp = areaScore(p.scores, ["comprehension"]);
                   const content = areaScore(p.scores, ["content_clarity", "content_organization"]);
-                  const attitude = areaScore(p.scores, ["participation", "tone_manner", "preparation"]);
+                  const attitude = areaScore(p.scores, ["participation", "homework"]);
                   const d = new Date(p.date);
                   return (
                     <tr key={i}>
@@ -417,6 +394,7 @@ export default function ProgressReport({
                           year: "2-digit", month: "2-digit", day: "2-digit", weekday: "short",
                         })}
                       </td>
+                      <td className="px-2 py-1">{delivery?.toFixed(1) ?? "—"}</td>
                       <td className="px-2 py-1">{grammar?.toFixed(1) ?? "—"}</td>
                       <td className="px-2 py-1">{vocab?.toFixed(1) ?? "—"}</td>
                       <td className="px-2 py-1">{comp?.toFixed(1) ?? "—"}</td>

@@ -137,12 +137,13 @@ export default function AdminDbDownload({
           // Teacher feedback averages (Language / Attitude)
           const fbs = feedbackByStudent.get(s.id) ?? [];
           const langKeys = [
+            "delivery_pronunciation", "delivery_pace",
             "grammar_accuracy", "grammar_complexity",
             "vocabulary_diversity", "vocabulary_relevancy",
             "comprehension",
             "content_clarity", "content_organization",
           ];
-          const attKeys = ["participation", "tone_manner", "preparation"];
+          const attKeys = ["participation", "homework"];
           const collect = (keys: string[]) => {
             const vals: number[] = [];
             for (const f of fbs) {

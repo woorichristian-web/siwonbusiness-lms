@@ -5,7 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markAttendance, clearAttendance } from "@/lib/actions/attendance";
 import type { AttendanceStatus, ClassFormat, ClassType, Feedback } from "@/lib/types";
-import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS } from "@/lib/types";
+import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS, FEEDBACK_KEYS, feedbackTotal10 } from "@/lib/types";
 import FeedbackModal, { type SessionEntry } from "@/components/FeedbackModal";
 
 export interface ClassRow {
@@ -475,18 +475,8 @@ function StudentRow({
   }
 
   const fb = row.feedback;
-  const fbValues = fb
-    ? [
-        fb.grammar_accuracy, fb.grammar_complexity,
-        fb.vocabulary_diversity, fb.vocabulary_relevancy,
-        fb.comprehension,
-        fb.content_clarity, fb.content_organization,
-        fb.participation, fb.tone_manner, fb.preparation,
-      ].filter((v): v is number => typeof v === "number")
-    : [];
-  const fbAvg = fbValues.length === 0
-    ? null
-    : fbValues.reduce((s, n) => s + n, 0) / fbValues.length;
+  const fbValues = fb ? FEEDBACK_KEYS.map((k) => (fb as any)[k]).filter((v): v is number => typeof v === "number") : [];
+  const fbAvg = fb ? feedbackTotal10(fb as any) : null;
   const fbStatus = fb?.status ?? null;
 
   return (

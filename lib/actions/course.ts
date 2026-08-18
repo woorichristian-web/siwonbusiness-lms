@@ -172,7 +172,7 @@ export async function replaceCourseTeacher(
 // ---------------------------------------------------------------------
 // 과정 데이터 리포트 (엑셀 다운로드용 집계): 주차별 점수 추이 + 출석율
 // ---------------------------------------------------------------------
-import { FEEDBACK_KEYS } from "@/lib/types";
+import { feedbackTotal10 } from "@/lib/types";
 
 export interface CourseReportStudent {
   name: string;
@@ -201,8 +201,7 @@ function mondayKST(iso: string): string {
   return `${monday.getUTCFullYear()}-${p(monday.getUTCMonth() + 1)}-${p(monday.getUTCDate())}`;
 }
 function fbAvg(fb: any): number | null {
-  const vals = FEEDBACK_KEYS.map((k) => fb[k]).filter((v: any): v is number => typeof v === "number");
-  return vals.length ? vals.reduce((s: number, n: number) => s + n, 0) / vals.length : null;
+  return feedbackTotal10(fb);
 }
 
 export async function getCourseReportData(courseId: string) {
