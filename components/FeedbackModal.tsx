@@ -214,8 +214,10 @@ export default function FeedbackModal({
               onChange={(v) => set("vocabulary_relevancy", v)} />
           </SubSection>
 
-          <RatingRow label="Comprehension" value={ratings.comprehension!}
-            onChange={(v) => set("comprehension", v)} />
+          <SubSection title="Comprehension">
+            <RatingRow label="Comprehension" value={ratings.comprehension!}
+              onChange={(v) => set("comprehension", v)} />
+          </SubSection>
 
           <SubSection title="Content & Message">
             <RatingRow label="Clarity" value={ratings.content_clarity!}
