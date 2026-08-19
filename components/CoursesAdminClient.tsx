@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   createCourse,
   updateCourse,
+  deleteCourse,
   assignCourseTeachers,
   removeCourseTeacher,
   replaceCourseTeacher,
@@ -69,7 +70,6 @@ export default function CoursesAdminClient({
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [editFor, setEditFor] = useState<CourseRow | null>(null);
-  const [assignFor, setAssignFor] = useState<CourseRow | null>(null);
 
   return (
     <div className="space-y-4">
@@ -79,7 +79,9 @@ export default function CoursesAdminClient({
         </button>
       </div>
 
-      {showCreate && <CreateForm onDone={() => setShowCreate(false)} />}
+      {showCreate && (
+        <CreateForm onDone={() => setShowCreate(false)} allTeachers={allTeachers} assignedIds={[]} />
+      )}
 
       {courses.length === 0 ? (
         <div className="card text-center text-sm text-slate-500">
@@ -114,7 +116,6 @@ export default function CoursesAdminClient({
                         course={c}
                         teachers={assignments[c.id] ?? []}
                         studentCount={studentCounts[c.id] ?? 0}
-                        onAssign={() => setAssignFor(c)}
                         onEdit={() => setEditFor(c)}
                       />
                     ))}
@@ -129,25 +130,30 @@ export default function CoursesAdminClient({
       {editFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditFor(null)}>
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <CreateForm initial={editFor} onDone={() => setEditFor(null)} />
+            <CreateForm
+              initial={editFor}
+              onDone={() => setEditFor(null)}
+              allTeachers={allTeachers}
+              assignedIds={(assignments[editFor.id] ?? []).map((a) => a.teacher_id)}
+            />
           </div>
         </div>
       )}
 
-      {assignFor && (
-        <TeacherAssignModal
-          course={assignFor}
-          allTeachers={allTeachers}
-          assigned={assignments[assignFor.id] ?? []}
-          onClose={() => setAssignFor(null)}
-        />
-      )}
+
     </div>
   );
 }
 
 // ---------------------------------------------------------------------
-function CreateForm({ onDone, initial }: { onDone: () => void; initial?: CourseRow | null }) {
+function CreateForm({
+  onDone, initial, allTeachers, assignedIds,
+}: {
+  onDone: () => void;
+  initial?: CourseRow | null;
+  allTeachers: TeacherOption[];
+  assignedIds: string[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -170,6 +176,9 @@ function CreateForm({ onDone, initial }: { onDone: () => void; initial?: CourseR
   const [customBook, setCustomBook] = useState(
     !!(initial?.textbook && !TEXTBOOKS.includes(initial.textbook)),
   );
+  const [selTeachers, setSelTeachers] = useState<Set<string>>(new Set(assignedIds));
+  const [tSearch, setTSearch] = useState("");
+  const [tLang, setTLang] = useState("all");
   const [customLang, setCustomLang] = useState(
     !!(initial?.language && !LANGUAGES.includes(initial.language)),
   );
@@ -194,6 +203,13 @@ function CreateForm({ onDone, initial }: { onDone: () => void; initial?: CourseR
         ? await updateCourse(initial.id, payload)
         : await createCourse(payload);
       if (!r.ok) { setErr(r.error); return; }
+      // 강사 배정 동기화 (추가/해제)
+      const courseId = initial ? initial.id : (r as any).courseId as string;
+      const before = new Set(assignedIds);
+      const toAdd = [...selTeachers].filter((id) => !before.has(id));
+      const toRemove = assignedIds.filter((id) => !selTeachers.has(id));
+      if (toAdd.length > 0) await assignCourseTeachers(courseId, toAdd);
+      for (const id of toRemove) await removeCourseTeacher(courseId, id);
       router.refresh();
       onDone();
     });
@@ -263,6 +279,52 @@ function CreateForm({ onDone, initial }: { onDone: () => void; initial?: CourseR
         <Field label="종료일"><input type="date" className="input" value={f.end_date} onChange={(e) => set("end_date", e.target.value)} /></Field>
         <Field label="시작 시각 (HH:mm)"><input type="time" className="input" value={f.class_time} onChange={(e) => set("class_time", e.target.value)} /></Field>
         <Field label="수업 길이(분)"><input type="number" className="input" value={f.duration_min} onChange={(e) => set("duration_min", e.target.value)} /></Field>
+        <Field label={`강사 배정 (${selTeachers.size}명 선택)`}>
+          <div className="rounded-md border border-slate-200 p-2">
+            <div className="mb-1.5 flex flex-wrap gap-1">
+              <button type="button" onClick={() => setTLang("all")}
+                className={"rounded-full px-2 py-0.5 text-[11px] transition " +
+                  (tLang === "all" ? "bg-brand-600 text-white" : "border border-slate-300 text-slate-500")}>
+                전체
+              </button>
+              {Array.from(new Set(allTeachers.flatMap((x) =>
+                (x.languages ?? "").split(/[,/·]+/).map((l) => l.trim()).filter(Boolean)))).sort().map((l) => (
+                <button key={l} type="button" onClick={() => setTLang(tLang === l ? "all" : l)}
+                  className={"rounded-full px-2 py-0.5 text-[11px] transition " +
+                    (tLang === l ? "bg-brand-600 text-white" : "border border-slate-300 text-slate-500")}>
+                  🗣 {l}
+                </button>
+              ))}
+            </div>
+            <input className="input mb-1.5 !py-1 text-xs" placeholder="이름/아이디/언어 검색"
+              value={tSearch} onChange={(e) => setTSearch(e.target.value)} />
+            <div className="max-h-32 space-y-0.5 overflow-y-auto">
+              {allTeachers
+                .filter((x) => {
+                  const langs = (x.languages ?? "").toLowerCase();
+                  if (tLang !== "all" && !langs.includes(tLang.toLowerCase())) return false;
+                  const q = tSearch.trim().toLowerCase();
+                  return !q || x.name.toLowerCase().includes(q) || x.username.toLowerCase().includes(q) || langs.includes(q);
+                })
+                .map((x) => (
+                  <label key={x.id} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-slate-50">
+                    <input type="checkbox" checked={selTeachers.has(x.id)}
+                      onChange={() =>
+                        setSelTeachers((s) => {
+                          const n = new Set(s);
+                          n.has(x.id) ? n.delete(x.id) : n.add(x.id);
+                          return n;
+                        })
+                      } />
+                    <span className="font-medium text-slate-800">{x.name}</span>
+                    <span className="text-xs text-slate-400">@{x.username}</span>
+                    {x.languages && <span className="ml-auto text-[10px] text-slate-400">🗣 {x.languages}</span>}
+                  </label>
+                ))}
+              {allTeachers.length === 0 && <p className="py-2 text-center text-xs text-slate-400">등록된 강사가 없습니다.</p>}
+            </div>
+          </div>
+        </Field>
       </div>
       <Field label="수업 요일">
         <div className="flex flex-wrap gap-1.5">
@@ -278,6 +340,24 @@ function CreateForm({ onDone, initial }: { onDone: () => void; initial?: CourseR
       <button className="btn w-full" disabled={pending} onClick={submit}>
         {pending ? "저장 중..." : initial ? "수정 저장" : "과정 생성"}
       </button>
+      {initial && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            if (!confirm("정말 삭제하시겠습니까? 삭제하면 복원되지 않습니다.")) return;
+            startTransition(async () => {
+              const r = await deleteCourse(initial.id);
+              if (!r.ok) { setErr(r.error); return; }
+              router.refresh();
+              onDone();
+            });
+          }}
+          className="w-full rounded-md border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+        >
+          🗑 과정 삭제
+        </button>
+      )}
     </section>
   );
 }
@@ -288,12 +368,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // ---------------------------------------------------------------------
 function CourseCard({
-  course, teachers, studentCount, onAssign, onEdit,
+  course, teachers, studentCount, onEdit,
 }: {
   course: CourseRow;
   teachers: Assigned[];
   studentCount: number;
-  onAssign: () => void;
   onEdit: () => void;
 }) {
   const period =
@@ -325,14 +404,9 @@ function CourseCard({
             {course.class_time && <span>{course.class_time}{course.duration_min ? ` · ${course.duration_min}분` : ""}</span>}
           </div>
         </div>
-        <div className="flex shrink-0 gap-1.5">
-          <button className="btn-ghost !border !border-slate-300 text-sm" onClick={onEdit}>
-            ✏️ 수정
-          </button>
-          <button className="btn-ghost !border !border-slate-300 text-sm" onClick={onAssign}>
-            👤 강사 배정
-          </button>
-        </div>
+        <button className="btn-ghost shrink-0 !border !border-slate-300 text-sm" onClick={onEdit}>
+          ✏️ 수정
+        </button>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <span className="text-xs font-medium text-slate-500">배정 강사:</span>

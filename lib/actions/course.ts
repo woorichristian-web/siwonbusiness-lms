@@ -114,6 +114,23 @@ export async function updateCourse(courseId: string, input: CourseInput) {
   return { ok: true as const };
 }
 
+/** 과정 삭제 — 연결된 예약·슬롯도 함께 삭제(복원 불가). */
+export async function deleteCourse(courseId: string) {
+  let supabase;
+  try { supabase = await assertAdmin(); }
+  catch (e: any) { return { ok: false as const, error: e.message }; }
+
+  const { error: e1 } = await supabase.from("bookings").delete().eq("course_id", courseId);
+  if (e1) return { ok: false as const, error: e1.message };
+  const { error: e2 } = await supabase.from("time_slots").delete().eq("course_id", courseId);
+  if (e2) return { ok: false as const, error: e2.message };
+  const { error: e3 } = await supabase.from("courses").delete().eq("id", courseId);
+  if (e3) return { ok: false as const, error: e3.message };
+
+  revalidatePath("/admin/courses");
+  return { ok: true as const };
+}
+
 /** 강사 여러 명 배정 (이미 활성 배정된 강사는 건너뜀). */
 export async function assignCourseTeachers(courseId: string, teacherIds: string[]) {
   let supabase;
