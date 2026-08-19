@@ -175,6 +175,7 @@ export async function replaceCourseTeacher(
 // 과정 데이터 리포트 (엑셀 다운로드용 집계): 주차별 점수 추이 + 출석율
 // ---------------------------------------------------------------------
 import { feedbackTotal10 } from "@/lib/types";
+import { getCourseProgressMap, progressLabel } from "@/lib/courseProgress";
 
 export interface CourseReportStudent {
   name: string;
@@ -307,7 +308,7 @@ export interface CNStudent {
 }
 export interface CNCompany {
   company: string; code: string | null; period: string;
-  assignedTeachers: string[]; students: CNStudent[];
+  assignedTeachers: string[]; progress: string; students: CNStudent[];
 }
 export interface CourseNameReport {
   courseName: string; generatedAt: string; author: string; companies: CNCompany[];
@@ -327,6 +328,7 @@ export async function getCourseNameReport(courseName: string):
   if (list.length === 0) return { ok: false, error: "과정을 찾을 수 없습니다." };
 
   const ROUND_LABEL: Record<number, string> = { 1: "10%", 2: "50%", 3: "최종" };
+  const progressMap = await getCourseProgressMap(supabase, list.map((c: any) => c.id));
   const companies: CNCompany[] = [];
 
   for (const c of list) {
@@ -428,6 +430,7 @@ export async function getCourseNameReport(courseName: string):
       code: c.code ?? null,
       period: `${c.start_date ?? "?"} ~ ${c.end_date ?? "?"}`,
       assignedTeachers: teacherIds.map((t) => nameById.get(t)?.name ?? "—"),
+      progress: progressLabel(progressMap.get(c.id)),
       students,
     });
   }

@@ -149,7 +149,7 @@ export function buildStudentCourseXlsx(d: StudentCourseReport) {
 
     for (const course of comp.courses) {
       courseRows.push(rows.length);
-      rows.push([`📘 ${course.name}${course.code ? ` (${course.code})` : ""} · ${course.period} · 강사: ${course.teacherNames.join(", ") || "-"}`]);
+      rows.push([`📘 ${course.name}${course.code ? ` (${course.code})` : ""} · ${course.period} · 강사: ${course.teacherNames.join(", ") || "-"} · ${course.progress}`]);
       headerRows.push(rows.length);
       rows.push(["교육생", "아이디", "연락처", "예약 수업", "출석", "체크된 수업", "출석율(%)"]);
       for (const s of course.students)
@@ -187,6 +187,7 @@ export function buildCourseNameXlsx(d: CourseNameReport) {
       ["강좌코드", comp.code ?? "-"],
       ["수업 기간(전체)", comp.period],
       ["배정 강사", comp.assignedTeachers.join(", ") || "-"],
+      ["진행 현황", comp.progress],
       [],
       ["교육생", "아이디", "강사", "수업 시간", "강사 만족도(/10)", "평가 점수(/10)", "만족도 코멘트"],
       ...comp.students.map((s) => [
@@ -200,10 +201,10 @@ export function buildCourseNameXlsx(d: CourseNameReport) {
       { wch: 14 }, { wch: 13 }, { wch: 60 },
     ];
     applyMetaStyles(ws, 7);
-    for (const r of [4, 5, 6, 7]) styleRow(ws, r, 2, SUB);
-    styleRow(ws, 9, 7, HS);
+    for (const r of [4, 5, 6, 7, 8]) styleRow(ws, r, 2, SUB);
+    styleRow(ws, 10, 7, HS);
     // 코멘트 칼럼 줄바꿈 표시
-    for (let r = 10; r < rows.length; r++) {
+    for (let r = 11; r < rows.length; r++) {
       const a = XLSX.utils.encode_cell({ r, c: 6 });
       if (ws[a]) ws[a].s = { alignment: { wrapText: true, vertical: "top" }, font: { sz: 10, name: "맑은 고딕" } };
     }

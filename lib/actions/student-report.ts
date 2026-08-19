@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCourseProgressMap, progressLabel } from "@/lib/courseProgress";
 
 async function assertAdmin() {
   const supabase = createClient();
@@ -18,6 +19,7 @@ export interface SRStudent {
 }
 export interface SRCourse {
   name: string; code: string | null; period: string; teacherNames: string[];
+  progress: string;
   students: SRStudent[];
 }
 export interface SRCompany { company: string; courses: SRCourse[] }
@@ -98,6 +100,7 @@ export async function getStudentCourseReport():
     }
   }
 
+  const progressMap = await getCourseProgressMap(supabase, courseIds);
   const byCompany = new Map<string, SRCompany>();
   const totalByStudent = new Map<string, SRTotal>();
   const sorted = [...courseList].sort((a: any, b: any) =>
@@ -130,6 +133,7 @@ export async function getStudentCourseReport():
       name: c.name, code: c.code ?? null,
       period: `${c.start_date ?? "?"} ~ ${c.end_date ?? "?"}`,
       teacherNames: (cts ?? []).filter((r: any) => r.course_id === c.id).map((r: any) => tName.get(r.teacher_id) ?? "—"),
+      progress: progressLabel(progressMap.get(c.id)),
       students,
     });
   }

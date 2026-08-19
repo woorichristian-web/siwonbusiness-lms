@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
+import { getCourseProgressMap, progressLabel } from "@/lib/courseProgress";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,7 @@ export default async function AdminTeacherDetailPage({
       .in("id", cIds);
     courses = (cs ?? []) as any;
   }
+  const progressMap = await getCourseProgressMap(supabase, cIds);
 
   // 담당 학생 (예약 기반)
   const { data: slots } = await supabase
@@ -208,6 +210,7 @@ export default async function AdminTeacherDetailPage({
               {courses.map((c) => (
                 <li key={c.id} className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
                   📘 {c.name}{c.company_name ? <span className="text-slate-400"> · {c.company_name}</span> : null}
+                  <div className="mt-0.5 text-xs text-emerald-700">📖 {progressLabel(progressMap.get(c.id))}</div>
                 </li>
               ))}
             </ul>
