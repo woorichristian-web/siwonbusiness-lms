@@ -167,3 +167,49 @@ export function buildStudentCourseXlsx(d: StudentCourseReport) {
 
   XLSX.writeFile(wb, `교육생명단_${yymmdd()}.xlsx`);
 }
+
+// ---------------------------------------------------------------------
+// 과정 데이터 리포트 (과정명 단위, 시트=기업별)
+// ---------------------------------------------------------------------
+import type { CourseNameReport } from "@/lib/actions/course";
+
+export function buildCourseNameXlsx(d: CourseNameReport) {
+  const wb = XLSX.utils.book_new();
+  const used = new Set<string>();
+
+  for (const comp of d.companies) {
+    const rows: any[][] = [
+      [`과정 데이터 — ${d.courseName}`],
+      ["작성자", d.author],
+      ["다운로드 날짜", d.generatedAt],
+      [],
+      ["회사", comp.company],
+      ["강좌코드", comp.code ?? "-"],
+      ["수업 기간(전체)", comp.period],
+      ["배정 강사", comp.assignedTeachers.join(", ") || "-"],
+      [],
+      ["교육생", "아이디", "강사", "수업 시간", "강사 만족도(/10)", "평가 점수(/10)", "만족도 코멘트"],
+      ...comp.students.map((s) => [
+        s.name, s.username, s.teachers, s.times,
+        s.satisfaction ?? "-", s.score ?? "-", s.comments || "-",
+      ]),
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [
+      { wch: 12 }, { wch: 15 }, { wch: 14 }, { wch: 18 },
+      { wch: 14 }, { wch: 13 }, { wch: 60 },
+    ];
+    applyMetaStyles(ws, 7);
+    for (const r of [4, 5, 6, 7]) styleRow(ws, r, 2, SUB);
+    styleRow(ws, 9, 7, HS);
+    // 코멘트 칼럼 줄바꿈 표시
+    for (let r = 10; r < rows.length; r++) {
+      const a = XLSX.utils.encode_cell({ r, c: 6 });
+      if (ws[a]) ws[a].s = { alignment: { wrapText: true, vertical: "top" }, font: { sz: 10, name: "맑은 고딕" } };
+    }
+    XLSX.utils.book_append_sheet(wb, ws, safeSheet(comp.company, used));
+  }
+
+  const safe = d.courseName.replace(/[^\w가-힣]+/g, "_").slice(0, 30);
+  XLSX.writeFile(wb, `과정데이터_${safe}_${yymmdd()}.xlsx`);
+}

@@ -6,6 +6,8 @@ import MessageNotifier from "@/components/MessageNotifier";
 import MessagePopupOnLogin from "@/components/MessagePopupOnLogin";
 import MobileMenuDrawer, { type MobileMenuItem } from "@/components/MobileMenuDrawer";
 import NavLink from "@/components/NavLink";
+import SurveyPopup, { type PendingSurvey } from "@/components/SurveyPopup";
+import { openRounds } from "@/lib/survey";
 
 export default async function AppHeader({ profile }: { profile: Profile }) {
   // 안 읽은 메시지 (개수 + 최근 5건은 팝업에 사용)
@@ -36,6 +38,33 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
     sender_role: senderInfo.get(m.sender_id)?.role ?? "student",
   }));
 
+  // 만족도 설문 자동 배포 — 학생: 응답 기간(7일) 중 미응답 설문을 팝업으로
+  const pendingSurveys: PendingSurvey[] = [];
+  if (profile.role === "student") {
+    const { data: myCourses } = await supabase
+      .from("course_students")
+      .select("course_id")
+      .eq("student_id", profile.id);
+    const cIds = Array.from(new Set((myCourses ?? []).map((r: any) => r.course_id)));
+    if (cIds.length > 0) {
+      const [{ data: cs }, { data: resp }] = await Promise.all([
+        supabase.from("courses").select("id, name, start_date, end_date").in("id", cIds),
+        supabase.from("survey_responses").select("course_id, round").eq("student_id", profile.id).in("course_id", cIds),
+      ]);
+      const done = new Set((resp ?? []).map((r: any) => `${r.course_id}|${r.round}`));
+      for (const c of cs ?? []) {
+        for (const r of openRounds(c.start_date, c.end_date)) {
+          if (!done.has(`${c.id}|${r.round}`)) {
+            pendingSurveys.push({
+              courseId: c.id, courseName: c.name,
+              round: r.round, label: r.label, closeDate: r.close.toISOString(),
+            });
+          }
+        }
+      }
+    }
+  }
+
   const inboxHref =
     profile.role === "student"
       ? "/student/messages"
@@ -60,6 +89,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
         ? [
             { href: "/teacher/schedule", label: "My Classes" },
             { href: "/teacher/class-manage", label: "Management" },
+            { href: "/teacher/feedback", label: "Teaching Feedback" },
             { href: "/teacher/messages", label: "Messages", badge: unread },
             { href: "/chat", label: "Class Chat" },
             { href: "/teacher/profile", label: "My Page" },
@@ -139,6 +169,9 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
 
       {/* Realtime 알림 — 새 메시지 도착 시 토스트 표시 */}
       <MessageNotifier userId={profile.id} />
+
+      {/* 만족도 설문 자동 배포 팝업 (학생) */}
+      {pendingSurveys.length > 0 && <SurveyPopup surveys={pendingSurveys} />}
 
       {/* 접속 시 안 읽은 메시지 팝업 (세션당 1회) */}
       {popupMessages.length > 0 && (

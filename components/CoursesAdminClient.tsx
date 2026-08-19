@@ -2,89 +2,14 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import * as XLSX from "xlsx-js-style";
 import {
   createCourse,
   assignCourseTeachers,
   removeCourseTeacher,
   replaceCourseTeacher,
-  getCourseReportData,
-  type CourseReportData,
+  getCourseNameReport,
 } from "@/lib/actions/course";
-
-// 다중시트 디자인 엑셀 생성 (대시보드 + 교육생별)
-const HS = {
-  font: { bold: true, sz: 11, color: { rgb: "FFFFFF" }, name: "맑은 고딕" },
-  fill: { patternType: "solid", fgColor: { rgb: "1E40AF" } },
-  alignment: { horizontal: "center", vertical: "center", wrapText: true },
-  border: {
-    top: { style: "thin", color: { rgb: "172554" } },
-    bottom: { style: "thin", color: { rgb: "172554" } },
-    left: { style: "thin", color: { rgb: "172554" } },
-    right: { style: "thin", color: { rgb: "172554" } },
-  },
-};
-function styleHeaderRow(ws: any, rowIdx: number, cols: number) {
-  for (let c = 0; c < cols; c++) {
-    const a = XLSX.utils.encode_cell({ r: rowIdx, c });
-    if (ws[a]) ws[a].s = HS;
-  }
-}
-function safeSheetName(n: string, used: Set<string>) {
-  let base = n.replace(/[[\]:*?/\\]/g, " ").slice(0, 28).trim() || "sheet";
-  let name = base, i = 2;
-  while (used.has(name)) name = `${base.slice(0, 25)} ${i++}`;
-  used.add(name);
-  return name;
-}
-function buildCourseXlsx(d: CourseReportData) {
-  const wb = XLSX.utils.book_new();
-  const used = new Set<string>();
-
-  // 1) 대시보드
-  const dash: (string | number)[][] = [
-    ["과정 데이터 리포트"],
-    ["강좌명", d.courseName],
-    ["강좌코드", d.code ?? "-"],
-    ["회사", d.company ?? "-"],
-    [],
-    ["전체 출석율"],
-    ["출석", "분모(면제 제외)", "출석율(%)"],
-    [d.attended, d.markedTotal, d.rate ?? "-"],
-    [],
-    ["주차별 평균 점수 추이 (교육생 전체 평균, 10점 만점)"],
-    ["주차(시작일)", "평균 점수"],
-    ...d.weeks.map((w, i) => [w, d.courseWeeklyAvg[i] ?? "-"]),
-  ];
-  const ws = XLSX.utils.aoa_to_sheet(dash);
-  ws["!cols"] = [{ wch: 22 }, { wch: 18 }, { wch: 14 }];
-  styleHeaderRow(ws, 6, 3); // 출석 헤더
-  styleHeaderRow(ws, 10, 2); // 주차 헤더
-  XLSX.utils.book_append_sheet(wb, ws, safeSheetName("대시보드", used));
-
-  // 2) 교육생별
-  for (const s of d.students) {
-    const rows: (string | number)[][] = [
-      ["교육생", s.name],
-      [],
-      ["출석율"],
-      ["출석", "분모", "출석율(%)"],
-      [s.attended, s.markedTotal, s.rate ?? "-"],
-      [],
-      ["주차별 점수 추이 (10점 만점)"],
-      ["주차(시작일)", "점수"],
-      ...d.weeks.map((w, i) => [w, s.weeklyAvg[i] ?? "-"]),
-    ];
-    const sws = XLSX.utils.aoa_to_sheet(rows);
-    sws["!cols"] = [{ wch: 22 }, { wch: 14 }, { wch: 14 }];
-    styleHeaderRow(sws, 3, 3);
-    styleHeaderRow(sws, 7, 2);
-    XLSX.utils.book_append_sheet(wb, sws, safeSheetName(s.name, used));
-  }
-
-  const safe = d.courseName.replace(/[^\w가-힣]+/g, "_");
-  XLSX.writeFile(wb, `과정데이터_${safe}.xlsx`);
-}
+import { buildCourseNameXlsx } from "@/lib/reportXlsx";
 
 export interface CourseRow {
   id: string;
@@ -163,6 +88,7 @@ export default function CoursesAdminClient({
                       <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
                         총 교육생 {totalStudents}명
                       </span>
+                      <span className="ml-auto"><CourseNameDownload name={name} /></span>
                     </h3>
                   </header>
                   <div className="divide-y divide-slate-100">
@@ -293,16 +219,6 @@ function CourseCard({
   const days = course.weekdays?.length
     ? course.weekdays.map((d) => WEEKDAYS.find(([k]) => k === d)?.[1] ?? d).join("·")
     : "—";
-  const [dlPending, startDl] = useTransition();
-  const [dlErr, setDlErr] = useState<string | null>(null);
-  function downloadData() {
-    setDlErr(null);
-    startDl(async () => {
-      const r = await getCourseReportData(course.id);
-      if (!r.ok) { setDlErr(r.error); return; }
-      buildCourseXlsx(r.data);
-    });
-  }
   return (
     <section className="px-4 py-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -324,16 +240,10 @@ function CourseCard({
             {course.class_time && <span>{course.class_time}{course.duration_min ? ` · ${course.duration_min}분` : ""}</span>}
           </div>
         </div>
-        <div className="flex shrink-0 flex-col gap-1.5">
-          <button className="btn-ghost !border !border-slate-300 text-sm" onClick={onAssign}>
-            👤 강사 배정
-          </button>
-          <button className="btn text-sm" disabled={dlPending} onClick={downloadData}>
-            {dlPending ? "생성 중..." : "📊 과정 데이터"}
-          </button>
-        </div>
+        <button className="btn-ghost shrink-0 !border !border-slate-300 text-sm" onClick={onAssign}>
+          👤 강사 배정
+        </button>
       </div>
-      {dlErr && <p className="mt-2 text-xs text-red-600">{dlErr}</p>}
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <span className="text-xs font-medium text-slate-500">배정 강사:</span>
         {teachers.length === 0 ? (
@@ -491,5 +401,27 @@ function TeacherAssignModal({
         </div>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+function CourseNameDownload({ name }: { name: string }) {
+  const [pending, startTransition] = useTransition();
+  const [err, setErr] = useState<string | null>(null);
+  function run() {
+    setErr(null);
+    startTransition(async () => {
+      const r = await getCourseNameReport(name);
+      if (!r.ok) { setErr(r.error); return; }
+      buildCourseNameXlsx(r.data);
+    });
+  }
+  return (
+    <span className="inline-flex items-center gap-2">
+      <button type="button" className="btn text-xs" disabled={pending} onClick={run}>
+        {pending ? "생성 중..." : "📊 과정 데이터"}
+      </button>
+      {err && <span className="text-xs font-normal text-red-600">{err}</span>}
+    </span>
   );
 }

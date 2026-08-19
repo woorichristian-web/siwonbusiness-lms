@@ -291,3 +291,154 @@ export async function getCourseReportData(courseId: string) {
     } as CourseReportData,
   };
 }
+
+// ---------------------------------------------------------------------
+// 과정명 단위 리포트 — 시트=기업별. 학생별 강사/수업시간/만족도/평가/코멘트.
+// ---------------------------------------------------------------------
+export interface CNStudent {
+  name: string; username: string;
+  teachers: string;   // 이 학생의 실제 담당 강사(들)
+  times: string;      // 이 학생의 수업 시간 패턴
+  satisfaction: number | null;      // 설문 평균 (1~10)
+  score: number | null;             // 강사 평가 평균 (10점)
+  comments: string;   // 설문 주관식 코멘트 (라운드 표기)
+}
+export interface CNCompany {
+  company: string; code: string | null; period: string;
+  assignedTeachers: string[]; students: CNStudent[];
+}
+export interface CourseNameReport {
+  courseName: string; generatedAt: string; author: string; companies: CNCompany[];
+}
+
+export async function getCourseNameReport(courseName: string):
+  Promise<{ ok: true; data: CourseNameReport } | { ok: false; error: string }> {
+  let supabase;
+  try { supabase = await assertAdmin(); }
+  catch (e: any) { return { ok: false, error: e.message }; }
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: me } = await supabase.from("profiles").select("name").eq("id", user!.id).single();
+
+  const { data: courseRows } = await supabase
+    .from("courses").select("*").eq("name", courseName);
+  const list = courseRows ?? [];
+  if (list.length === 0) return { ok: false, error: "과정을 찾을 수 없습니다." };
+
+  const ROUND_LABEL: Record<number, string> = { 1: "10%", 2: "50%", 3: "최종" };
+  const companies: CNCompany[] = [];
+
+  for (const c of list) {
+    const [{ data: enr }, { data: cts }, { data: bookings }, { data: surveys }] = await Promise.all([
+      supabase.from("course_students").select("student_id").eq("course_id", c.id),
+      supabase.from("course_teachers").select("teacher_id").eq("course_id", c.id).is("assigned_until", null),
+      supabase.from("bookings").select("id, slot_id, student_id, start_at").eq("course_id", c.id).eq("status", "confirmed"),
+      supabase.from("survey_responses").select("student_id, round, rating, comment").eq("course_id", c.id),
+    ]);
+    const studentIds = Array.from(new Set((enr ?? []).map((r: any) => r.student_id)));
+    const teacherIds = Array.from(new Set((cts ?? []).map((r: any) => r.teacher_id)));
+    const slotIds = Array.from(new Set((bookings ?? []).map((b: any) => b.slot_id)));
+
+    const nameById = new Map<string, { name: string; username: string }>();
+    const idsAll = [...studentIds, ...teacherIds];
+    if (idsAll.length > 0) {
+      const { data: ps } = await supabase.from("profiles").select("id, name, username").in("id", idsAll);
+      for (const p of ps ?? []) nameById.set(p.id, { name: p.name, username: p.username });
+    }
+
+    const slotTeacher = new Map<string, string>();
+    if (slotIds.length > 0) {
+      const { data: sl } = await supabase.from("time_slots").select("id, teacher_id").in("id", slotIds);
+      const extraT = Array.from(new Set((sl ?? []).map((s: any) => s.teacher_id).filter((t: string) => !nameById.has(t))));
+      if (extraT.length > 0) {
+        const { data: tp } = await supabase.from("profiles").select("id, name, username").in("id", extraT);
+        for (const p of tp ?? []) nameById.set(p.id, { name: p.name, username: p.username });
+      }
+      for (const s of sl ?? []) slotTeacher.set(s.id, s.teacher_id);
+    }
+
+    // 강사 평가 점수 (feedback total10) per student
+    const bIds = (bookings ?? []).map((b: any) => b.id);
+    const scoreByStudent = new Map<string, number[]>();
+    if (bIds.length > 0) {
+      const { data: fbs } = await supabase.from("feedback").select("*").in("booking_id", bIds);
+      const bkStudent = new Map((bookings ?? []).map((b: any) => [b.id, b.student_id]));
+      for (const f of fbs ?? []) {
+        if (f.status !== "submitted") continue;
+        const sid = bkStudent.get(f.booking_id);
+        const v = feedbackTotal10(f);
+        if (sid && v != null)
+          (scoreByStudent.get(sid) ?? scoreByStudent.set(sid, []).get(sid)!).push(v);
+      }
+    }
+
+    // 학생별 강사/시간 패턴
+    const WD = ["일", "월", "화", "수", "목", "금", "토"];
+    const teachersByStudent = new Map<string, Set<string>>();
+    const timesByStudent = new Map<string, Set<string>>();
+    for (const b of bookings ?? []) {
+      const tid = slotTeacher.get(b.slot_id);
+      if (tid) {
+        const nm = nameById.get(tid)?.name ?? "—";
+        (teachersByStudent.get(b.student_id) ?? teachersByStudent.set(b.student_id, new Set()).get(b.student_id)!).add(nm);
+      }
+      const kst = new Date(new Date(b.start_at).getTime() + 9 * 3600 * 1000);
+      const label = `${WD[kst.getUTCDay()]} ${String(kst.getUTCHours()).padStart(2, "0")}:${String(kst.getUTCMinutes()).padStart(2, "0")}`;
+      (timesByStudent.get(b.student_id) ?? timesByStudent.set(b.student_id, new Set()).get(b.student_id)!).add(label);
+    }
+
+    // 설문 (만족도 + 코멘트)
+    const svRating = new Map<string, number[]>();
+    const svComments = new Map<string, string[]>();
+    for (const s of surveys ?? []) {
+      (svRating.get(s.student_id) ?? svRating.set(s.student_id, []).get(s.student_id)!).push(s.rating);
+      if (s.comment?.trim())
+        (svComments.get(s.student_id) ?? svComments.set(s.student_id, []).get(s.student_id)!)
+          .push(`[${ROUND_LABEL[s.round] ?? s.round}] ${s.comment.trim()}`);
+    }
+    // 설문 없으면 기존 강사평가(student_teacher_feedback) fallback
+    const { data: stf } = studentIds.length
+      ? await supabase.from("student_teacher_feedback").select("student_id, rating, comment").in("student_id", studentIds)
+      : { data: [] as any[] };
+    const stfById = new Map((stf ?? []).map((r: any) => [r.student_id, r]));
+
+    const students: CNStudent[] = studentIds.map((sid) => {
+      const p = nameById.get(sid) ?? { name: "—", username: "—" };
+      const ratings = svRating.get(sid) ?? [];
+      const fallback = stfById.get(sid);
+      const satisfaction = ratings.length
+        ? Math.round((ratings.reduce((s, n) => s + n, 0) / ratings.length) * 10) / 10
+        : (typeof fallback?.rating === "number" ? fallback.rating : null);
+      const scores = scoreByStudent.get(sid) ?? [];
+      const comments = (svComments.get(sid) ?? []).join("\n")
+        || (fallback?.comment?.trim() ? `[기존 평가] ${fallback.comment.trim()}` : "");
+      return {
+        name: p.name, username: p.username,
+        teachers: Array.from(teachersByStudent.get(sid) ?? []).join(", ") || "—",
+        times: Array.from(timesByStudent.get(sid) ?? []).sort().join(", ") || "—",
+        satisfaction,
+        score: scores.length ? Math.round((scores.reduce((s, n) => s + n, 0) / scores.length) * 10) / 10 : null,
+        comments,
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+
+    companies.push({
+      company: c.company_name || "(회사 미지정)",
+      code: c.code ?? null,
+      period: `${c.start_date ?? "?"} ~ ${c.end_date ?? "?"}`,
+      assignedTeachers: teacherIds.map((t) => nameById.get(t)?.name ?? "—"),
+      students,
+    });
+  }
+
+  const d = new Date(Date.now() + 9 * 3600 * 1000);
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  return {
+    ok: true,
+    data: {
+      courseName,
+      generatedAt: `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`,
+      author: me?.name ?? "관리자",
+      companies: companies.sort((a, b) => a.company.localeCompare(b.company)),
+    },
+  };
+}
