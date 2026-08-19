@@ -116,7 +116,7 @@ export default function TeacherCoursesView({
                 )}
                 {c.students.length > 0 && (
                   <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                    {c.students.length}
+                    {c.students.length} students
                   </span>
                 )}
               </div>

@@ -61,7 +61,7 @@ export default async function ChatListPage() {
                     )}
                   </div>
                   <span className="shrink-0 text-xs text-slate-400">
-                    {countByConv.get(c.id) ?? 0} · 열기 ›
+                    참여 {countByConv.get(c.id) ?? 0}명 · 열기 ›
                   </span>
                 </Link>
               </li>
