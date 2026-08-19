@@ -59,3 +59,26 @@ body {
 /* 긴 글이 줄바꿈되어야 할 때 */
 .wrap-anywhere { overflow-wrap: anywhere; word-break: break-word; }
 
+/* ===== 로그인 진입 스플래시 =====
+   로그인 페이지에서만 로고를 약 1.8초 보여준 뒤 부드럽게 페이드아웃.
+   JS 없이 CSS 애니메이션만 사용. */
+.login-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1e3a8a;
+  pointer-events: none;
+  animation: loginSplashFade 1.8s ease-in forwards;
+}
+@keyframes loginSplashFade {
+  0%, 68%   { opacity: 1; visibility: visible; }
+  100%      { opacity: 0; visibility: hidden; }
+}
+/* 접근성: 모션 최소화 설정 시 즉시 사라지게 */
+@media (prefers-reduced-motion: reduce) {
+  .login-splash { animation: none; opacity: 0; visibility: hidden; }
+}
+
