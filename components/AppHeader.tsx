@@ -111,6 +111,18 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
   const brandSubtitle = profile.role === "teacher" ? "Teacher Portal" : "LMS";
   const signOutLabel = profile.role === "teacher" ? "Sign out" : "로그아웃";
 
+  // 관리자: 마이페이지·DB 관리·회원 관리는 데스크탑 드롭다운과 동일하게
+  // 모바일 드로어에서도 '마이페이지' 하위 섹션으로 분리
+  const MYPAGE_HREFS = ["/admin/profile", "/admin/upload", "/admin/users"];
+  const drawerItems =
+    profile.role === "admin"
+      ? navItems.filter((i) => !MYPAGE_HREFS.includes(i.href))
+      : navItems;
+  const drawerSubItems =
+    profile.role === "admin"
+      ? navItems.filter((i) => MYPAGE_HREFS.includes(i.href))
+      : undefined;
+
   return (
     <header className="relative bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-blue-100 shadow-lg">
       {/* 상단 얇은 골드 액센트 */}
@@ -120,7 +132,8 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
         {/* 좌측: 햄버거(모바일) + 브랜드 + 데스크탑 네비 */}
         <div className="flex min-w-0 items-center gap-2 sm:gap-10">
           <MobileMenuDrawer
-            items={navItems}
+            items={drawerItems}
+            subItems={drawerSubItems}
             userName={profile.name}
             userRole={roleLabel(profile.role)}
             brandSubtitle={brandSubtitle}

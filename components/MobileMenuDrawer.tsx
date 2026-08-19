@@ -12,12 +12,17 @@ export type MobileMenuItem = {
 
 export default function MobileMenuDrawer({
   items,
+  subItems,
+  subLabel = "마이페이지",
   userName,
   userRole,
   brandSubtitle,
   signOutLabel,
 }: {
   items: MobileMenuItem[];
+  /** 데스크탑의 마이페이지 드롭다운과 동일한 하위 메뉴 (섹션으로 구분 표시) */
+  subItems?: MobileMenuItem[];
+  subLabel?: string;
   userName: string;
   userRole: string;
   brandSubtitle: string;
@@ -39,6 +44,35 @@ export default function MobileMenuDrawer({
       return () => { document.body.style.overflow = original; };
     }
   }, [open]);
+
+  function renderItem(item: MobileMenuItem) {
+    const active =
+      pathname === item.href ||
+      (item.href !== "/dashboard" &&
+        item.href !== "/admin" &&
+        pathname?.startsWith(item.href)) ||
+      (item.href === "/admin" && pathname === "/admin");
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={() => setOpen(false)}
+        className={
+          "my-0.5 flex items-center justify-between rounded-md px-3 py-2.5 text-sm font-medium transition " +
+          (active
+            ? "bg-white/15 text-white shadow-inner"
+            : "text-blue-100 hover:bg-white/10 hover:text-white")
+        }
+      >
+        <span>{item.label}</span>
+        {item.badge != null && item.badge > 0 && (
+          <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold leading-none text-white shadow-md">
+            {item.badge > 99 ? "99+" : item.badge}
+          </span>
+        )}
+      </Link>
+    );
+  }
 
   return (
     <>
@@ -104,34 +138,17 @@ export default function MobileMenuDrawer({
 
             {/* 네비게이션 */}
             <nav className="flex-1 overflow-y-auto p-2">
-              {items.map((item) => {
-                const active =
-                  pathname === item.href ||
-                  (item.href !== "/dashboard" &&
-                    item.href !== "/admin" &&
-                    pathname?.startsWith(item.href)) ||
-                  (item.href === "/admin" && pathname === "/admin");
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={
-                      "my-0.5 flex items-center justify-between rounded-md px-3 py-2.5 text-sm font-medium transition " +
-                      (active
-                        ? "bg-white/15 text-white shadow-inner"
-                        : "text-blue-100 hover:bg-white/10 hover:text-white")
-                    }
-                  >
-                    <span>{item.label}</span>
-                    {item.badge != null && item.badge > 0 && (
-                      <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold leading-none text-white shadow-md">
-                        {item.badge > 99 ? "99+" : item.badge}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
+              {items.map((item) => renderItem(item))}
+
+              {/* 하위 메뉴 섹션 — 데스크탑 마이페이지 드롭다운과 동일 구성 */}
+              {subItems && subItems.length > 0 && (
+                <>
+                  <div className="mt-3 border-t border-white/10 px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-blue-300">
+                    {subLabel}
+                  </div>
+                  {subItems.map((item) => renderItem(item))}
+                </>
+              )}
             </nav>
 
             {/* 로그아웃 */}
