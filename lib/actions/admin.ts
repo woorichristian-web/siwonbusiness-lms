@@ -446,6 +446,7 @@ export interface TeacherImportRow {
   residence_area?: string;
   specialty?: string;
   bio?: string;
+  languages?: string;
   hourly_rate?: string | number;
   bank_name?: string;
   bank_account?: string;
@@ -570,6 +571,7 @@ export async function adminBulkUploadTeachers(
       profile_id: userId,
       specialty: r.specialty || null,
       bio: r.bio || null,
+      languages: r.languages || null,
       hourly_rate: Number.isFinite(hourlyRate as number) ? hourlyRate : null,
       bank_name: r.bank_name || null,
       bank_account: r.bank_account || null,

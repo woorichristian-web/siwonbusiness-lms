@@ -68,6 +68,7 @@ export async function changeMyPassword(newPassword: string) {
  */
 export interface MyTeacherInput {
   bio?: string | null;
+  languages?: string | null;
   specialty?: string | null;
   hourly_rate?: number | null;
   bank_name?: string | null;

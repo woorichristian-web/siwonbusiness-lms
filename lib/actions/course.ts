@@ -60,9 +60,30 @@ export async function createCourse(input: CourseInput) {
   catch (e: any) { return { ok: false as const, error: e.message }; }
   if (!input.name?.trim()) return { ok: false as const, error: "강좌명은 필수입니다." };
 
+  const payload = clean(input);
+  // 코드 자동 생성: 기업약자(2)-언어약자(2, 대문자)-YY+생성순번(01~)
+  if (!payload.code) {
+    const abbr = (s: string | null, fb: string) =>
+      (s ?? "").trim().replace(/[^A-Za-z가-힣]/g, "").slice(0, 2).toUpperCase() || fb;
+    const comp = abbr(payload.company_name, "XX");
+    const lang = abbr(payload.language, "EN");
+    const yy = String(new Date(Date.now() + 9 * 3600 * 1000).getUTCFullYear()).slice(2);
+    const prefix = `${comp}-${lang}-${yy}`;
+    const { data: existing } = await supabase
+      .from("courses")
+      .select("code")
+      .like("code", `${prefix}%`);
+    let maxSeq = 0;
+    for (const r of existing ?? []) {
+      const m = String(r.code ?? "").match(/(\d{2})$/);
+      if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+    }
+    payload.code = `${prefix}${String(maxSeq + 1).padStart(2, "0")}`;
+  }
+
   const { data, error } = await supabase
     .from("courses")
-    .insert(clean(input))
+    .insert(payload)
     .select("id")
     .single();
   if (error) return { ok: false as const, error: error.message };

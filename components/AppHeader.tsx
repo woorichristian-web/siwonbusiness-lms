@@ -6,6 +6,7 @@ import MessageNotifier from "@/components/MessageNotifier";
 import MessagePopupOnLogin from "@/components/MessagePopupOnLogin";
 import MobileMenuDrawer, { type MobileMenuItem } from "@/components/MobileMenuDrawer";
 import NavLink from "@/components/NavLink";
+import NavMyPageDropdown from "@/components/NavMyPageDropdown";
 import SurveyPopup, { type PendingSurvey } from "@/components/SurveyPopup";
 import { openRounds } from "@/lib/survey";
 
@@ -137,12 +138,16 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
             </span>
           </Link>
 
-          <nav className="hidden gap-1 text-sm sm:flex">
-            {navItems.map((item) => (
+          <nav className="hidden items-center gap-1 text-sm sm:flex">
+            {(profile.role === "admin"
+              ? navItems.filter((i) => !["/admin/profile", "/admin/upload", "/admin/users"].includes(i.href))
+              : navItems
+            ).map((item) => (
               <NavLink key={item.href} href={item.href} badge={item.badge}>
                 {item.label}
               </NavLink>
             ))}
+            {profile.role === "admin" && <NavMyPageDropdown />}
           </nav>
         </div>
 

@@ -16,7 +16,20 @@ export default async function AdminUsersPage() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  const allProfiles = (rows ?? []) as Profile[];
+  let allProfiles = (rows ?? []) as Profile[];
+
+  // 강사 사용 언어 부착 (회원 정보 표시용)
+  const teacherIds = allProfiles.filter((p) => p.role === "teacher").map((p) => p.id);
+  if (teacherIds.length > 0) {
+    const { data: tMeta } = await supabase
+      .from("teachers")
+      .select("profile_id, languages")
+      .in("profile_id", teacherIds);
+    const langById = new Map((tMeta ?? []).map((m: any) => [m.profile_id, m.languages]));
+    allProfiles = allProfiles.map((p) =>
+      p.role === "teacher" ? ({ ...p, languages: langById.get(p.id) ?? null } as any) : p,
+    );
+  }
 
   // 강사 목록 (편집 모달의 배정 강사 드롭다운용)
   const teachers = allProfiles

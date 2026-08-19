@@ -17,11 +17,24 @@ export default async function AdminCoursesPage() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  const { data: allTeachers } = await supabase
+  const { data: teacherProfiles } = await supabase
     .from("profiles")
     .select("id, name, username")
     .eq("role", "teacher")
     .order("name");
+  const tIds = (teacherProfiles ?? []).map((t: any) => t.id);
+  const langById = new Map<string, string | null>();
+  if (tIds.length > 0) {
+    const { data: tMeta } = await supabase
+      .from("teachers")
+      .select("profile_id, languages")
+      .in("profile_id", tIds);
+    for (const m of tMeta ?? []) langById.set(m.profile_id, m.languages ?? null);
+  }
+  const allTeachers = (teacherProfiles ?? []).map((t: any) => ({
+    ...t,
+    languages: langById.get(t.id) ?? null,
+  }));
 
   const courseIds = (courses ?? []).map((c: any) => c.id);
 

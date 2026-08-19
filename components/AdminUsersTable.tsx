@@ -53,7 +53,14 @@ export default function AdminUsersTable({
         <tbody className="divide-y divide-slate-100">
           {users.map((u) => (
             <tr key={u.id}>
-              <td className="px-4 py-2 font-medium text-slate-800">{u.name}</td>
+              <td className="px-4 py-2 font-medium text-slate-800">
+                {u.name}
+                {(u as any).languages && (
+                  <span className="ml-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-normal text-slate-500">
+                    🗣 {(u as any).languages}
+                  </span>
+                )}
+              </td>
               <td className="px-4 py-2 text-slate-600">{u.username}</td>
               <td className="px-4 py-2 text-slate-600">{u.birth_date ?? "—"}</td>
               <td className="px-4 py-2 text-slate-600">{u.phone ?? "—"}</td>

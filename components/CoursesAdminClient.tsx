@@ -32,6 +32,7 @@ export interface TeacherOption {
   id: string;
   name: string;
   username: string;
+  languages: string | null;
 }
 type Assigned = { teacher_id: string; name: string };
 
@@ -161,7 +162,7 @@ function CreateForm({ onDone }: { onDone: () => void }) {
       <h2 className="text-base font-semibold">새 과정</h2>
       {err && <p className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700">{err}</p>}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="강좌코드"><input className="input" value={f.code} onChange={(e) => set("code", e.target.value)} placeholder="예: AF-TC-01" /></Field>
+        <Field label="강좌코드"><input className="input" value={f.code} onChange={(e) => set("code", e.target.value)} placeholder="비워두면 자동 생성 (예: AF-EN-2601)" /></Field>
         <Field label="강좌명 *"><input className="input" value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Topical Conversations in the Workplace" /></Field>
         <Field label="회사"><input className="input" value={f.company_name} onChange={(e) => set("company_name", e.target.value)} placeholder="Afinit" /></Field>
         <Field label="언어"><input className="input" value={f.language} onChange={(e) => set("language", e.target.value)} placeholder="English" /></Field>
@@ -275,17 +276,32 @@ function TeacherAssignModal({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
+  const [langFilter, setLangFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [replacing, setReplacing] = useState<Assigned | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   const assignedIds = useMemo(() => new Set(assigned.map((a) => a.teacher_id)), [assigned]);
+  // 강사들이 등록한 사용 언어 목록 (쉼표 구분 → distinct)
+  const allLangs = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of allTeachers)
+      for (const l of (t.languages ?? "").split(/[,/·]+/))
+        if (l.trim()) set.add(l.trim());
+    return Array.from(set).sort();
+  }, [allTeachers]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return allTeachers.filter(
-      (t) => !q || t.name.toLowerCase().includes(q) || t.username.toLowerCase().includes(q),
-    );
-  }, [allTeachers, search]);
+    return allTeachers.filter((t) => {
+      const langs = (t.languages ?? "").toLowerCase();
+      if (langFilter !== "all" && !langs.includes(langFilter.toLowerCase())) return false;
+      return !q
+        || t.name.toLowerCase().includes(q)
+        || t.username.toLowerCase().includes(q)
+        || langs.includes(q);
+    });
+  }, [allTeachers, search, langFilter]);
 
   function refresh() { router.refresh(); }
 
@@ -348,8 +364,26 @@ function TeacherAssignModal({
           )}
         </div>
 
+        {/* 언어 필터 */}
+        {allLangs.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <button type="button" onClick={() => setLangFilter("all")}
+              className={"rounded-full px-2.5 py-1 text-xs font-medium transition " +
+                (langFilter === "all" ? "bg-brand-600 text-white" : "border border-slate-300 text-slate-600 hover:bg-slate-50")}>
+              전체 언어
+            </button>
+            {allLangs.map((l) => (
+              <button key={l} type="button" onClick={() => setLangFilter(langFilter === l ? "all" : l)}
+                className={"rounded-full px-2.5 py-1 text-xs font-medium transition " +
+                  (langFilter === l ? "bg-brand-600 text-white" : "border border-slate-300 text-slate-600 hover:bg-slate-50")}>
+                🗣 {l}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* 검색 */}
-        <input className="input mt-3" placeholder="강사 이름/아이디 검색"
+        <input className="input mt-2" placeholder="강사 이름/아이디/언어 검색"
           value={search} onChange={(e) => setSearch(e.target.value)} />
 
         {/* 강사 리스트 */}
@@ -363,6 +397,9 @@ function TeacherAssignModal({
                 <div className="min-w-0">
                   <span className="text-sm font-medium text-slate-800">{t.name}</span>
                   <span className="ml-2 text-xs text-slate-400">@{t.username}</span>
+                  {t.languages && (
+                    <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">🗣 {t.languages}</span>
+                  )}
                   {isAssigned && <span className="ml-2 text-[10px] text-brand-600">배정됨</span>}
                 </div>
                 {replacing ? (

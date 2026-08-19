@@ -112,6 +112,7 @@ function InfoSection({
   const [phone, setPhone] = useState(profile.phone ?? "");
   const [bio, setBio] = useState(teacher?.bio ?? "");
   const [specialty, setSpecialty] = useState(teacher?.specialty ?? "");
+  const [languages, setLanguages] = useState((teacher as any)?.languages ?? "");
   const [zoomUrl, setZoomUrl] = useState(teacher?.zoom_url ?? "");
   const [teamsUrl, setTeamsUrl] = useState(teacher?.teams_url ?? "");
 
@@ -133,6 +134,7 @@ function InfoSection({
       const r2 = await updateMyTeacher({
         bio: bio.trim() || null,
         specialty: specialty.trim() || null,
+        languages: languages.trim() || null,
         zoom_url: zoomUrl.trim() || null,
         teams_url: teamsUrl.trim() || null,
       });
@@ -205,6 +207,13 @@ function InfoSection({
             <label className="label">Specialty</label>
             <input className="input" placeholder="e.g. Business English, IELTS prep"
               value={specialty} onChange={(e) => setSpecialty(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="label">Languages you teach in</label>
+            <input className="input" placeholder="e.g. English, Korean"
+              value={languages} onChange={(e) => setLanguages(e.target.value)} />
+            <p className="mt-1 text-xs text-slate-400">Comma-separated. Used by the center when assigning courses.</p>
           </div>
 
           <div>

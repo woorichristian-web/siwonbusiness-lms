@@ -39,6 +39,7 @@ export default function AdminTeacherUploadForm() {
         phone: String(r.phone ?? "").trim() || undefined,
         residence_area: String(r.residence_area ?? "").trim() || undefined,
         specialty: String(r.specialty ?? "").trim() || undefined,
+        languages: String(r.languages ?? "").trim() || undefined,
         bio: String(r.bio ?? "").trim() || undefined,
         hourly_rate: String(r.hourly_rate ?? "").trim() || undefined,
         bank_name: String(r.bank_name ?? "").trim() || undefined,
@@ -68,7 +69,7 @@ export default function AdminTeacherUploadForm() {
     downloadStyledTemplate({
       headers: [
         "username", "password", "name", "birth_date", "phone",
-        "residence_area", "specialty", "bio",
+        "residence_area", "specialty", "bio", "languages",
         "hourly_rate", "bank_name", "bank_account", "account_holder",
         "zoom_url", "teams_url",
       ],
@@ -76,7 +77,7 @@ export default function AdminTeacherUploadForm() {
         [
           "jane_kim", "Teacher1234!", "Jane Kim", "1985-03-12", "010-1111-2222",
           "서울", "Business Conversation",
-          "Native English speaker with 8 years of corporate ESL experience.",
+          "Native English speaker with 8 years of corporate ESL experience.", "English, Korean",
           "35000", "신한은행", "110-123-456789", "김제인",
           "https://zoom.us/j/9876543210?pwd=abcd1234",
           "https://teams.microsoft.com/l/meetup-join/19%3ameeting...",

@@ -71,6 +71,7 @@ export default function AdminUploadTabs({ companies }: { companies: string[] }) 
               ["residence_area", "주거 지역", "서울"],
               ["specialty", "전문 분야", "Business Conversation"],
               ["bio", "강사 소개 (자유 텍스트)", "Native speaker, 8 yrs ESL"],
+              ["languages", "사용 언어 (쉼표 구분)", "English, Korean"],
               ["hourly_rate", "시급 (원, 정수)", "35000"],
               ["bank_name", "정산 계좌 은행", "신한은행"],
               ["bank_account", "정산 계좌 번호", "110-123-456789"],

@@ -43,6 +43,7 @@ export interface Teacher {
   profile_id: string;
   bio: string | null;
   specialty: string | null;
+  languages: string | null;
   hourly_rate: number | null;
   bank_name: string | null;
   bank_account: string | null;
