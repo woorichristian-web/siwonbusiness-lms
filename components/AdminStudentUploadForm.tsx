@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { adminBulkUploadStudents, type StudentImportRow } from "@/lib/actions/admin";
+import { downloadStyledTemplate } from "@/lib/templateDownload";
 
 export default function AdminStudentUploadForm() {
   const router = useRouter();
@@ -66,28 +67,25 @@ export default function AdminStudentUploadForm() {
   }
 
   function downloadTemplate() {
-    const sample = [{
-      username: "kim123",
-      password: "kim1234567",
-      name: "김길동",
-      birth_date: "1990-05-15",
-      phone: "010-1234-5678",
-      residence_area: "서울",
-      company_name: "시원스쿨",
-      industry: "IT/소프트웨어",
-      job_role: "개발/엔지니어링",
-      learning_purpose: "비즈니스 이메일/문서 작성",
-      assigned_teacher_username: "jane",
-      course_name: "영어 회화 6개월 코스",
-      course_start_date: "2026-06-01",
-      course_end_date: "2026-11-30",
-      course_total_sessions: 24,
-      schedule: "2026-06-01 09:00 / 2026-06-08 09:00 / 2026-06-15 09:00",
-    }];
-    const ws = XLSX.utils.json_to_sheet(sample);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "교육생");
-    XLSX.writeFile(wb, "educatee_upload_template.xlsx");
+    downloadStyledTemplate({
+      headers: [
+        "username", "password", "name", "birth_date", "phone", "residence_area",
+        "company_name", "industry", "job_role", "learning_purpose",
+        "assigned_teacher_username", "course_name",
+        "course_start_date", "course_end_date", "course_total_sessions", "schedule",
+      ],
+      sample: [
+        [
+          "kim123", "kim1234567", "김길동", "1990-05-15", "010-1234-5678", "서울",
+          "Afinit", "IT/소프트웨어", "개발/엔지니어링", "비즈니스 이메일/문서 작성",
+          "jayrho", "Business Expressions & Conversations",
+          "2026-08-11", "2026-12-29", 24,
+          "2026-08-11 09:00 / 2026-08-18 09:00 / 2026-08-25 09:00",
+        ],
+      ],
+      sheetName: "교육생",
+      fileName: "educatee_upload_template.xlsx",
+    });
   }
 
   return (

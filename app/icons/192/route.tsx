@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { pretendardBold } from "@/lib/ogFont";
-import { LOGO_S_PATH, LOGO_S_STROKE_WIDTH } from "@/lib/logoS";
+import { LOGO_S_PATH } from "@/lib/logoS";
 
 // PWA 192x192 아이콘 (maskable 호환)
 export const runtime = "edge";
@@ -25,8 +25,7 @@ export async function GET() {
           viewBox="0 0 100 100"
           style={{ position: "absolute", top: 26, left: 46 }}
         >
-          <path d={LOGO_S_PATH} stroke="#fbbf24" strokeWidth={LOGO_S_STROKE_WIDTH}
-            strokeLinecap="butt" strokeLinejoin="miter" fill="none" />
+          <path d={LOGO_S_PATH} fill="#fbbf24" />
         </svg>
 
         <div

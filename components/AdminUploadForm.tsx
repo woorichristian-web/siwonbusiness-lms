@@ -100,8 +100,10 @@ export default function AdminUploadForm() {
         "duration(min)", "format", "class_type", "capacity",
       ],
       sample: [
-        ["jayrho", "2026-08-11 09:00", "2026-08-11 10:00", "tue", "09:00", 60, "offline", "group", 6],
+        ["jayrho", "2026-08-11", "2026-12-29", "tue", "09:00", 60, "offline", "group", 6],
         ["jane_kim", "2026-08-13 19:00", "2026-08-13 20:00", "thu", "19:00", 60, "online", "1on1", 1],
+        ["jane_kim", "2026-08-14", "2026-12-31", "fri", "10:00", 30, "online", "1on1_coaching", 1],
+        ["jayrho", "2026-08-17", "2026-12-28", "mon,wed", "14:00", 60, "online", "group_coaching", 6],
       ],
       sheetName: "강사시간표",
       fileName: "teacher_schedule_template.xlsx",

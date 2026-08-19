@@ -1,10 +1,9 @@
 import { ImageResponse } from "next/og";
+import { LOGO_S_PATH } from "@/lib/logoS";
 
-// 브라우저 탭 favicon (작은 사이즈 — S 만)
+// 브라우저 탭 favicon (작은 사이즈 — S 만, Pretendard Black 글리프)
 export const size = { width: 64, height: 64 };
 export const contentType = "image/png";
-
-const S_PATH = "M 76 32 Q 76 16 50 16 Q 24 16 24 33 Q 24 50 50 50 Q 76 50 76 67 Q 76 84 50 84 Q 24 84 24 68";
 
 export default function Icon() {
   return new ImageResponse(
@@ -20,15 +19,8 @@ export default function Icon() {
           borderRadius: 12,
         }}
       >
-        <svg width="44" height="44" viewBox="0 0 100 100">
-          <path
-            d={S_PATH}
-            stroke="#fbbf24"
-            strokeWidth="26"
-            strokeLinecap="butt"
-            strokeLinejoin="miter"
-            fill="none"
-          />
+        <svg width="52" height="52" viewBox="0 0 100 100">
+          <path d={LOGO_S_PATH} fill="#fbbf24" />
         </svg>
       </div>
     ),

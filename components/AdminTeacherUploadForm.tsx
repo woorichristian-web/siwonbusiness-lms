@@ -77,7 +77,9 @@ export default function AdminTeacherUploadForm() {
         [
           "jane_kim", "Teacher1234!", "Jane Kim", "1985-03-12", "010-1111-2222",
           "서울", "Business Conversation",
-          "Native English speaker with 8 years of corporate ESL experience.", "English, Korean",
+          // bio 는 정보별 줄바꿈 (셀 안에서 Alt+Enter)
+          "Corporate English Instructor\nB.A. English Literature (○○ University)\nCertifications: TEFL 120-Hour (2016)\nExperience: 8 yrs corporate ESL",
+          "English, Korean",
           "35000", "신한은행", "110-123-456789", "김제인",
           "https://zoom.us/j/9876543210?pwd=abcd1234",
           "https://teams.microsoft.com/l/meetup-join/19%3ameeting...",

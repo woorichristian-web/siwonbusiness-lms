@@ -39,6 +39,11 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
+        {/* Pretendard 웹폰트 (동적 서브셋) — 로고 S·LMS 등 브랜드 타이포에 사용 */}
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+        />
         {children}
         <PwaRegister />
       </body>

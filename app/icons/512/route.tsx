@@ -1,9 +1,9 @@
 import { ImageResponse } from "next/og";
 import { pretendardBold } from "@/lib/ogFont";
-import { LOGO_S_PATH, LOGO_S_STROKE_WIDTH } from "@/lib/logoS";
+import { LOGO_S_PATH } from "@/lib/logoS";
 
 // Android 스플래시 + 고해상도 홈 아이콘 (maskable 호환)
-// — S 는 두꺼운 각진(butt) 스트로크, BUSINESS 는 Pretendard 임베드.
+// — S 는 Pretendard Black 글리프 외곽선(fill), BUSINESS 는 Pretendard 임베드.
 export const runtime = "edge";
 
 export async function GET() {
@@ -20,15 +20,14 @@ export async function GET() {
           borderRadius: 96,
         }}
       >
-        {/* S — 두꺼운 각진 스트로크 */}
+        {/* S — Pretendard Black 글리프 외곽선 */}
         <svg
           width="260"
           height="260"
           viewBox="0 0 100 100"
           style={{ position: "absolute", top: 70, left: 126 }}
         >
-          <path d={LOGO_S_PATH} stroke="#fbbf24" strokeWidth={LOGO_S_STROKE_WIDTH}
-            strokeLinecap="butt" strokeLinejoin="miter" fill="none" />
+          <path d={LOGO_S_PATH} fill="#fbbf24" />
         </svg>
 
         {/* BUSINESS — 안전영역 안 (y ~ 350-394), Pretendard 직선 */}

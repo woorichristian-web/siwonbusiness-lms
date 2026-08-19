@@ -133,7 +133,10 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
           >
             <span className="text-white">Siwon Business</span>
             {/* 부제는 데스크탑에서만 표시 — 모바일에선 햄버거 안에 들어감 */}
-            <span className="ml-2 hidden font-medium tracking-wide text-amber-300 sm:inline">
+            <span
+              className="ml-2 hidden tracking-wide text-amber-300 sm:inline"
+              style={{ fontFamily: "'Pretendard Variable', Pretendard, sans-serif", fontWeight: 900 }}
+            >
               {brandSubtitle}
             </span>
           </Link>

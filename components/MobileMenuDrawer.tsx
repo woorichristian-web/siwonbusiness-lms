@@ -74,7 +74,10 @@ export default function MobileMenuDrawer({
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3.5">
               <div className="min-w-0">
                 <div className="truncate text-base font-bold text-white">Siwon Business</div>
-                <div className="text-xs font-medium tracking-wide text-amber-300">
+                <div
+                  className="text-xs tracking-wide text-amber-300"
+                  style={{ fontFamily: "'Pretendard Variable', Pretendard, sans-serif", fontWeight: 900 }}
+                >
                   {brandSubtitle}
                 </div>
               </div>
