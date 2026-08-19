@@ -18,6 +18,7 @@ export interface TeacherCourse {
   company: string | null;
   course_code: string | null;
   language: string | null;
+  textbook: string | null;
   class_types: string[]; // 예: ["small_group"]
   formats: string[]; // 예: ["offline"]
   period_start: string | null; // ISO 또는 YYYY-MM-DD
@@ -158,6 +159,7 @@ export default function TeacherCoursesView({
                     }
                   />
                   <Row label="Language" value={c.language ?? "—"} />
+                  <Row label="Textbook" value={c.textbook ?? "—"} />
                   <Row
                     label="Class Type"
                     value={

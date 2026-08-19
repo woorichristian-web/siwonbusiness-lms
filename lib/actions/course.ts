@@ -23,6 +23,7 @@ export interface CourseInput {
   name: string;
   company_name?: string | null;
   language?: string | null;
+  textbook?: string | null;
   format?: "online" | "offline" | null;
   class_type?: "1on1" | "small_group" | null;
   capacity?: number | null;
@@ -40,6 +41,7 @@ function clean(input: CourseInput) {
     name: input.name.trim(),
     company_name: input.company_name?.trim() || null,
     language: input.language?.trim() || null,
+    textbook: input.textbook?.trim() || null,
     format: input.format || null,
     class_type: input.class_type || null,
     capacity: input.capacity ?? null,

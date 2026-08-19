@@ -17,6 +17,7 @@ export interface CourseRow {
   name: string;
   company_name: string | null;
   language: string | null;
+  textbook: string | null;
   format: string | null;
   class_type: string | null;
   capacity: number | null;
@@ -127,7 +128,7 @@ function CreateForm({ onDone }: { onDone: () => void }) {
   const [pending, startTransition] = useTransition();
   const [err, setErr] = useState<string | null>(null);
   const [f, setF] = useState({
-    code: "", name: "", company_name: "", language: "",
+    code: "", name: "", company_name: "", language: "", textbook: "",
     format: "", class_type: "", capacity: "",
     start_date: "", end_date: "", class_time: "", duration_min: "60", total_sessions: "",
   });
@@ -141,7 +142,7 @@ function CreateForm({ onDone }: { onDone: () => void }) {
     if (!f.name.trim()) return setErr("강좌명은 필수입니다.");
     startTransition(async () => {
       const r = await createCourse({
-        code: f.code, name: f.name, company_name: f.company_name, language: f.language,
+        code: f.code, name: f.name, company_name: f.company_name, language: f.language, textbook: f.textbook,
         format: (f.format || null) as any, class_type: (f.class_type || null) as any,
         capacity: f.capacity ? Number(f.capacity) : null,
         start_date: f.start_date || null, end_date: f.end_date || null,
@@ -164,6 +165,7 @@ function CreateForm({ onDone }: { onDone: () => void }) {
         <Field label="강좌명 *"><input className="input" value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Topical Conversations in the Workplace" /></Field>
         <Field label="회사"><input className="input" value={f.company_name} onChange={(e) => set("company_name", e.target.value)} placeholder="Afinit" /></Field>
         <Field label="언어"><input className="input" value={f.language} onChange={(e) => set("language", e.target.value)} placeholder="English" /></Field>
+        <Field label="교재명"><input className="input" value={f.textbook} onChange={(e) => set("textbook", e.target.value)} placeholder="예: Market Leader Intermediate" /></Field>
         <Field label="진행 방식">
           <select className="input" value={f.format} onChange={(e) => set("format", e.target.value)}>
             <option value="">선택</option><option value="online">온라인</option><option value="offline">오프라인</option>
@@ -232,6 +234,7 @@ function CourseCard({
           </div>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
             {course.language && <span>🗣 {course.language}</span>}
+            {course.textbook && <span>📖 {course.textbook}</span>}
             {course.class_type && <span>{TYPE[course.class_type] ?? course.class_type}</span>}
             {course.format && <span>{FMT[course.format] ?? course.format}</span>}
             {course.capacity != null && <span>정원 {course.capacity}</span>}
