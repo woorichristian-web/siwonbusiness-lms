@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { pretendardBold } from "@/lib/ogFont";
-import { LOGO_S_PATH } from "@/lib/logoS";
+import { LOGO_S_PATH, LOGO_S_STROKE_WIDTH } from "@/lib/logoS";
 
 // iOS 'Add to Home Screen' 시 사용되는 아이콘
 export const size = { width: 180, height: 180 };
@@ -26,7 +26,8 @@ export default async function AppleIcon() {
           viewBox="0 0 100 100"
           style={{ position: "absolute", top: 24, left: 43 }}
         >
-          <path d={LOGO_S_PATH} fill="#fbbf24" />
+          <path d={LOGO_S_PATH} stroke="#fbbf24" strokeWidth={LOGO_S_STROKE_WIDTH}
+            strokeLinecap="butt" strokeLinejoin="miter" fill="none" />
         </svg>
 
         <div

@@ -4,7 +4,7 @@ import { ImageResponse } from "next/og";
 export const size = { width: 64, height: 64 };
 export const contentType = "image/png";
 
-const S_PATH = "M 75 28 Q 75 10 50 10 Q 25 10 25 30 Q 25 50 50 50 Q 75 50 75 70 Q 75 90 50 90 Q 25 90 25 72";
+const S_PATH = "M 76 32 Q 76 16 50 16 Q 24 16 24 33 Q 24 50 50 50 Q 76 50 76 67 Q 76 84 50 84 Q 24 84 24 68";
 
 export default function Icon() {
   return new ImageResponse(
@@ -24,9 +24,9 @@ export default function Icon() {
           <path
             d={S_PATH}
             stroke="#fbbf24"
-            strokeWidth="20"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            strokeWidth="26"
+            strokeLinecap="butt"
+            strokeLinejoin="miter"
             fill="none"
           />
         </svg>

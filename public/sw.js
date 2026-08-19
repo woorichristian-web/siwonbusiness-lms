@@ -1,6 +1,6 @@
 // 최소한의 Service Worker — PWA 설치 가능 기준만 충족.
 // 향후 캐싱 전략이 필요하면 여기 확장하거나 next-pwa 도입.
-const CACHE = "siwon-lms-v1";
+const CACHE = "siwon-lms-v2";
 const APP_SHELL = ["/"];
 
 self.addEventListener("install", (event) => {
