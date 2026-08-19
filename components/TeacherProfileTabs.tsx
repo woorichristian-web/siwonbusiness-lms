@@ -312,6 +312,9 @@ function PayrollSection({
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [busyPeriod, setBusyPeriod] = useState<string | null>(null);
+  // Agree 가능 기간: 매월 29일 ~ 다음달 7일
+  const today = new Date().getDate();
+  const agreeWindow = today >= 29 || today <= 7;
   const [contactPeriod, setContactPeriod] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -460,7 +463,7 @@ function PayrollSection({
                             <button
                               type="button"
                               onClick={() => onCancelAgree(m.yearMonth)}
-                              disabled={busy}
+                              disabled={busy || !agreeWindow}
                               className="text-[10px] text-slate-400 underline hover:text-slate-600"
                             >
                               Cancel
@@ -471,8 +474,9 @@ function PayrollSection({
                             <button
                               type="button"
                               onClick={() => onAgree(m.yearMonth)}
-                              disabled={busy}
-                              className="rounded-md bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                              disabled={busy || !agreeWindow}
+                              title={agreeWindow ? undefined : "Agree is available from the 29th to the 7th."}
+                              className="rounded-md bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               {busy ? "..." : "Agree"}
                             </button>
@@ -492,6 +496,12 @@ function PayrollSection({
               </tbody>
             </table>
           </div>
+        )}
+        {!agreeWindow && (
+          <p className="mt-2 text-xs text-slate-500">
+            ⏳ <b>Agree</b> is open from the <b>29th</b> of each month to the <b>7th</b> of the next month.
+            Buttons are disabled outside this window.
+          </p>
         )}
         {rate <= 0 && (
           <p className="mt-2 text-xs text-amber-600">

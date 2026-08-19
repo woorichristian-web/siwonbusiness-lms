@@ -58,7 +58,7 @@ export default async function AdminTeacherDetailPage({
   // 담당 학생 (예약 기반)
   const { data: slots } = await supabase
     .from("time_slots")
-    .select("id")
+    .select("id, slot_duration_minutes")
     .eq("teacher_id", params.id);
   const slotIds = (slots ?? []).map((s: any) => s.id);
   let students: { id: string; name: string; company_name: string | null }[] = [];
@@ -77,6 +77,57 @@ export default async function AdminTeacherDetailPage({
       students = (ss ?? []) as any;
     }
   }
+
+  // ── 월별 정산 (Payroll) — 출석(present/late) 기준 시수 × 시급 ──
+  const slotDur = new Map<string, number>();
+  for (const s of slots ?? []) slotDur.set(s.id, (s as any).slot_duration_minutes ?? 60);
+  const monthlyMap = new Map<string, { count: number; hours: number; first: string; last: string }>();
+  if (slotIds.length > 0) {
+    const { data: pays } = await supabase
+      .from("bookings")
+      .select("id, slot_id, start_at")
+      .in("slot_id", slotIds)
+      .eq("status", "confirmed");
+    const payIds = (pays ?? []).map((b: any) => b.id);
+    const attOk = new Set<string>();
+    if (payIds.length > 0) {
+      const { data: atts } = await supabase
+        .from("attendance")
+        .select("booking_id, status")
+        .in("booking_id", payIds);
+      for (const a of atts ?? []) if (a.status === "present" || a.status === "late") attOk.add(a.booking_id);
+    }
+    for (const b of pays ?? []) {
+      if (!attOk.has(b.id)) continue;
+      const d = new Date(b.start_at);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!monthlyMap.has(ym)) monthlyMap.set(ym, { count: 0, hours: 0, first: b.start_at, last: b.start_at });
+      const m = monthlyMap.get(ym)!;
+      m.count++;
+      m.hours += (slotDur.get(b.slot_id) ?? 60) / 60;
+      if (b.start_at < m.first) m.first = b.start_at;
+      if (b.start_at > m.last) m.last = b.start_at;
+    }
+  }
+  const { data: agRows } = await supabase
+    .from("payroll_agreements")
+    .select("period, agreed_at")
+    .eq("teacher_id", params.id);
+  const agreeMap = new Map<string, string>();
+  for (const a of agRows ?? []) agreeMap.set(a.period, a.agreed_at);
+  const rate = meta?.hourly_rate != null ? Number(meta.hourly_rate) : 0;
+  const payroll = Array.from(monthlyMap.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([ym, v]) => {
+      const fmt = (iso: string) => new Date(iso).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" });
+      return {
+        ym,
+        period: `${fmt(v.first)} ~ ${fmt(v.last)}`,
+        hours: Math.round(v.hours * 100) / 100,
+        amount: rate > 0 ? Math.round(rate * v.hours) : null,
+        agreedAt: agreeMap.get(ym) ?? null,
+      };
+    });
 
   return (
     <>
@@ -99,6 +150,51 @@ export default async function AdminTeacherDetailPage({
             <div className="pt-2">
               <div className="text-xs text-slate-500">소개</div>
               <p className="mt-1 whitespace-pre-wrap text-slate-700">{meta.bio}</p>
+            </div>
+          )}
+        </section>
+
+        <section className="card">
+          <h2 className="mb-2 text-base font-semibold">💰 월별 정산 (Payroll)</h2>
+          <p className="mb-2 text-xs text-slate-500">
+            출석 체크(출석·지각) 기준 시수 × 시급. 강사는 매월 29일~다음달 7일에 [Agree]로 동의합니다.
+          </p>
+          {payroll.length === 0 ? (
+            <p className="py-4 text-center text-sm text-slate-400">아직 진행된 수업이 없습니다.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-md border border-slate-200">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2">월</th>
+                    <th className="px-3 py-2">기간</th>
+                    <th className="px-3 py-2 text-right">시수(h)</th>
+                    <th className="px-3 py-2 text-right">단가</th>
+                    <th className="px-3 py-2 text-right">금액(KRW)</th>
+                    <th className="px-3 py-2 text-center">강사 동의</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {payroll.map((r) => (
+                    <tr key={r.ym}>
+                      <td className="px-3 py-2 font-medium text-slate-800">{r.ym}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-slate-500">{r.period}</td>
+                      <td className="px-3 py-2 text-right text-slate-700">{r.hours.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right text-slate-700">{rate > 0 ? rate.toLocaleString() : "—"}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-slate-800">{r.amount != null ? r.amount.toLocaleString() : "—"}</td>
+                      <td className="px-3 py-2 text-center">
+                        {r.agreedAt ? (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                            ✓ {new Date(r.agreedAt).toLocaleDateString("ko-KR")}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">대기</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
