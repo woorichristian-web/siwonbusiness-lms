@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createCourse,
+  updateCourse,
   assignCourseTeachers,
   removeCourseTeacher,
   replaceCourseTeacher,
@@ -55,6 +56,7 @@ export default function CoursesAdminClient({
   studentCounts?: Record<string, number>;
 }) {
   const [showCreate, setShowCreate] = useState(false);
+  const [editFor, setEditFor] = useState<CourseRow | null>(null);
   const [assignFor, setAssignFor] = useState<CourseRow | null>(null);
 
   return (
@@ -101,6 +103,7 @@ export default function CoursesAdminClient({
                         teachers={assignments[c.id] ?? []}
                         studentCount={studentCounts[c.id] ?? 0}
                         onAssign={() => setAssignFor(c)}
+                        onEdit={() => setEditFor(c)}
                       />
                     ))}
                   </div>
@@ -108,6 +111,14 @@ export default function CoursesAdminClient({
               );
             });
           })()}
+        </div>
+      )}
+
+      {editFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditFor(null)}>
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <CreateForm initial={editFor} onDone={() => setEditFor(null)} />
+          </div>
         </div>
       )}
 
@@ -124,16 +135,26 @@ export default function CoursesAdminClient({
 }
 
 // ---------------------------------------------------------------------
-function CreateForm({ onDone }: { onDone: () => void }) {
+function CreateForm({ onDone, initial }: { onDone: () => void; initial?: CourseRow | null }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [err, setErr] = useState<string | null>(null);
   const [f, setF] = useState({
-    code: "", name: "", company_name: "", language: "", textbook: "",
-    format: "", class_type: "", capacity: "",
-    start_date: "", end_date: "", class_time: "", duration_min: "60", total_sessions: "",
+    code: initial?.code ?? "",
+    name: initial?.name ?? "",
+    company_name: initial?.company_name ?? "",
+    language: initial?.language ?? "",
+    textbook: initial?.textbook ?? "",
+    format: initial?.format ?? "",
+    class_type: initial?.class_type ?? "",
+    capacity: initial?.capacity != null ? String(initial.capacity) : "",
+    start_date: initial?.start_date ?? "",
+    end_date: initial?.end_date ?? "",
+    class_time: initial?.class_time ?? "",
+    duration_min: initial?.duration_min != null ? String(initial.duration_min) : "60",
+    total_sessions: initial?.total_sessions != null ? String(initial.total_sessions) : "",
   });
-  const [weekdays, setWeekdays] = useState<string[]>([]);
+  const [weekdays, setWeekdays] = useState<string[]>(initial?.weekdays ?? []);
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
   const toggleDay = (d: string) =>
     setWeekdays((w) => (w.includes(d) ? w.filter((x) => x !== d) : [...w, d]));
@@ -142,7 +163,7 @@ function CreateForm({ onDone }: { onDone: () => void }) {
     setErr(null);
     if (!f.name.trim()) return setErr("강좌명은 필수입니다.");
     startTransition(async () => {
-      const r = await createCourse({
+      const payload = {
         code: f.code, name: f.name, company_name: f.company_name, language: f.language, textbook: f.textbook,
         format: (f.format || null) as any, class_type: (f.class_type || null) as any,
         capacity: f.capacity ? Number(f.capacity) : null,
@@ -150,7 +171,10 @@ function CreateForm({ onDone }: { onDone: () => void }) {
         weekdays, class_time: f.class_time || null,
         duration_min: f.duration_min ? Number(f.duration_min) : null,
         total_sessions: f.total_sessions ? Number(f.total_sessions) : null,
-      });
+      };
+      const r = initial
+        ? await updateCourse(initial.id, payload)
+        : await createCourse(payload);
       if (!r.ok) { setErr(r.error); return; }
       router.refresh();
       onDone();
@@ -159,7 +183,7 @@ function CreateForm({ onDone }: { onDone: () => void }) {
 
   return (
     <section className="card space-y-4">
-      <h2 className="text-base font-semibold">새 과정</h2>
+      <h2 className="text-base font-semibold">{initial ? `과정 수정 — ${initial.name}` : "새 과정"}</h2>
       {err && <p className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700">{err}</p>}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="강좌코드"><input className="input" value={f.code} onChange={(e) => set("code", e.target.value)} placeholder="비워두면 자동 생성 (예: AF-EN-2601)" /></Field>
@@ -196,7 +220,7 @@ function CreateForm({ onDone }: { onDone: () => void }) {
         </div>
       </Field>
       <button className="btn w-full" disabled={pending} onClick={submit}>
-        {pending ? "생성 중..." : "과정 생성"}
+        {pending ? "저장 중..." : initial ? "수정 저장" : "과정 생성"}
       </button>
     </section>
   );
@@ -208,12 +232,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // ---------------------------------------------------------------------
 function CourseCard({
-  course, teachers, studentCount, onAssign,
+  course, teachers, studentCount, onAssign, onEdit,
 }: {
   course: CourseRow;
   teachers: Assigned[];
   studentCount: number;
   onAssign: () => void;
+  onEdit: () => void;
 }) {
   const period =
     course.start_date || course.end_date
@@ -244,9 +269,14 @@ function CourseCard({
             {course.class_time && <span>{course.class_time}{course.duration_min ? ` · ${course.duration_min}분` : ""}</span>}
           </div>
         </div>
-        <button className="btn-ghost shrink-0 !border !border-slate-300 text-sm" onClick={onAssign}>
-          👤 강사 배정
-        </button>
+        <div className="flex shrink-0 gap-1.5">
+          <button className="btn-ghost !border !border-slate-300 text-sm" onClick={onEdit}>
+            ✏️ 수정
+          </button>
+          <button className="btn-ghost !border !border-slate-300 text-sm" onClick={onAssign}>
+            👤 강사 배정
+          </button>
+        </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <span className="text-xs font-medium text-slate-500">배정 강사:</span>
