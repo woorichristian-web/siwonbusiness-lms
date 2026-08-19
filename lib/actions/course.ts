@@ -74,11 +74,19 @@ export async function createCourse(input: CourseInput) {
       .select("code")
       .like("code", `${prefix}%`);
     let maxSeq = 0;
+    const seqRe = new RegExp("^" + prefix + "(\\d{2})");
     for (const r of existing ?? []) {
-      const m = String(r.code ?? "").match(/(\d{2})$/);
+      const m = String(r.code ?? "").match(seqRe);
       if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
     }
-    payload.code = `${prefix}${String(maxSeq + 1).padStart(2, "0")}`;
+    // 과정명 약자: 3자 이상 단어의 첫 글자 최대 3개
+    // (예: Business Expressions & Conversations → BEC)
+    const nameAbbr = (payload.name.match(/[A-Za-z가-힣]+/g) ?? [])
+      .filter((w: string) => w.length >= 3)
+      .slice(0, 3)
+      .map((w: string) => w[0].toUpperCase())
+      .join("");
+    payload.code = `${prefix}${String(maxSeq + 1).padStart(2, "0")}${nameAbbr ? "-" + nameAbbr : ""}`;
   }
 
   const { data, error } = await supabase

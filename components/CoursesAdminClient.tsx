@@ -42,6 +42,18 @@ const WEEKDAYS: [string, string][] = [
   ["fri", "금"], ["sat", "토"], ["sun", "일"],
 ];
 const FMT: Record<string, string> = { online: "온라인", offline: "오프라인" };
+// 언어 목록 — 상위 4개 고정, 이후 시원스쿨 취급 언어 알파벳순
+const LANGUAGES = [
+  "English", "Korean", "Japanese", "Chinese",
+  "Arabic", "French", "German", "Indonesian", "Italian",
+  "Portuguese", "Russian", "Spanish", "Thai", "Vietnamese",
+];
+// 사용 중인 교재 목록 — 새 교재는 '직접 입력'으로 추가
+const TEXTBOOKS = [
+  "Topical Conversations in the Workplace",
+  "Functional Communication for Meetings in the Workplace",
+  "Functional Communication for Presentations in the Workplace",
+];
 const TYPE: Record<string, string> = { "1on1": "1:1", small_group: "소그룹" };
 
 export default function CoursesAdminClient({
@@ -155,6 +167,12 @@ function CreateForm({ onDone, initial }: { onDone: () => void; initial?: CourseR
     total_sessions: initial?.total_sessions != null ? String(initial.total_sessions) : "",
   });
   const [weekdays, setWeekdays] = useState<string[]>(initial?.weekdays ?? []);
+  const [customBook, setCustomBook] = useState(
+    !!(initial?.textbook && !TEXTBOOKS.includes(initial.textbook)),
+  );
+  const [customLang, setCustomLang] = useState(
+    !!(initial?.language && !LANGUAGES.includes(initial.language)),
+  );
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
   const toggleDay = (d: string) =>
     setWeekdays((w) => (w.includes(d) ? w.filter((x) => x !== d) : [...w, d]));
@@ -189,8 +207,46 @@ function CreateForm({ onDone, initial }: { onDone: () => void; initial?: CourseR
         <Field label="강좌코드"><input className="input" value={f.code} onChange={(e) => set("code", e.target.value)} placeholder="비워두면 자동 생성 (예: AF-EN-2601)" /></Field>
         <Field label="강좌명 *"><input className="input" value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Topical Conversations in the Workplace" /></Field>
         <Field label="회사"><input className="input" value={f.company_name} onChange={(e) => set("company_name", e.target.value)} placeholder="Afinit" /></Field>
-        <Field label="언어"><input className="input" value={f.language} onChange={(e) => set("language", e.target.value)} placeholder="English" /></Field>
-        <Field label="교재명"><input className="input" value={f.textbook} onChange={(e) => set("textbook", e.target.value)} placeholder="예: Market Leader Intermediate" /></Field>
+        <Field label="언어">
+          <select
+            className="input"
+            value={customLang ? "__custom__" : (f.language || "")}
+            onChange={(e) => {
+              if (e.target.value === "__custom__") { setCustomLang(true); set("language", ""); }
+              else { setCustomLang(false); set("language", e.target.value); }
+            }}
+          >
+            <option value="">선택 안 함</option>
+            {LANGUAGES.map((l) => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+            <option value="__custom__">✏️ 직접 입력…</option>
+          </select>
+          {customLang && (
+            <input className="input mt-1.5" autoFocus placeholder="언어 직접 입력"
+              value={f.language} onChange={(e) => set("language", e.target.value)} />
+          )}
+        </Field>
+        <Field label="교재명">
+          <select
+            className="input"
+            value={customBook ? "__custom__" : (f.textbook || "")}
+            onChange={(e) => {
+              if (e.target.value === "__custom__") { setCustomBook(true); set("textbook", ""); }
+              else { setCustomBook(false); set("textbook", e.target.value); }
+            }}
+          >
+            <option value="">선택 안 함</option>
+            {TEXTBOOKS.map((b) => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+            <option value="__custom__">✏️ 직접 입력…</option>
+          </select>
+          {customBook && (
+            <input className="input mt-1.5" autoFocus placeholder="새 교재명 입력"
+              value={f.textbook} onChange={(e) => set("textbook", e.target.value)} />
+          )}
+        </Field>
         <Field label="진행 방식">
           <select className="input" value={f.format} onChange={(e) => set("format", e.target.value)}>
             <option value="">선택</option><option value="online">온라인</option><option value="offline">오프라인</option>
