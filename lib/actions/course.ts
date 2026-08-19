@@ -63,32 +63,32 @@ export async function createCourse(input: CourseInput) {
   if (!input.name?.trim()) return { ok: false as const, error: "강좌명은 필수입니다." };
 
   const payload = clean(input);
-  // 코드 자동 생성: 기업약자(2)-언어약자(2, 대문자)-YY+생성순번(01~)
+  // 코드 자동 생성: 기업약자(2)-언어약자(2)-과정명약자-YY+생성순번(01~)
+  // (예: Afinit / English / Business Expressions & Conversations → AF-EN-BEC-2601)
   if (!payload.code) {
     const abbr = (s: string | null, fb: string) =>
       (s ?? "").trim().replace(/[^A-Za-z가-힣]/g, "").slice(0, 2).toUpperCase() || fb;
     const comp = abbr(payload.company_name, "XX");
     const lang = abbr(payload.language, "EN");
     const yy = String(new Date(Date.now() + 9 * 3600 * 1000).getUTCFullYear()).slice(2);
-    const prefix = `${comp}-${lang}-${yy}`;
-    const { data: existing } = await supabase
-      .from("courses")
-      .select("code")
-      .like("code", `${prefix}%`);
-    let maxSeq = 0;
-    const seqRe = new RegExp("^" + prefix + "(\\d{2})");
-    for (const r of existing ?? []) {
-      const m = String(r.code ?? "").match(seqRe);
-      if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
-    }
     // 과정명 약자: 3자 이상 단어의 첫 글자 최대 3개
-    // (예: Business Expressions & Conversations → BEC)
     const nameAbbr = (payload.name.match(/[A-Za-z가-힣]+/g) ?? [])
       .filter((w: string) => w.length >= 3)
       .slice(0, 3)
       .map((w: string) => w[0].toUpperCase())
       .join("");
-    payload.code = `${prefix}${String(maxSeq + 1).padStart(2, "0")}${nameAbbr ? "-" + nameAbbr : ""}`;
+    const prefix = `${comp}-${lang}${nameAbbr ? "-" + nameAbbr : ""}-${yy}`;
+    const { data: existing } = await supabase
+      .from("courses")
+      .select("code")
+      .like("code", `${comp}-${lang}-%`);
+    let maxSeq = 0;
+    const seqRe = new RegExp("-" + yy + "(\\d{2})$");
+    for (const r of existing ?? []) {
+      const m = String(r.code ?? "").match(seqRe);
+      if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+    }
+    payload.code = `${prefix}${String(maxSeq + 1).padStart(2, "0")}`;
   }
 
   const { data, error } = await supabase

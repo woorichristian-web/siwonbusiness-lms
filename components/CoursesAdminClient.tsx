@@ -228,7 +228,7 @@ function CreateForm({
       <h2 className="text-base font-semibold">{initial ? `과정 수정 — ${initial.name}` : "새 과정"}</h2>
       {err && <p className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700">{err}</p>}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="강좌코드"><input className="input" value={f.code} onChange={(e) => set("code", e.target.value)} placeholder="비워두면 자동 생성 (예: AF-EN-2601)" /></Field>
+        <Field label="강좌코드"><input className="input" value={f.code} onChange={(e) => set("code", e.target.value)} placeholder="비워두면 자동 생성 (예: AF-EN-BEC-2601)" /></Field>
         <Field label="강좌명 *"><input className="input" value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Topical Conversations in the Workplace" /></Field>
         <Field label="회사"><input className="input" value={f.company_name} onChange={(e) => set("company_name", e.target.value)} placeholder="Afinit" /></Field>
         <Field label="언어">
@@ -404,15 +404,16 @@ function CourseCard({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-base font-bold text-slate-800">{course.company_name ?? "(회사 미지정)"}</h4>
-            <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-700">
+            <h4 className="text-lg font-bold text-slate-800">{course.company_name ?? "(회사 미지정)"}</h4>
+            <span className="rounded-full bg-brand-50 px-3 py-0.5 text-sm font-bold text-brand-700">
               교육생 {studentCount}명
             </span>
-            {course.code && <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-500">{course.code}</span>}
+            {course.code && <span className="rounded bg-slate-100 px-2.5 py-0.5 font-mono text-sm text-slate-500">{course.code}</span>}
           </div>
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+          <p className="mt-1.5 text-base font-semibold text-brand-800">{course.name}</p>
+          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
             {course.language && <span>{course.language}</span>}
-            {course.textbook && <span>{course.textbook}</span>}
+            {course.textbook && <span>교재 {course.textbook}</span>}
             {course.class_type && <span>{TYPE[course.class_type] ?? course.class_type}</span>}
             {course.format && <span>{FMT[course.format] ?? course.format}</span>}
             {course.capacity != null && <span>정원 {course.capacity}</span>}

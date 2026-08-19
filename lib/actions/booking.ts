@@ -44,11 +44,15 @@ export async function bookSlot(availabilityId: string, startAtIso: string) {
   if (me?.company_name) {
     const { data: cs } = await supabase
       .from("company_settings")
-      .select("allowed_class_types, allowed_formats, allowed_teacher_ids, total_sessions")
+      .select("allowed_class_types, allowed_formats, allowed_teacher_ids, total_sessions, center_managed_registration")
       .eq("company_name", me.company_name)
       .maybeSingle();
 
     if (cs) {
+      // 센터 대행 기업 — 교육생 직접 신청 불가
+      if (cs.center_managed_registration) {
+        return { ok: false, error: "귀하의 수강신청은 시원스쿨 센터에서 대신합니다. 센터에 문의해 주세요." };
+      }
       // 차시 한도
       if (cs.total_sessions != null) {
         const { count: doneCount } = await supabase
@@ -145,6 +149,23 @@ export async function cancelBooking(availabilityId: string, startAtIso: string) 
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  // 센터 대행 기업 — 교육생 직접 취소 불가
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("company_name")
+    .eq("id", user.id)
+    .single();
+  if (me?.company_name) {
+    const { data: cs } = await supabase
+      .from("company_settings")
+      .select("center_managed_registration")
+      .eq("company_name", me.company_name)
+      .maybeSingle();
+    if (cs?.center_managed_registration) {
+      return { ok: false, error: "수업 취소·변경은 시원스쿨 센터에서 대신합니다. 센터에 문의해 주세요." };
+    }
+  }
 
   const { error } = await supabase
     .from("bookings")

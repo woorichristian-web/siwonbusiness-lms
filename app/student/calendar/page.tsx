@@ -14,6 +14,17 @@ export default async function StudentCalendarPage() {
   const profile = await requireRole(["student", "admin"]);
   const supabase = createClient();
 
+  // 기업 설정 — 센터 대행이면 취소·변경 버튼 비활성화
+  let centerManaged = false;
+  if (profile.company_name) {
+    const { data: cs } = await supabase
+      .from("company_settings")
+      .select("center_managed_registration")
+      .eq("company_name", profile.company_name)
+      .maybeSingle();
+    centerManaged = cs?.center_managed_registration ?? false;
+  }
+
   // 내가 신청한 모든 confirmed 예약 (과거·미래 포함)
   const { data: myBookings } = await supabase
     .from("bookings")
@@ -117,7 +128,7 @@ export default async function StudentCalendarPage() {
             </p>
           )}
         </header>
-        <StudentCalendar slots={mine} />
+        <StudentCalendar slots={mine} centerManaged={centerManaged} />
       </main>
     </>
   );

@@ -14,7 +14,13 @@ import { classTypeKo } from "@/lib/types";
 import { bookSlot, cancelBooking } from "@/lib/actions/booking";
 import ClassReviewModal from "@/components/ClassReviewModal";
 
-export default function StudentCalendar({ slots }: { slots: BookableSlot[] }) {
+export default function StudentCalendar({
+  slots,
+  centerManaged = false,
+}: {
+  slots: BookableSlot[];
+  centerManaged?: boolean;
+}) {
   const [selected, setSelected] = useState<BookableSlot | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -207,6 +213,7 @@ export default function StudentCalendar({ slots }: { slots: BookableSlot[] }) {
           slot={selected}
           message={message}
           pending={pending}
+          centerManaged={centerManaged}
           onClose={() => setSelected(null)}
           onBook={onBook}
           onCancel={onCancel}
@@ -225,11 +232,12 @@ function bg(s: BookableSlot) {
 }
 
 function SlotModal({
-  slot, message, pending, onClose, onBook, onCancel,
+  slot, message, pending, centerManaged = false, onClose, onBook, onCancel,
 }: {
   slot: BookableSlot;
   message: string | null;
   pending: boolean;
+  centerManaged?: boolean;
   onClose: () => void;
   onBook: () => void;
   onCancel: () => void;
@@ -352,18 +360,28 @@ function SlotModal({
               </button>
             ) : null
           ) : slot.i_am_booked ? (
-            <>
-              <button
-                className="btn-ghost !border !border-slate-300 !text-slate-700"
-                onClick={() => setShowChange((v) => !v)}
-              >
-                스케줄 변경
-              </button>
-              <button className="btn !bg-red-600 hover:!bg-red-700" disabled={pending}
-                onClick={onCancel}>
-                {pending ? "취소 중..." : "수업 취소"}
-              </button>
-            </>
+            centerManaged ? (
+              <span className="self-center text-xs text-slate-500">
+                수업 취소·시간 변경은 시원스쿨 센터에서 대신합니다.
+              </span>
+            ) : (
+              <>
+                <button
+                  className="btn-ghost !border !border-slate-300 !text-slate-700"
+                  onClick={() => setShowChange((v) => !v)}
+                >
+                  스케줄 변경
+                </button>
+                <button className="btn !bg-red-600 hover:!bg-red-700" disabled={pending}
+                  onClick={onCancel}>
+                  {pending ? "취소 중..." : "수업 취소"}
+                </button>
+              </>
+            )
+          ) : centerManaged ? (
+            <span className="self-center text-xs text-slate-500">
+              수강신청은 시원스쿨 센터에서 대신합니다.
+            </span>
           ) : (
             <button className="btn" disabled={pending || isFull || isClosed}
               onClick={onBook}>

@@ -173,7 +173,7 @@ export default function TeacherProfileForm({
           <div>
             <label className="label">Bio (shown to admins; not yet shown to students)</label>
             <textarea className="input min-h-[100px]"
-              placeholder="A short introduction about your background and teaching style."
+              placeholder={"One item per line, e.g.\nB.A. ... (University)\nCertifications: ...\nExperience: ..."}
               value={bio} onChange={(e) => setBio(e.target.value)} />
           </div>
         </section>

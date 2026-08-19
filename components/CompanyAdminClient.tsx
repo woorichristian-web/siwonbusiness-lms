@@ -196,10 +196,12 @@ function SettingsCards({
         <p className="mt-2 text-xs text-slate-500">
           체크 시 — 해당 기업 교육생은 <b>'수강신청'</b> 메뉴에서 직접 신청할 수 없고,
           <i>"귀하의 수강신청은 귀사에서 대신합니다."</i> 안내만 표시됩니다.
+          또한 내 수업 일정에서 <b>수업 취소</b>·<b>스케줄 변경(Reschedule)</b> 버튼도 비활성화되어
+          취소·변경은 센터를 통해서만 가능합니다.
           관리자가 회원 페이지 또는 일괄 업로드로 대신 신청해주세요.
         </p>
         <p className="mt-1 text-xs text-amber-600">
-          현재: <b>{centerManaged ? "센터 대행 (학생 직접 신청 불가)" : "학생 직접 신청 허용"}</b>
+          현재: <b>{centerManaged ? "센터 대행 (신청·취소·변경 모두 센터에서만 가능)" : "학생 직접 신청 허용"}</b>
         </p>
       </section>
 

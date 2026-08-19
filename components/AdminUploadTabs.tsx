@@ -70,7 +70,7 @@ export default function AdminUploadTabs({ companies }: { companies: string[] }) 
               ["phone", "연락처", "010-1111-2222"],
               ["residence_area", "주거 지역", "서울"],
               ["specialty", "전문 분야", "Business Conversation"],
-              ["bio", "강사 소개 (자유 텍스트)", "Native speaker, 8 yrs ESL"],
+              ["bio", "강사 소개 (정보별 줄바꿈 — 학력/자격/경력을 한 줄씩)", "Native speaker, 8 yrs ESL"],
               ["languages", "사용 언어 (쉼표 구분)", "English, Korean"],
               ["hourly_rate", "시급 (원, 정수)", "35000"],
               ["bank_name", "정산 계좌 은행", "신한은행"],
