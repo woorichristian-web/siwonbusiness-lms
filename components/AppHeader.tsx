@@ -102,9 +102,9 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
             { href: "/admin/students", label: "교육생 관리" },
             { href: "/admin/messages", label: "메시지", badge: unread },
             { href: "/chat", label: "대화방" },
+            { href: "/admin/profile", label: "마이페이지" },
             { href: "/admin/upload", label: "DB 관리" },
             { href: "/admin/users", label: "회원 관리" },
-            { href: "/admin/profile", label: "마이페이지" },
           ];
 
   const brandSubtitle = profile.role === "teacher" ? "Teacher Portal" : "LMS";
