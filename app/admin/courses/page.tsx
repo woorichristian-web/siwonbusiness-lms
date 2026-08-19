@@ -23,8 +23,20 @@ export default async function AdminCoursesPage() {
     .eq("role", "teacher")
     .order("name");
 
-  // 과정별 현재 배정 강사
   const courseIds = (courses ?? []).map((c: any) => c.id);
+
+  // 과정별 수강 인원
+  const studentCounts: Record<string, number> = {};
+  if (courseIds.length > 0) {
+    const { data: css } = await supabase
+      .from("course_students")
+      .select("course_id")
+      .in("course_id", courseIds);
+    for (const r of css ?? [])
+      studentCounts[r.course_id] = (studentCounts[r.course_id] ?? 0) + 1;
+  }
+
+  // 과정별 현재 배정 강사
   const assignments: Record<string, { teacher_id: string; name: string }[]> = {};
   if (courseIds.length > 0) {
     const { data: cts } = await supabase
@@ -55,6 +67,7 @@ export default async function AdminCoursesPage() {
           courses={(courses ?? []) as CourseRow[]}
           allTeachers={(allTeachers ?? []) as TeacherOption[]}
           assignments={assignments}
+          studentCounts={studentCounts}
         />
       </main>
     </>

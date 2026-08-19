@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { getStudentCourseReport } from "@/lib/actions/student-report";
+import { buildStudentCourseXlsx } from "@/lib/reportXlsx";
 
 export interface SManageStudent {
   id: string;
@@ -27,6 +29,16 @@ export default function StudentManageClient({
 }) {
   const [courseId, setCourseId] = useState<string>("all"); // "all" | course id
   const [q, setQ] = useState("");
+  const [dlPending, startDl] = useTransition();
+  const [dlErr, setDlErr] = useState<string | null>(null);
+  function download() {
+    setDlErr(null);
+    startDl(async () => {
+      const r = await getStudentCourseReport();
+      if (!r.ok) { setDlErr(r.error); return; }
+      buildStudentCourseXlsx(r.data);
+    });
+  }
 
   // 현재 스코프 학생
   const scoped = useMemo(() => {
@@ -95,43 +107,71 @@ export default function StudentManageClient({
         <Stat label="선택" value={dash.title === "전체" ? "전체" : "과정별"} sub={dash.title !== "전체" ? dash.title : undefined} />
       </section>
 
-      {/* 검색 */}
-      <input className="input" placeholder="이름 / 아이디 / 회사 검색" value={q} onChange={(e) => setQ(e.target.value)} />
-
-      {/* 학생 목록 */}
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-2">교육생</th>
-              <th className="px-4 py-2">회사</th>
-              <th className="px-4 py-2">과정</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {scoped.length === 0 && (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400">해당 없음</td></tr>
-            )}
-            {scoped.map((s) => (
-              <tr key={s.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3">
-                  <span className="font-medium text-slate-800">{s.name}</span>
-                  <span className="ml-2 text-xs text-slate-400">@{s.username}</span>
-                </td>
-                <td className="px-4 py-3 text-slate-600">{s.company_name ?? "—"}</td>
-                <td className="px-4 py-3 text-slate-600">{s.course_name ?? (s.course_ids.length ? `${s.course_ids.length}개 과정` : "—")}</td>
-                <td className="px-4 py-3 text-right">
-                  <Link href={`/admin/progress/${s.id}`}
-                    className="rounded-md border border-brand-300 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50">
-                    대시보드 →
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* 검색 + 다운로드 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <input className="input flex-1" placeholder="이름 / 아이디 / 회사 검색" value={q} onChange={(e) => setQ(e.target.value)} />
+        <button className="btn whitespace-nowrap" disabled={dlPending} onClick={download}>
+          {dlPending ? "생성 중..." : "📥 교육생 엑셀"}
+        </button>
       </div>
+      {dlErr && <p className="text-xs text-red-600">{dlErr}</p>}
+      <p className="-mt-3 text-xs text-slate-400">
+        엑셀: [종합] 교육생별 합산 + 기업별 시트(강좌별 명단·출석율). 파일명·문서 상단에 다운로드 날짜 기재.
+      </p>
+
+      {/* 과정별 그룹 목록 */}
+      {(() => {
+        const visible = courseId === "all" ? courses : courses.filter((c) => c.id === courseId);
+        const groups = visible.map((c) => ({
+          course: c,
+          list: scoped.filter((s) => s.course_ids.includes(c.id)),
+        })).filter((g) => g.list.length > 0);
+        const grouped = new Set(groups.flatMap((g) => g.list.map((s) => s.id)));
+        const rest = courseId === "all" ? scoped.filter((s) => !grouped.has(s.id)) : [];
+        const blocks = [
+          ...groups.map((g) => ({ key: g.course.id, title: g.course.name, company: g.course.company_name, list: g.list })),
+          ...(rest.length ? [{ key: "__none__", title: "과정 미배정", company: null as string | null, list: rest }] : []),
+        ];
+        if (blocks.length === 0)
+          return <div className="card text-center text-sm text-slate-400">해당 없음</div>;
+        return blocks.map((b) => (
+          <section key={b.key} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <header className="border-b border-slate-100 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
+              <h3 className="font-semibold text-brand-900">
+                {b.key === "__none__" ? "👤 과정 미배정" : `📘 ${b.title}`}
+                {b.company && <span className="ml-2 text-sm font-normal text-slate-500">· {b.company}</span>}
+                <span className="ml-2 text-xs font-normal text-slate-400">교육생 {b.list.length}명</span>
+              </h3>
+            </header>
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+                <tr>
+                  <th className="px-4 py-2">교육생</th>
+                  <th className="px-4 py-2">회사</th>
+                  <th className="px-4 py-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {b.list.map((s) => (
+                  <tr key={s.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-slate-800">{s.name}</span>
+                      <span className="ml-2 text-xs text-slate-400">@{s.username}</span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{s.company_name ?? "—"}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Link href={`/admin/progress/${s.id}`}
+                        className="rounded-md border border-brand-300 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50">
+                        대시보드 →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        ));
+      })()}
     </div>
   );
 }
