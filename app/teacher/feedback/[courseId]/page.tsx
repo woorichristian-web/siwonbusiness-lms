@@ -106,7 +106,7 @@ export default async function TeacherFeedbackCoursePage({
                     <ul className="space-y-2">
                       {it.agg.comments.map((cm, i) => (
                         <li key={i} className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                          💬 {cm}
+                          {cm}
                         </li>
                       ))}
                     </ul>

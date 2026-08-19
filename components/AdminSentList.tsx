@@ -42,7 +42,7 @@ export default function AdminSentList({ groups }: { groups: SentGroup[] }) {
                   {g.recipients.length > 1 ? (
                     <span className="inline-flex items-center gap-1.5">
                       <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">
-                        📢 {g.course_name ? `${g.course_name}` : "단체 발송"}
+                        {g.course_name ? `${g.course_name}` : "단체 발송"}
                       </span>
                       <span className="text-xs text-slate-500">{g.recipients.length}명</span>
                     </span>
@@ -67,7 +67,7 @@ export default function AdminSentList({ groups }: { groups: SentGroup[] }) {
             className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
             <header className="mb-3 border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-800">
-                {selected.course_name ? `📢 ${selected.course_name}` : selected.recipients.length > 1 ? "📢 단체 발송" : selected.recipients[0]?.name}
+                {selected.course_name ? `${selected.course_name}` : selected.recipients.length > 1 ? "단체 발송" : selected.recipients[0]?.name}
               </h3>
               <p className="mt-0.5 text-xs text-slate-400">
                 {new Date(selected.created_at).toLocaleString("ko-KR")} · {selected.recipients.length}명에게 발송

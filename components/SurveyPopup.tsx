@@ -64,7 +64,7 @@ export default function SurveyPopup({ surveys }: { surveys: PendingSurvey[] }) {
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow-2xl">
         <div className="mb-1 flex items-center gap-2">
           <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
-            📋 만족도 설문
+            만족도 설문
           </span>
           <span className="text-xs text-slate-400">응답 마감까지 D-{dday}</span>
         </div>

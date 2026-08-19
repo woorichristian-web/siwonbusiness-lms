@@ -47,7 +47,6 @@ export default async function StudentRegisterPage() {
           </header>
 
           <section className="rounded-2xl border-2 border-amber-200 bg-amber-50/60 p-8 text-center shadow-sm">
-            <div className="mb-4 text-5xl">🔒</div>
             <h2 className="mb-2 text-lg font-bold text-slate-800">
               수강신청은 시원스쿨 센터에서 배정합니다.
             </h2>
@@ -57,7 +56,7 @@ export default async function StudentRegisterPage() {
               수강·시간표 관련 문의는 아래 시원스쿨 센터로 연락해 주세요.
             </p>
             <div className="mt-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm">
-              <span className="text-slate-500">📧 시원스쿨 센터</span>
+              <span className="text-slate-500">시원스쿨 센터</span>
               <a href="mailto:b2b@siwonschool.com" className="font-semibold text-brand-700 hover:underline">
                 b2b@siwonschool.com
               </a>

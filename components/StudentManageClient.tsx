@@ -111,7 +111,7 @@ export default function StudentManageClient({
       <div className="flex flex-wrap items-center gap-2">
         <input className="input flex-1" placeholder="이름 / 아이디 / 회사 검색" value={q} onChange={(e) => setQ(e.target.value)} />
         <button className="btn whitespace-nowrap" disabled={dlPending} onClick={download}>
-          {dlPending ? "생성 중..." : "📥 교육생 엑셀"}
+          {dlPending ? "생성 중..." : "교육생 엑셀"}
         </button>
       </div>
       {dlErr && <p className="text-xs text-red-600">{dlErr}</p>}
@@ -138,7 +138,7 @@ export default function StudentManageClient({
           <section key={b.key} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
             <header className="border-b border-slate-100 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
               <h3 className="font-semibold text-brand-900">
-                {b.key === "__none__" ? "👤 과정 미배정" : `📘 ${b.title}`}
+                {b.key === "__none__" ? "과정 미배정" : `${b.title}`}
                 {b.company && <span className="ml-2 text-sm font-normal text-slate-500">· {b.company}</span>}
                 <span className="ml-2 text-xs font-normal text-slate-400">교육생 {b.list.length}명</span>
               </h3>

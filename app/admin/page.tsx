@@ -64,28 +64,24 @@ export default async function AdminHome() {
           <Stat
             label="고객사"
             value={companySet.size}
-            icon="🏢"
             href="/admin/companies"
             color="bg-blue-50 text-blue-700"
           />
           <Stat
             label="등록 강사"
             value={teacherCount ?? 0}
-            icon="🧑‍🏫"
             href="/admin/users"
             color="bg-purple-50 text-purple-700"
           />
           <Stat
             label="진행중 과정"
             value={activeCourseSet.size}
-            icon="📚"
             href="/admin/companies"
             color="bg-emerald-50 text-emerald-700"
           />
           <Stat
             label="오늘의 수업"
             value={todayBookingCount ?? 0}
-            icon="📅"
             color="bg-amber-50 text-amber-700"
             subtitle={`예약 ${todayBookingCount ?? 0}건`}
           />
@@ -108,11 +104,10 @@ export default async function AdminHome() {
 }
 
 function Stat({
-  label, value, icon, href, color, subtitle,
+  label, value, href, color, subtitle,
 }: {
   label: string;
   value: number;
-  icon: string;
   href?: string;
   color: string;
   subtitle?: string;
@@ -121,10 +116,8 @@ function Stat({
     <div className={"rounded-lg border border-slate-200 bg-white p-4 transition " +
       (href ? "hover:border-brand-500 hover:shadow-md cursor-pointer" : "")}>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-slate-500">{label}</span>
-        <span className={"inline-flex h-6 w-6 items-center justify-center rounded-full text-sm " + color}>
-          {icon}
-        </span>
+        <span className="text-xs font-medium text-slate-500">{label}</span>
+        <span className={"h-2 w-2 rounded-full " + color.split(" ")[0].replace("-50", "-500")} />
       </div>
       <div className="mt-2 text-3xl font-bold text-slate-800">{value}</div>
       {subtitle && <div className="mt-1 text-xs text-slate-400">{subtitle}</div>}

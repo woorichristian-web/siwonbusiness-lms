@@ -52,14 +52,14 @@ export default function MessagePopupOnLogin({
 
   const t = isTeacher
     ? {
-        title: "📬 You have unread messages",
+        title: "You have unread messages",
         sub: (n: number) => `${n} new message${n === 1 ? "" : "s"} waiting for you.`,
         go: "Open inbox",
         later: "Later",
         from: "From",
       }
     : {
-        title: "📬 안 읽은 메시지가 있습니다",
+        title: "안 읽은 메시지가 있습니다",
         sub: (n: number) => `새 메시지 ${n}건이 기다리고 있어요.`,
         go: "메시지함 열기",
         later: "나중에 보기",
@@ -97,7 +97,7 @@ export default function MessagePopupOnLogin({
                     <span className="font-semibold text-slate-700">
                       {isCenter && (
                         <span className="mr-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                          📢 {isTeacher ? "CENTER" : "센터 안내"}
+                          {isTeacher ? "CENTER" : "센터 안내"}
                         </span>
                       )}
                       {m.sender_name}

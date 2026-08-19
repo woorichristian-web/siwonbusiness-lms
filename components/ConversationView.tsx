@@ -167,7 +167,7 @@ export default function ConversationView({
         <div className="mt-1 flex flex-wrap gap-1 text-xs">
           {teachers.map((t) => (
             <span key={t.id} className="rounded-full bg-brand-50 px-2 py-0.5 text-brand-700">
-              🎓 {t.name}
+              {t.name}
             </span>
           ))}
           {students.map((s) => (
@@ -197,7 +197,7 @@ export default function ConversationView({
                 {!mine && (
                   <div className="mb-0.5 text-xs font-medium text-slate-500">
                     {sender?.name ?? "알 수 없음"}
-                    {sender?.role === "teacher" && " 🎓"}
+                    {sender?.role === "teacher" && " "}
                   </div>
                 )}
                 <div
@@ -239,7 +239,7 @@ export default function ConversationView({
         {err && <p className="mb-2 text-xs text-red-600">{err}</p>}
         <div className="flex items-end gap-2">
           <label className="btn-ghost cursor-pointer whitespace-nowrap text-xs" title="이미지·PDF·Word·음성 파일 첨부">
-            📎 파일
+            파일
             <input
               ref={fileRef}
               type="file"
@@ -291,7 +291,7 @@ function Attachment({
   mine: boolean;
 }) {
   if (!url) {
-    return <div className="mt-1 text-xs opacity-70">📎 {name ?? "첨부파일"} (불러오는 중…)</div>;
+    return <div className="mt-1 text-xs opacity-70">{name ?? "첨부파일"} (불러오는 중…)</div>;
   }
   if (type?.startsWith("image/")) {
     return (
@@ -316,7 +316,7 @@ function Attachment({
       download={name ?? undefined}
       className={"mt-1 flex items-center gap-1 underline " + (mine ? "text-white" : "text-brand-700")}
     >
-      📎 {name ?? "파일 다운로드"}
+      {name ?? "파일 다운로드"}
     </a>
   );
 }

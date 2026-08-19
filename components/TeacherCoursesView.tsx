@@ -32,8 +32,11 @@ const WEEKDAYS = [
   "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
 ];
 const CLASS_TYPE_LABEL: Record<string, string> = {
-  "1on1": "1:1",
-  small_group: "Small Group",
+  "1on1": "1:1 Class",
+  "1on1_coaching": "1:1 Coaching",
+  group: "Group Class",
+  group_coaching: "Group Coaching",
+  small_group: "Group Class",
 };
 const FORMAT_LABEL: Record<string, string> = {
   online: "Online",
@@ -113,7 +116,7 @@ export default function TeacherCoursesView({
                 )}
                 {c.students.length > 0 && (
                   <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                    👥 {c.students.length}
+                    {c.students.length}
                   </span>
                 )}
               </div>

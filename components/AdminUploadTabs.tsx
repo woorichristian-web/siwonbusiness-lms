@@ -16,16 +16,16 @@ export default function AdminUploadTabs({ companies }: { companies: string[] }) 
       {/* 탭 헤더 */}
       <div className="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
         <TabBtn active={tab === "students"} onClick={() => setTab("students")}>
-          🎓 교육생 업로드
+          교육생 업로드
         </TabBtn>
         <TabBtn active={tab === "teachers"} onClick={() => setTab("teachers")}>
-          👨‍🏫 강사 정보 업로드
+          강사 정보 업로드
         </TabBtn>
         <TabBtn active={tab === "schedule"} onClick={() => setTab("schedule")}>
-          🗓️ 강사 시간표 업로드
+          강사 시간표 업로드
         </TabBtn>
         <TabBtn active={tab === "download"} onClick={() => setTab("download")}>
-          📥 DB 내려받기
+          DB 내려받기
         </TabBtn>
       </div>
 
@@ -33,7 +33,7 @@ export default function AdminUploadTabs({ companies }: { companies: string[] }) 
         <>
           <FormatGuide
             title="교육생 명단 업로드"
-            description="username, password, name 은 필수. 나머지는 선택. '⬇ 템플릿 다운로드' 로 샘플 받기. 한 번 업로드하면 회원 관리·기업별 관리에 모두 자동 반영됩니다."
+            description="username, password, name 은 필수. 나머지는 선택. '템플릿 다운로드' 로 샘플 받기. 한 번 업로드하면 회원 관리·기업별 관리에 모두 자동 반영됩니다."
             rows={[
               ["username", "아이디 (영/숫자, 3~20자)", "kim123"],
               ["password", "임시 비밀번호 (8자 이상)", "kim1234567"],
@@ -97,7 +97,7 @@ export default function AdminUploadTabs({ companies }: { companies: string[] }) 
               ["time", "시작 시각 (HH:mm, KST)", "09:00"],
               ["duration(min)", "수업 길이 (분)", "60"],
               ["format", "online 또는 offline", "offline"],
-              ["class_type", "1on1 또는 small_group", "small_group"],
+              ["class_type", "1on1 / 1on1_coaching / group / group_coaching", "group"],
               ["capacity", "정원 (정수)", "6"],
             ]}
           />

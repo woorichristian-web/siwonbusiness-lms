@@ -57,7 +57,7 @@ export default function AdminUsersTable({
                 {u.name}
                 {(u as any).languages && (
                   <span className="ml-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-normal text-slate-500">
-                    🗣 {(u as any).languages}
+                    {(u as any).languages}
                   </span>
                 )}
               </td>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { classTypeKo } from "@/lib/types";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
@@ -158,7 +159,7 @@ export default async function StudentStatusPage() {
 
         {/* 강좌 요약 카드 */}
         <section className="card mb-6">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">📚 강좌 정보</h2>
+          <h2 className="mb-3 text-sm font-semibold text-slate-700">강좌 정보</h2>
           {!hasEnrollment ? (
             <p className="text-sm text-slate-400">
               아직 배정된 강좌가 없습니다. 관리자에게 문의해주세요.
@@ -237,7 +238,7 @@ export default async function StudentStatusPage() {
 
         {/* 다가오는 수업 */}
         <section className="card mb-6">
-          <h2 className="mb-3 font-semibold">📅 다가오는 수업 ({upcoming.length})</h2>
+          <h2 className="mb-3 font-semibold">다가오는 수업 ({upcoming.length})</h2>
           {upcoming.length === 0 ? (
             <p className="text-sm text-slate-400">
               예약된 수업이 없습니다.{" "}
@@ -252,7 +253,7 @@ export default async function StudentStatusPage() {
 
         {/* 지난 수업 */}
         <section className="card">
-          <h2 className="mb-3 font-semibold">📖 지난 수업 ({past.length})</h2>
+          <h2 className="mb-3 font-semibold">지난 수업 ({past.length})</h2>
           {past.length === 0 ? (
             <p className="text-sm text-slate-400">완료된 수업이 없습니다.</p>
           ) : (
@@ -262,7 +263,7 @@ export default async function StudentStatusPage() {
 
         {cancelled.length > 0 && (
           <section className="card mt-6 opacity-80">
-            <h2 className="mb-3 font-semibold text-slate-500">❌ 취소된 수업 ({cancelled.length})</h2>
+            <h2 className="mb-3 font-semibold text-slate-500">취소된 수업 ({cancelled.length})</h2>
             <BookingList items={cancelled} slotInfo={slotInfo} muted />
           </section>
         )}
@@ -338,7 +339,7 @@ function BookingList({
                 {info && (
                   <>
                     {" · "}
-                    {info.class_type === "1on1" ? "1:1" : "그룹"}
+                    {classTypeKo(info.class_type)}
                     {" · "}
                     {info.format === "online" ? "온라인" : "오프라인"}
                   </>

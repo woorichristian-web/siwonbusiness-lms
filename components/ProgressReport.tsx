@@ -91,7 +91,7 @@ function humanBucket(key: string, mode: "weekly" | "monthly") {
 }
 
 const T_KO = {
-  reportTitle: (n: string) => `📊 학습 리포트 — ${n}`,
+  reportTitle: (n: string) => `학습 리포트 — ${n}`,
   booked: "예약", attended: "출석", absent: "결석", feedback: "피드백",
   attendanceTitle: "출석율",
   attendanceHelp:
@@ -110,14 +110,14 @@ const T_KO = {
   feedbackSub: "강사가 남긴 코멘트 (날짜별)",
   noComment: "아직 강사가 남긴 코멘트가 없습니다.",
   avg: "평균",
-  detailsTitle: (n: number) => `📋 피드백 상세 (${n}건)`,
+  detailsTitle: (n: number) => `피드백 상세 (${n}건)`,
   dateCol: "날짜",
   detailsNote: "각 행은 한 수업입니다. 영역 점수 = Σ(별/5 × 배점), Total 은 10점 만점.",
-  download: "⬇ PNG 다운로드", downloading: "이미지 생성 중...",
+  download: "PNG 다운로드", downloading: "이미지 생성 중...",
   locale: "ko-KR",
 };
 const T_EN: typeof T_KO = {
-  reportTitle: (n) => `📊 Progress Report — ${n}`,
+  reportTitle: (n) => `Progress Report — ${n}`,
   booked: "Booked", attended: "Attended", absent: "Absent", feedback: "Feedback",
   attendanceTitle: "Attendance Rate",
   attendanceHelp:
@@ -136,10 +136,10 @@ const T_EN: typeof T_KO = {
   feedbackSub: "Teacher comments by date",
   noComment: "No teacher comments yet.",
   avg: "Avg",
-  detailsTitle: (n) => `📋 Feedback Details (${n} entries)`,
+  detailsTitle: (n) => `Feedback Details (${n} entries)`,
   dateCol: "Date",
   detailsNote: "Each row is one class. Area points = Σ(stars/5 × weight); Total is out of 10.",
-  download: "⬇ Download PNG", downloading: "Generating...",
+  download: "Download PNG", downloading: "Generating...",
   locale: "en-US",
 };
 

@@ -10,6 +10,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import type { EventClickArg, EventInput } from "@fullcalendar/core";
 import koLocale from "@fullcalendar/core/locales/ko";
 import type { BookableSlot } from "@/lib/types";
+import { classTypeKo } from "@/lib/types";
 import { bookSlot, cancelBooking } from "@/lib/actions/booking";
 import ClassReviewModal from "@/components/ClassReviewModal";
 
@@ -190,7 +191,7 @@ export default function StudentCalendar({ slots }: { slots: BookableSlot[] }) {
                     {slot.teacher_name}
                   </div>
                   <div className="fc-event-sub">
-                    {slot.class_type === "1on1" ? "1:1" : "그룹"} ·{" "}
+                    {classTypeKo(slot.class_type)} ·{" "}
                     {slot.format === "online" ? "온라인" : "오프라인"} ·{" "}
                     {slot.booked_count}/{slot.capacity}
                   </div>
@@ -256,7 +257,7 @@ function SlotModal({
         </div>
 
         <div className="space-y-2 text-sm">
-          <Row k="수업 형태" v={slot.class_type === "1on1" ? "1:1 개인" : "소그룹"} />
+          <Row k="수업 형태" v={classTypeKo(slot.class_type)} />
           <Row k="진행 방식" v={slot.format === "online" ? "온라인" : "오프라인"} />
           <Row k="정원" v={`${slot.booked_count} / ${slot.capacity} 명`} />
           <Row k="상태" v={
@@ -270,7 +271,7 @@ function SlotModal({
         {/* 내가 신청한 예정 수업 — 수업 입장. 온라인+강사링크면 활성, 오프라인이면 비활성 */}
         {slot.i_am_booked && !isPast && (
           <div className="mt-4 flex flex-wrap items-center gap-2 rounded-md border border-blue-200 bg-blue-50/40 p-3">
-            <span className="self-center text-xs font-semibold text-slate-600">🎥 수업 입장:</span>
+            <span className="self-center text-xs font-semibold text-slate-600">수업 입장:</span>
             {slot.format === "online" && (slot.zoom_url || slot.teams_url) ? (
               <>
                 {slot.zoom_url && (
@@ -322,7 +323,7 @@ function SlotModal({
         {/* 스케줄 변경 요청 안내 패널 — 담당 강사에게 1:1 메시지 */}
         {showChange && slot.i_am_booked && !isPast && (
           <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/60 p-3 text-sm">
-            <p className="font-semibold text-slate-800">🗓️ 수업 시간 변경 요청</p>
+            <p className="font-semibold text-slate-800">수업 시간 변경 요청</p>
             <p className="mt-1 text-xs text-slate-600">
               수업 시간 변경은 담당 강사(<b>{slot.teacher_name}</b>)에게 직접 요청해 주세요.
               아래 버튼을 누르면 강사에게 보내는 메시지 화면이 열립니다.
@@ -333,7 +334,7 @@ function SlotModal({
               )}`}
               className="mt-2 inline-flex items-center gap-1 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
             >
-              ✉️ 강사에게 메시지 보내기
+              강사에게 메시지 보내기
             </Link>
           </div>
         )}
@@ -347,7 +348,7 @@ function SlotModal({
                 className="btn !bg-amber-500 hover:!bg-amber-600"
                 onClick={() => setShowReview(true)}
               >
-                ⭐ 수업후기
+                수업후기
               </button>
             ) : null
           ) : slot.i_am_booked ? (
@@ -457,7 +458,7 @@ function SlotCardListStudent({
   if (slots.length === 0) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-12 text-center text-sm text-slate-400">
-        📭 이 날에는 등록된 수업이 없습니다.
+        이 날에는 등록된 수업이 없습니다.
       </div>
     );
   }
@@ -545,10 +546,10 @@ function SlotCardStudent({
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-              {slot.class_type === "1on1" ? "1:1" : "그룹"}
+              {classTypeKo(slot.class_type)}
             </span>
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-              {slot.format === "online" ? "💻 온라인" : "🏫 오프라인"}
+              {slot.format === "online" ? "온라인" : "오프라인"}
             </span>
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
               {slot.booked_count}/{slot.capacity}명
@@ -569,7 +570,7 @@ function SlotCardStudent({
                   onClick={(e) => e.stopPropagation()}
                   className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-blue-700"
                 >
-                  🎥 Zoom 입장 ↗
+                  Zoom 입장 ↗
                 </a>
               )}
               {slot.teams_url && (
@@ -580,7 +581,7 @@ function SlotCardStudent({
                   onClick={(e) => e.stopPropagation()}
                   className="inline-flex items-center gap-1 rounded-md bg-purple-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition hover:bg-purple-700"
                 >
-                  💼 Teams 입장 ↗
+                  Teams 입장 ↗
                 </a>
               )}
             </div>

@@ -78,7 +78,7 @@ export default function ClassReviewModal({
         className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-bold text-slate-800">⭐ 수업후기</h3>
+        <h3 className="text-lg font-bold text-slate-800">수업후기</h3>
         <p className="mt-1 text-sm text-slate-500">
           {teacherName} 강사 · {classInfo}
         </p>

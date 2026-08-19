@@ -32,7 +32,7 @@ export default async function ChatListPage() {
       <AppHeader profile={profile} />
       <main className="mx-auto max-w-3xl px-4 py-6">
         <header className="mb-6">
-          <h1 className="text-xl font-bold text-slate-800">💬 수업 대화방</h1>
+          <h1 className="text-xl font-bold text-slate-800">수업 대화방</h1>
           <p className="text-sm text-slate-500">
             강좌별 대화방에서 강사·교육생이 함께 소통하고 파일을 공유합니다.
           </p>
@@ -61,7 +61,7 @@ export default async function ChatListPage() {
                     )}
                   </div>
                   <span className="shrink-0 text-xs text-slate-400">
-                    👥 {countByConv.get(c.id) ?? 0} · 열기 ›
+                    {countByConv.get(c.id) ?? 0} · 열기 ›
                   </span>
                 </Link>
               </li>

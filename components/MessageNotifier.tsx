@@ -82,7 +82,6 @@ export default function MessageNotifier({ userId }: { userId: string }) {
           className="pointer-events-auto rounded-lg border border-brand-300 bg-white p-4 shadow-lg"
         >
           <div className="mb-1 flex items-center gap-2 text-sm font-bold text-brand-700">
-            <span>💬</span>
             <span>새 메시지가 도착했습니다</span>
           </div>
           <p className="line-clamp-3 text-sm text-slate-700">{t.body}</p>

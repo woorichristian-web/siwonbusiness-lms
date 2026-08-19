@@ -60,7 +60,7 @@ export default async function TeacherFeedbackListPage() {
                       </div>
                     </div>
                     <span className="shrink-0 text-xs text-slate-500">
-                      📬 {delivered}/{total || 3} delivered · Open ›
+                      {delivered}/{total || 3} delivered · Open ›
                     </span>
                   </Link>
                 </li>

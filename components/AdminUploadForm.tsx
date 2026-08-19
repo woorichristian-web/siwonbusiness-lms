@@ -100,7 +100,7 @@ export default function AdminUploadForm() {
         "duration(min)", "format", "class_type", "capacity",
       ],
       sample: [
-        ["jayrho", "2026-08-11 09:00", "2026-08-11 10:00", "tue", "09:00", 60, "offline", "small_group", 6],
+        ["jayrho", "2026-08-11 09:00", "2026-08-11 10:00", "tue", "09:00", 60, "offline", "group", 6],
         ["jane_kim", "2026-08-13 19:00", "2026-08-13 20:00", "thu", "19:00", 60, "online", "1on1", 1],
       ],
       sheetName: "강사시간표",
@@ -114,7 +114,7 @@ export default function AdminUploadForm() {
         <header className="mb-3 flex items-center justify-between">
           <h3 className="font-semibold">파일 선택 (.xlsx, .xls, .csv)</h3>
           <button className="btn-ghost text-xs" onClick={downloadTemplate}>
-            ⬇ 템플릿 다운로드
+            템플릿 다운로드
           </button>
         </header>
         <input type="file" accept=".xlsx,.xls,.csv" onChange={onFile}
@@ -169,10 +169,10 @@ export default function AdminUploadForm() {
       {result && (
         <section className={"card mt-4 " + (result.errors.length > 0 ? "border-amber-300" : "border-green-300")}>
           <h3 className="mb-2 font-semibold">업로드 결과</h3>
-          <p className="text-sm">✅ <b>{result.inserted}건</b> 등록됨</p>
+          <p className="text-sm"><b>{result.inserted}건</b> 등록됨</p>
           {result.errors.length > 0 && (
             <>
-              <p className="mt-2 text-sm text-amber-700">⚠️ {result.errors.length}건 실패</p>
+              <p className="mt-2 text-sm text-amber-700">{result.errors.length}건 실패</p>
               <ul className="mt-1 max-h-40 overflow-y-auto text-xs text-slate-600">
                 {result.errors.map((e, i) => (
                   <li key={i}>· Row {e.row}: {e.reason}</li>
@@ -195,15 +195,16 @@ function normalizeFormat(v: any): any {
   return s;
 }
 
-// class_type 값 정규화 — "Small Group", "1:1", "소그룹" 등 → "small_group"/"1on1"
+// class_type 값 정규화 → 1on1 / 1on1_coaching / group / group_coaching
 function normalizeClassType(v: any): any {
   const raw = String(v ?? "").trim();
   const s = raw.toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!s) return "";
-  if (s === "11" || s === "1on1" || s === "oneonone") return "1on1";
-  if (s.includes("small") || s.includes("group")) return "small_group";
-  if (raw.includes("소그룹") || raw.includes("그룹")) return "small_group";
-  if (raw.includes("1:1") || raw.includes("일대일")) return "1on1";
+  const coaching = s.includes("coaching") || raw.includes("코칭");
+  const isOne = s.startsWith("11") || s.includes("1on1") || s.includes("oneonone") || raw.includes("1:1") || raw.includes("일대일");
+  const isGroup = s.includes("group") || s.includes("small") || raw.includes("그룹") || raw.includes("소그룹");
+  if (isOne) return coaching ? "1on1_coaching" : "1on1";
+  if (isGroup) return coaching ? "group_coaching" : "group";
   return raw;
 }
 

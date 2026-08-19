@@ -138,7 +138,7 @@ export default async function AdminTeacherDetailPage({
         <div>
           <Link href="/admin/messages" className="text-xs text-slate-400 hover:underline">← 메시지</Link>
           <h1 className="mt-1 text-xl font-bold text-slate-800">
-            🧑‍🏫 {teacher.name} <span className="text-sm font-normal text-slate-400">강사 · @{teacher.username}</span>
+            {teacher.name} <span className="text-sm font-normal text-slate-400">강사 · @{teacher.username}</span>
           </h1>
         </div>
 
@@ -157,7 +157,7 @@ export default async function AdminTeacherDetailPage({
         </section>
 
         <section className="card">
-          <h2 className="mb-2 text-base font-semibold">💰 월별 정산 (Payroll)</h2>
+          <h2 className="mb-2 text-base font-semibold">월별 정산 (Payroll)</h2>
           <p className="mb-2 text-xs text-slate-500">
             출석 체크(출석·지각) 기준 시수 × 시급. 강사는 매월 29일~다음달 7일에 [Agree]로 동의합니다.
           </p>
@@ -209,8 +209,8 @@ export default async function AdminTeacherDetailPage({
             <ul className="space-y-1 text-sm">
               {courses.map((c) => (
                 <li key={c.id} className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
-                  📘 {c.name}{c.company_name ? <span className="text-slate-400"> · {c.company_name}</span> : null}
-                  <div className="mt-0.5 text-xs text-emerald-700">📖 {progressLabel(progressMap.get(c.id))}</div>
+                  {c.name}{c.company_name ? <span className="text-slate-400"> · {c.company_name}</span> : null}
+                  <div className="mt-0.5 text-xs text-emerald-700">{progressLabel(progressMap.get(c.id))}</div>
                 </li>
               ))}
             </ul>

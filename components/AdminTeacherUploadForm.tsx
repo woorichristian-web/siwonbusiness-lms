@@ -93,7 +93,7 @@ export default function AdminTeacherUploadForm() {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold">파일 업로드</h3>
         <button type="button" onClick={downloadTemplate} className="btn-ghost text-xs">
-          ⬇ 템플릿 다운로드
+          템플릿 다운로드
         </button>
       </div>
 
@@ -104,7 +104,7 @@ export default function AdminTeacherUploadForm() {
         </label>
         {fileName && (
           <span className="text-xs text-slate-500">
-            📄 {fileName} · {rows.length} 행
+            {fileName} · {rows.length} 행
           </span>
         )}
         <button
@@ -133,7 +133,7 @@ export default function AdminTeacherUploadForm() {
       {result && (
         <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
           <p className="font-semibold text-slate-800">
-            ✅ 처리 완료 — 신규 {result.created}명 · 업데이트 {result.updated}명
+            처리 완료 — 신규 {result.created}명 · 업데이트 {result.updated}명
             {result.errors.length > 0 && (
               <span className="ml-2 text-red-600">· 오류 {result.errors.length}건</span>
             )}

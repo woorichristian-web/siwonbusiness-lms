@@ -84,20 +84,20 @@ export default function CurriculumManager({
     <section className="card">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="font-semibold text-slate-800">📚 커리큘럼 — {courseName}</h3>
+          <h3 className="font-semibold text-slate-800">커리큘럼 — {courseName}</h3>
           {updatedAt && (
             <p className="text-[11px] text-slate-400">최종 업데이트 {new Date(updatedAt).toLocaleString("ko-KR")}</p>
           )}
         </div>
         <div className="flex flex-wrap gap-1.5">
           {rows.length > 0 && (
-            <button className="btn-ghost text-xs" onClick={downloadCurrent}>⬇ 커리큘럼 다운로드</button>
+            <button className="btn-ghost text-xs" onClick={downloadCurrent}>커리큘럼 다운로드</button>
           )}
           {canEdit && (
             <>
-              <button className="btn-ghost text-xs" onClick={downloadTemplate}>⬇ 템플릿</button>
+              <button className="btn-ghost text-xs" onClick={downloadTemplate}>템플릿</button>
               <label className="btn cursor-pointer text-xs">
-                {pending ? "업로드 중..." : "📤 엑셀 업로드"}
+                {pending ? "업로드 중..." : "엑셀 업로드"}
                 <input type="file" accept=".xlsx,.xls,.csv" className="hidden" disabled={pending} onChange={onFile} />
               </label>
             </>

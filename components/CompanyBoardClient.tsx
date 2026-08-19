@@ -23,7 +23,6 @@ export default function CompanyBoardClient({ companies }: { companies: CompanyRo
     <div className="space-y-4">
       {/* 검색바 */}
       <div className="card flex items-center gap-2">
-        <span aria-hidden className="text-slate-400">🔍</span>
         <input
           className="input flex-1"
           placeholder="기업명 검색"
@@ -64,7 +63,7 @@ export default function CompanyBoardClient({ companies }: { companies: CompanyRo
                       href={`/admin/companies/${encodeURIComponent(c.name)}`}
                       className="font-semibold text-brand-700 hover:underline"
                     >
-                      🏢 {c.name}
+                      {c.name}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-center text-slate-700">{c.memberCount}명</td>

@@ -24,7 +24,7 @@ const T = {
   en: {
     recipient: "Recipient",
     selectPlaceholder: "Select a student",
-    allStudents: "📢 All my students",
+    allStudents: "All my students",
     noStudents: "No students have booked your classes yet.",
     bodyLabel: "Message (up to 2,000 characters)",
     bodyPlaceholder: "e.g. Please bring three business email samples to the next class.",
@@ -45,7 +45,7 @@ const T = {
   ko: {
     recipient: "받는 교육생",
     selectPlaceholder: "선택하세요",
-    allStudents: "📢 내 모든 교육생",
+    allStudents: "내 모든 교육생",
     noStudents: "아직 본인 수업에 신청한 교육생이 없습니다.",
     bodyLabel: "메시지 내용 (최대 2,000자)",
     bodyPlaceholder: "예: 다음 수업 준비물은 비즈니스 이메일 샘플 3개입니다.",

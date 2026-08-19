@@ -96,7 +96,7 @@ export default function AdminStudentUploadForm() {
         <header className="mb-3 flex items-center justify-between">
           <h3 className="font-semibold">파일 선택</h3>
           <button className="btn-ghost text-xs" onClick={downloadTemplate}>
-            ⬇ 템플릿 다운로드
+            템플릿 다운로드
           </button>
         </header>
         <input
@@ -155,10 +155,10 @@ export default function AdminStudentUploadForm() {
       {result && (
         <section className={"card mt-4 " + (result.errors.length > 0 ? "border-amber-300" : "border-green-300")}>
           <h3 className="mb-2 font-semibold">업로드 결과</h3>
-          <p className="text-sm">✅ 교육생 <b>{result.created}명</b> 생성, 사전 예약 <b>{result.bookings_created}건</b></p>
+          <p className="text-sm">교육생 <b>{result.created}명</b> 생성, 사전 예약 <b>{result.bookings_created}건</b></p>
           {result.errors.length > 0 && (
             <>
-              <p className="mt-2 text-sm text-amber-700">⚠️ {result.errors.length}건 오류</p>
+              <p className="mt-2 text-sm text-amber-700">{result.errors.length}건 오류</p>
               <ul className="mt-1 max-h-48 overflow-y-auto text-xs text-slate-600">
                 {result.errors.map((e, i) => (
                   <li key={i}>· Row {e.row}: {e.reason}</li>

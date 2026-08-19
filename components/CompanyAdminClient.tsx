@@ -55,7 +55,7 @@ export default function CompanyAdminClient(props: Props) {
             href={`/admin/progress/company?company=${encodeURIComponent(selectedCompany)}`}
             className="ml-auto inline-flex items-center gap-1 rounded-md border border-brand-300 bg-brand-50 px-3 py-1.5 text-xs text-brand-700 hover:bg-brand-100"
           >
-            📊 전체 회원 Progress Reports ZIP →
+            전체 회원 Progress Reports ZIP →
           </a>
         )}
       </div>
@@ -345,7 +345,7 @@ function MembersCard({
       <header className="mb-3 flex items-center justify-between">
         <h3 className="font-semibold">{company} 회원 목록 ({members.length}명)</h3>
         <button className="btn" onClick={exportExcel} disabled={members.length === 0}>
-          ⬇ Excel 다운로드
+          Excel 다운로드
         </button>
       </header>
 

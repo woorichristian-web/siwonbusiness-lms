@@ -95,7 +95,7 @@ export default function CompanyPerformanceView({
           onClick={download}
           disabled={busy || data.sessions.length === 0}
         >
-          ⬇ 월별 Excel 다운로드
+          월별 Excel 다운로드
         </button>
       </section>
 

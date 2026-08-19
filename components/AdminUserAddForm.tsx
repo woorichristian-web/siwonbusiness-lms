@@ -193,7 +193,7 @@ export default function AdminUserAddForm({ teachers = [] }: { teachers?: Teacher
       {isStudent && (
         <section className="card space-y-4">
           <header>
-            <h2 className="text-base font-semibold">📚 수강정보입력</h2>
+            <h2 className="text-base font-semibold">수강정보입력</h2>
             <p className="mt-1 text-xs text-slate-500">
               관리자가 직접 입력하는 영역입니다. 교육생 회원가입 폼에는 노출되지 않습니다.
             </p>

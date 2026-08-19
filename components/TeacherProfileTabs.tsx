@@ -51,10 +51,10 @@ export default function TeacherProfileTabs({
       {/* 탭 */}
       <div className="mb-6 flex gap-1 border-b border-slate-200">
         <TabLink href="/teacher/profile" active={tab === "info"}>
-          👤 Info
+          Info
         </TabLink>
         <TabLink href="/teacher/profile?tab=payroll" active={tab === "payroll"}>
-          💰 Payroll
+          Payroll
         </TabLink>
       </div>
 
@@ -225,7 +225,7 @@ function InfoSection({
         </section>
 
         <section className="card space-y-4">
-          <h2 className="text-base font-semibold">🎥 Online Meeting Rooms</h2>
+          <h2 className="text-base font-semibold">Online Meeting Rooms</h2>
           <p className="text-xs text-slate-500">
             Your default meeting room links. Shown on class detail cards so you can launch the session in one click.
           </p>
@@ -395,7 +395,7 @@ function PayrollSection({
 
       {/* Payment summary */}
       <section className="card">
-        <h2 className="mb-3 text-base font-semibold">💰 Payment Summary</h2>
+        <h2 className="mb-3 text-base font-semibold">Payment Summary</h2>
         <p className="mb-3 text-xs text-slate-500">
           Based on attendance ("Present" and "Late" count as completed).
         </p>
@@ -422,7 +422,7 @@ function PayrollSection({
 
       {/* Monthly settlement statement */}
       <section className="card">
-        <h2 className="mb-1 text-base font-semibold">📅 Monthly Settlement</h2>
+        <h2 className="mb-1 text-base font-semibold">Monthly Settlement</h2>
         <p className="mb-3 text-xs text-slate-500">
           Your monthly settlement statement. Review each month and press <b>Agree</b> to confirm.
           If something looks wrong, use <b>Contact</b> to reach the center.

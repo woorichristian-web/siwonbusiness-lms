@@ -8,6 +8,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventClickArg, EventInput } from "@fullcalendar/core";
 import type { TimeSlot, ClassFormat, ClassType } from "@/lib/types";
+import { classTypeEn } from "@/lib/types";
 import { createSlot, updateSlot, deleteSlot } from "@/lib/actions/slots";
 
 export default function TeacherScheduleEditor({
@@ -217,7 +218,7 @@ export default function TeacherScheduleEditor({
                 <div style={{ padding: "4px 6px", lineHeight: 1.3, height: "100%", display: "flex", flexDirection: "column", gap: 1, overflow: "hidden" }}>
                   <div style={{ fontSize: "0.72rem", opacity: 0.95, fontWeight: 500 }}>{arg.timeText}</div>
                   <div style={{ fontSize: "0.8rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {slot.class_type === "1on1" ? "1:1" : "Group"} · {slot.format === "online" ? "Online" : "Offline"}
+                    {classTypeEn(slot.class_type)} · {slot.format === "online" ? "Online" : "Offline"}
                   </div>
                   <div style={{ fontSize: "0.68rem", opacity: 0.9 }}>
                     Booked {booked}/{slot.capacity} · {slot.status === "open" ? "Open" : "Closed"}
@@ -267,7 +268,7 @@ export default function TeacherScheduleEditor({
               <tr key={s.id} className={past ? "opacity-50" : ""}>
                 <td className="px-4 py-2">{fmt(s.start_at)}</td>
                 <td className="px-4 py-2">{fmt(s.end_at)}</td>
-                <td className="px-4 py-2">{s.class_type === "1on1" ? "1:1" : "Group"}</td>
+                <td className="px-4 py-2">{classTypeEn(s.class_type)}</td>
                 <td className="px-4 py-2">{s.format === "online" ? "Online" : "Offline"}</td>
                 <td className="px-4 py-2">{s.slot_duration_minutes} min</td>
                 <td className="px-4 py-2">{s.capacity}</td>
@@ -535,7 +536,7 @@ function SlotCardList({
   if (slots.length === 0) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-12 text-center text-sm text-slate-400">
-        📭 No time slots on this day. Click "+ Add time" to create one.
+        No time slots on this day. Click "+ Add time" to create one.
       </div>
     );
   }

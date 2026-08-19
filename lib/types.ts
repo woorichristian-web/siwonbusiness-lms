@@ -2,7 +2,25 @@
 
 export type Role = "student" | "teacher" | "admin";
 export type ClassFormat = "online" | "offline";
-export type ClassType = "1on1" | "small_group";
+export type ClassType = "1on1" | "1on1_coaching" | "group" | "group_coaching" | "small_group";
+
+/** 수업 형태 라벨 (small_group 은 구버전 값 — Group 수업으로 표시) */
+export const CLASS_TYPE_KO: Record<string, string> = {
+  "1on1": "1:1 수업",
+  "1on1_coaching": "1:1 Coaching",
+  group: "Group 수업",
+  group_coaching: "Group Coaching",
+  small_group: "Group 수업",
+};
+export const CLASS_TYPE_EN: Record<string, string> = {
+  "1on1": "1:1 Class",
+  "1on1_coaching": "1:1 Coaching",
+  group: "Group Class",
+  group_coaching: "Group Coaching",
+  small_group: "Group Class",
+};
+export const classTypeKo = (v?: string | null) => (v ? CLASS_TYPE_KO[v] ?? v : "—");
+export const classTypeEn = (v?: string | null) => (v ? CLASS_TYPE_EN[v] ?? v : "—");
 export type SlotStatus = "open" | "closed";
 export type BookingStatus = "confirmed" | "cancelled";
 

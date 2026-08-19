@@ -212,7 +212,7 @@ export async function adminBulkUploadSlots(rows: SlotImportRow[]): Promise<{ ok:
       result.errors.push({ row: i + 2, reason: `format 값 오류 (${r.format})` });
       return;
     }
-    if (!["1on1", "small_group"].includes(r.class_type)) {
+    if (!["1on1", "1on1_coaching", "group", "group_coaching", "small_group"].includes(r.class_type)) {
       result.errors.push({ row: i + 2, reason: `class_type 값 오류 (${r.class_type})` });
       return;
     }

@@ -270,7 +270,7 @@ export default function AdminDbDownload({
   return (
     <div className="space-y-4">
       <section className="card space-y-3">
-        <h2 className="text-base font-semibold">📥 DB 통합 Excel 다운로드</h2>
+        <h2 className="text-base font-semibold">DB 통합 Excel 다운로드</h2>
         <p className="text-xs text-slate-500">
           업로드된 정보 + 강사의 출석 기록·피드백 + 교육생의 강사 평가까지 한 파일로 받습니다.
         </p>
@@ -310,7 +310,7 @@ export default function AdminDbDownload({
             onClick={downloadExcel}
             disabled={downloading}
           >
-            {downloading ? "생성 중..." : "⬇ Excel 다운로드"}
+            {downloading ? "생성 중..." : "Excel 다운로드"}
           </button>
         </div>
 
@@ -325,7 +325,7 @@ export default function AdminDbDownload({
       </section>
 
       <section className="card">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">📋 다운로드되는 컬럼</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700">다운로드되는 컬럼</h3>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600 sm:grid-cols-3">
           <span>· 기업명</span>
           <span>· 아이디</span>
@@ -345,11 +345,11 @@ export default function AdminDbDownload({
           <span>· 신청 날짜 (이른순)</span>
           <span>· 수강완료차수</span>
           <span>· 남은 차시</span>
-          <span className="text-emerald-700">· 출석률(%) ⭐</span>
-          <span className="text-emerald-700">· Language 평균 ⭐</span>
-          <span className="text-emerald-700">· Attitude 평균 ⭐</span>
-          <span className="text-amber-700">· 교육생→강사 평가 점수 ⭐</span>
-          <span className="text-amber-700">· 교육생 코멘트 ⭐</span>
+          <span className="text-emerald-700">· 출석률(%) </span>
+          <span className="text-emerald-700">· Language 평균 </span>
+          <span className="text-emerald-700">· Attitude 평균 </span>
+          <span className="text-amber-700">· 교육생→강사 평가 점수 </span>
+          <span className="text-amber-700">· 교육생 코멘트 </span>
           <span>· 특이사항(관리자 메모)</span>
         </div>
       </section>

@@ -113,7 +113,7 @@ export default function MemberEditModal({
           </div>
 
           <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-            <h4 className="mb-2 text-sm font-semibold text-slate-700">📚 수강 강좌 정보</h4>
+            <h4 className="mb-2 text-sm font-semibold text-slate-700">수강 강좌 정보</h4>
             <div className="space-y-2">
               <div>
                 <label className="label">강좌명</label>

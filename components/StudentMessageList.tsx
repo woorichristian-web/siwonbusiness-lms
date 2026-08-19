@@ -129,7 +129,7 @@ export default function StudentMessageList({
                     <SenderName sender={sender} />
                     {sender?.context && (
                       <div className="mt-0.5 text-[11px] font-normal text-slate-400">
-                        📘 {sender.context}
+                        {sender.context}
                       </div>
                     )}
                   </td>
@@ -176,7 +176,7 @@ function MessageDetailModal({
                 <SenderName sender={sender} />
               </h3>
               {sender?.context && (
-                <p className="mt-0.5 text-xs text-slate-500">📘 {sender.context}</p>
+                <p className="mt-0.5 text-xs text-slate-500">{sender.context}</p>
               )}
               {sender?.href && (
                 <Link href={sender.href} className="mt-1 inline-block text-xs text-brand-700 underline">

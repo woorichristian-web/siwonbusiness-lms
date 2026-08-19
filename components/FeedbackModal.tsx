@@ -139,7 +139,7 @@ export default function FeedbackModal({
         className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
         <header className="mb-4 flex items-start justify-between">
           <div>
-            <h3 className="text-lg font-bold text-slate-800">📝 Class Feedback</h3>
+            <h3 className="text-lg font-bold text-slate-800">Class Feedback</h3>
             <p className="mt-0.5 text-sm text-slate-500"><b>{studentName}</b> · {classInfo}</p>
           </div>
           {total10 != null && (
@@ -157,10 +157,10 @@ export default function FeedbackModal({
         <section className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3">
           <div className="mb-2 flex items-center justify-between">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              📅 Select session
+              Select session
             </h4>
             <span className="text-xs text-slate-400">
-              {pastSessions.length} sessions · 🔴 unevaluated
+              {pastSessions.length} sessions · unevaluated
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -187,7 +187,7 @@ export default function FeedbackModal({
                         : "border-red-300 bg-red-50 text-red-700 hover:border-red-500")
                   }
                 >
-                  {!complete && <span className="mr-1">🔴</span>}
+                  {!complete && <span className="mr-1"></span>}
                   {complete && <span className="mr-1">✓</span>}
                   {label}
                 </button>
@@ -203,7 +203,7 @@ export default function FeedbackModal({
         </p>
 
         {/* LANGUAGE */}
-        <Section title="🗣️ Language">
+        <Section title="Language">
           <SubSection title="Delivery">
             <RatingRow label="Pronunciation" value={ratings.delivery_pronunciation!}
               onChange={(v) => set("delivery_pronunciation", v)} />
@@ -239,7 +239,7 @@ export default function FeedbackModal({
         </Section>
 
         {/* ATTITUDE */}
-        <Section title="🤝 Attitude">
+        <Section title="Attitude">
           <RatingRow label="Participation" value={ratings.participation!}
             onChange={(v) => set("participation", v)} />
           <RatingRow label="Homework" value={ratings.homework!}
@@ -268,7 +268,7 @@ export default function FeedbackModal({
 
         {selectedSession.feedback?.status === "draft" && (
           <p className="mt-3 text-xs text-amber-700">
-            ⚠️ This feedback is saved as a draft. It will not be included in averages or reports until you Submit.
+            This feedback is saved as a draft. It will not be included in averages or reports until you Submit.
           </p>
         )}
 
@@ -280,7 +280,7 @@ export default function FeedbackModal({
             disabled={pending}
             onClick={() => save("draft")}
           >
-            {pending ? "Saving..." : "💾 Save draft"}
+            {pending ? "Saving..." : "Save draft"}
           </button>
           <button
             type="button"

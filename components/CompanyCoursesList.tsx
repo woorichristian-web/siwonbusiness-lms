@@ -63,7 +63,7 @@ export default function CompanyCoursesList({
   return (
     <section className="rounded-lg border border-slate-200 bg-white">
       <header className="border-b border-slate-100 px-4 py-3">
-        <h2 className="font-semibold text-slate-800">📚 계약 강좌</h2>
+        <h2 className="font-semibold text-slate-800">계약 강좌</h2>
         <p className="text-xs text-slate-500">최근 연도부터 표시. 강좌를 클릭하면 종합 리포트로 이동합니다.</p>
       </header>
 
@@ -76,7 +76,7 @@ export default function CompanyCoursesList({
           {yearsSorted.map(([year, list]) => (
             <div key={year} className="px-4 py-3">
               <h3 className="mb-2 text-sm font-bold text-slate-700">
-                📅 {year === "—" ? "기간 미지정" : `${year}년`}
+                {year === "—" ? "기간 미지정" : `${year}년`}
               </h3>
               <ul className="space-y-2">
                 {list.map((c) => (
@@ -89,13 +89,13 @@ export default function CompanyCoursesList({
                         <div>
                           <div className="font-semibold text-slate-800">{c.name}</div>
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                            <span>👥 교육생 {c.studentCount}명</span>
+                            <span>교육생 {c.studentCount}명</span>
                             <span>·</span>
-                            <span>📖 {c.totalSessions != null ? `${c.totalSessions}차시` : "차시 미지정"}</span>
+                            <span>{c.totalSessions != null ? `${c.totalSessions}차시` : "차시 미지정"}</span>
                             {c.startDate && c.endDate && (
                               <>
                                 <span>·</span>
-                                <span>🗓️ {c.startDate} ~ {c.endDate}</span>
+                                <span>{c.startDate} ~ {c.endDate}</span>
                               </>
                             )}
                           </div>

@@ -16,10 +16,10 @@ export default function CompanyDetailTabs({
   return (
     <div className="mb-6 flex gap-1 border-b border-slate-200">
       <TabLink href={base} active={current === "course"}>
-        📚 기업별 과정관리
+        기업별 과정관리
       </TabLink>
       <TabLink href={`${base}?tab=performance`} active={current === "performance"}>
-        📊 기업별 성과관리
+        기업별 성과관리
       </TabLink>
     </div>
   );

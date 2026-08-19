@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { classTypeKo } from "@/lib/types";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
@@ -126,7 +127,7 @@ export default async function CompanyDetailPage({
         </div>
 
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-800">🏢 {selectedCompany}</h1>
+          <h1 className="text-2xl font-bold text-slate-800">{selectedCompany}</h1>
           <p className="text-sm text-slate-500">
             회원 {members.length}명 · 과정관리 + 성과관리
           </p>
@@ -141,7 +142,7 @@ export default async function CompanyDetailPage({
           <>
             {(companyCourses ?? []).length > 0 && (
               <section className="card mb-6">
-                <h2 className="mb-1 text-base font-semibold">📘 진행 과정</h2>
+                <h2 className="mb-1 text-base font-semibold">진행 과정</h2>
                 <p className="mb-3 text-xs text-slate-500">
                   과정 관리에서 입력된 정보가 자동으로 반영됩니다.
                 </p>
@@ -152,13 +153,13 @@ export default async function CompanyDetailPage({
                         <span className="font-semibold text-slate-800">{c.name}</span>
                         {c.code && <span className="rounded bg-white px-2 py-0.5 font-mono text-xs text-slate-500 ring-1 ring-slate-200">{c.code}</span>}
                         <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-700">
-                          👥 {ccStudents.get(c.id) ?? 0}명
+                          {ccStudents.get(c.id) ?? 0}명
                         </span>
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                        {c.language && <span>🗣 {c.language}</span>}
-                        {c.textbook && <span>📖 {c.textbook}</span>}
-                        {c.class_type && <span>{c.class_type === "1on1" ? "1:1" : "소그룹"}</span>}
+                        {c.language && <span>{c.language}</span>}
+                        {c.textbook && <span>{c.textbook}</span>}
+                        {c.class_type && <span>{classTypeKo(c.class_type)}</span>}
                         {c.format && <span>{c.format === "online" ? "온라인" : "오프라인"}</span>}
                         <span>기간 {c.start_date ?? "?"} ~ {c.end_date ?? "?"}</span>
                         {(c.weekdays ?? []).length > 0 && (

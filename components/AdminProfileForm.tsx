@@ -99,7 +99,7 @@ export default function AdminProfileForm({ profile }: { profile: Profile }) {
 
       {/* 비밀번호 변경 */}
       <form onSubmit={savePassword} className="card space-y-4">
-        <h2 className="text-base font-semibold">🔑 비밀번호 변경</h2>
+        <h2 className="text-base font-semibold">비밀번호 변경</h2>
 
         <div>
           <label className="label">새 비밀번호 (8자 이상)</label>

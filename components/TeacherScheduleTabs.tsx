@@ -27,13 +27,13 @@ export default function TeacherScheduleTabs({
     <div>
       <div className="mb-4 flex gap-1 border-b border-slate-200">
         <TabBtn active={tab === "schedules"} onClick={() => setTab("schedules")}>
-          📚 Class Schedules
+          Class Schedules
         </TabBtn>
         <TabBtn active={tab === "courses"} onClick={() => setTab("courses")}>
-          📋 Course Information
+          Course Information
         </TabBtn>
         <TabBtn active={tab === "availability"} onClick={() => setTab("availability")}>
-          🗓️ Availability
+          Availability
         </TabBtn>
       </div>
 

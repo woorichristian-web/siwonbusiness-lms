@@ -25,8 +25,9 @@ export interface CourseInput {
   language?: string | null;
   textbook?: string | null;
   format?: "online" | "offline" | null;
-  class_type?: "1on1" | "small_group" | null;
+  class_type?: string | null;
   capacity?: number | null;
+  class_count?: number | null;
   start_date?: string | null;
   end_date?: string | null;
   weekdays?: string[];
@@ -45,6 +46,7 @@ function clean(input: CourseInput) {
     format: input.format || null,
     class_type: input.class_type || null,
     capacity: input.capacity ?? null,
+    class_count: input.class_count ?? null,
     start_date: input.start_date || null,
     end_date: input.end_date || null,
     weekdays: input.weekdays ?? [],

@@ -28,8 +28,8 @@ export default async function CourseReportPage({
         </div>
 
         <header className="mb-6">
-          <p className="text-sm text-slate-500">🏢 {companyName}</p>
-          <h1 className="text-2xl font-bold text-slate-800">📚 {courseName}</h1>
+          <p className="text-sm text-slate-500">{companyName}</p>
+          <h1 className="text-2xl font-bold text-slate-800">{courseName}</h1>
           <p className="mt-1 text-sm text-slate-500">
             계약 강좌의 종합 리포트입니다.
             {data.startDate && data.endDate && ` 기간 ${data.startDate} ~ ${data.endDate} · `}

@@ -8,7 +8,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventClickArg, EventInput } from "@fullcalendar/core";
 import type { AttendanceStatus, Feedback } from "@/lib/types";
-import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS, FEEDBACK_KEYS, feedbackTotal10 } from "@/lib/types";
+import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS, FEEDBACK_KEYS, feedbackTotal10, classTypeEn } from "@/lib/types";
 import { markAttendance, clearAttendance } from "@/lib/actions/attendance";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -26,7 +26,7 @@ export interface BookingEvent {
   start_at: string;
   end_at: string;
   format: "online" | "offline";
-  class_type: "1on1" | "small_group";
+  class_type: string;
   attendance_status: AttendanceStatus | null;
   attendance_notes: string | null;
   feedback: Feedback | null;
@@ -40,7 +40,7 @@ export interface ClassSlotEvent {
   start_at: string;
   end_at: string;
   format: "online" | "offline";
-  class_type: "1on1" | "small_group";
+  class_type: string;
   capacity: number;
   booked_count: number;
 }
@@ -129,7 +129,7 @@ export default function ClassSchedulesView({
       // Assigned classes with no bookings yet — outlined amber block
       ...classSlots.map((s) => ({
         id: "slot-" + s.id,
-        title: s.class_type === "1on1" ? "1:1 class" : "Small Group class",
+        title: classTypeEn(s.class_type),
         start: s.start_at,
         end: s.end_at,
         backgroundColor: "#fffbeb",
@@ -243,7 +243,7 @@ export default function ClassSchedulesView({
                   <div style={{ padding: "4px 6px", lineHeight: 1.3, height: "100%", display: "flex", flexDirection: "column", gap: 1, overflow: "hidden" }}>
                     <div style={{ fontSize: "0.72rem", opacity: 0.95, fontWeight: 500 }}>{arg.timeText}</div>
                     <div style={{ fontSize: "0.82rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {s.class_type === "1on1" ? "1:1" : "Small Group"}
+                      {classTypeEn(s.class_type)}
                     </div>
                     <div style={{ fontSize: "0.68rem", opacity: 0.9 }}>
                       {s.format === "online" ? "Online" : "Offline"} · {s.booked_count}/{s.capacity} booked
@@ -264,7 +264,7 @@ export default function ClassSchedulesView({
                     </div>
                   )}
                   <div style={{ fontSize: "0.68rem", opacity: 0.9 }}>
-                    {e.class_type === "1on1" ? "1:1" : "Group"} · {e.format === "online" ? "Online" : "Offline"}
+                    {classTypeEn(e.class_type)} · {e.format === "online" ? "Online" : "Offline"}
                   </div>
                 </div>
               );
@@ -349,14 +349,14 @@ function StudentDetailModal({
           <Row k="Company" v={event.student_company ?? "—"} />
           <Row k="Course" v={event.course_name ?? "—"} />
           <Row k="Phone" v={event.student_phone ?? "—"} />
-          <Row k="Class type" v={event.class_type === "1on1" ? "1:1" : "Small group"} />
+          <Row k="Class type" v={classTypeEn(event.class_type)} />
           <Row k="Format" v={event.format === "online" ? "Online" : "Offline"} />
         </dl>
 
         {/* 온라인 회의실 바로가기 — Zoom / Teams */}
         {event.format === "online" && (event.zoom_url || event.teams_url) && (
           <div className="mb-4 flex flex-wrap gap-2 rounded-md border border-blue-200 bg-blue-50/40 p-3">
-            <span className="self-center text-xs font-semibold text-slate-600">🎥 Join class:</span>
+            <span className="self-center text-xs font-semibold text-slate-600">Join class:</span>
             {event.zoom_url && (
               <a
                 href={event.zoom_url}
@@ -381,13 +381,13 @@ function StudentDetailModal({
         )}
         {event.format === "online" && !event.zoom_url && !event.teams_url && (
           <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/40 p-3 text-xs text-amber-700">
-            💡 Set your Zoom / Teams URL in <a href="/teacher/profile" className="font-semibold underline">My Page</a> to enable one-click join.
+            Set your Zoom / Teams URL in <a href="/teacher/profile" className="font-semibold underline">My Page</a> to enable one-click join.
           </div>
         )}
 
         {/* Attendance check */}
         <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-          <h4 className="mb-2 text-sm font-semibold text-slate-700">✅ Attendance</h4>
+          <h4 className="mb-2 text-sm font-semibold text-slate-700">Attendance</h4>
 
           <label className="label">Status</label>
           <select
@@ -423,7 +423,7 @@ function StudentDetailModal({
           <div className="mt-3 rounded-md border border-amber-200 bg-amber-50/50 p-3">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-semibold text-slate-700">📝 Feedback</h4>
+                <h4 className="text-sm font-semibold text-slate-700">Feedback</h4>
                 <p className="text-xs text-slate-500">
                   {fbAvg != null
                     ? `Average: ${fbAvg.toFixed(2)}/10 · ${fbValues.length}/11 items rated`
@@ -551,7 +551,7 @@ function DayCardList({
   if (events.length === 0 && classSlots.length === 0) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-12 text-center text-sm text-slate-400">
-        📭 No classes on this day.
+        No classes on this day.
       </div>
     );
   }
@@ -616,7 +616,7 @@ function ClassSlotCard({ slot }: { slot: ClassSlotEvent }) {
         <div className="min-w-0 flex-1 border-l border-amber-200 pl-3">
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
             <span className="text-base font-bold text-slate-800">
-              {slot.class_type === "1on1" ? "1:1 Class" : "Small Group Class"}
+              {classTypeEn(slot.class_type)}
             </span>
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
               Assigned
@@ -633,9 +633,9 @@ function ClassSlotCard({ slot }: { slot: ClassSlotEvent }) {
             )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <Pill>{slot.format === "online" ? "💻 Online" : "🏫 Offline"}</Pill>
+            <Pill>{slot.format === "online" ? "Online" : "Offline"}</Pill>
             <Pill>
-              👥 {slot.booked_count}/{slot.capacity} booked
+              {slot.booked_count}/{slot.capacity} booked
             </Pill>
           </div>
         </div>
@@ -706,24 +706,24 @@ function ClassCard({
           </div>
           {event.student_company && (
             <div className="truncate text-xs italic text-slate-500">
-              🏢 {event.student_company}
+              {event.student_company}
             </div>
           )}
           {event.course_name && (
             <div className="truncate text-xs text-slate-500">
-              📚 {event.course_name}
+              {event.course_name}
             </div>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <Pill>{event.class_type === "1on1" ? "1:1" : "Group"}</Pill>
-            <Pill>{event.format === "online" ? "💻 Online" : "🏫 Offline"}</Pill>
+            <Pill>{classTypeEn(event.class_type)}</Pill>
+            <Pill>{event.format === "online" ? "Online" : "Offline"}</Pill>
             {event.attendance_status && (
               <Pill color="emerald">
                 ✓ {ATTENDANCE_LABELS_EN[event.attendance_status]}
               </Pill>
             )}
             {fbAvg != null && (
-              <Pill color="amber">⭐ {fbAvg.toFixed(1)}/10</Pill>
+              <Pill color="amber">{fbAvg.toFixed(1)}/10</Pill>
             )}
           </div>
         </div>

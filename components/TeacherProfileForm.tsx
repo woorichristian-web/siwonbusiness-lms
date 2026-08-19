@@ -117,7 +117,7 @@ export default function TeacherProfileForm({
 
       {/* Payment summary (read-only) */}
       <section className="card">
-        <h2 className="mb-3 text-base font-semibold">💰 Payment Summary</h2>
+        <h2 className="mb-3 text-base font-semibold">Payment Summary</h2>
         <p className="mb-3 text-xs text-slate-500">
           Based on attendance records (only "Present" and "Late" count as completed).
         </p>

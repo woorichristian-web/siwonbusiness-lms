@@ -85,7 +85,7 @@ export default function TeacherManageList({
           onChange={(e) => setQ(e.target.value)}
         />
         <button className="btn whitespace-nowrap" disabled={dlPending} onClick={download}>
-          {dlPending ? "생성 중..." : "📥 강사 정산 엑셀"}
+          {dlPending ? "생성 중..." : "강사 정산 엑셀"}
         </button>
       </div>
       {dlErr && <p className="text-xs text-red-600">{dlErr}</p>}
@@ -101,7 +101,7 @@ export default function TeacherManageList({
           <section key={g.key} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
             <header className="border-b border-slate-100 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
               <h3 className="font-semibold text-brand-900">
-                {g.title === "미배정 강사" ? "👤 미배정 강사" : `📘 ${g.title}`}
+                {g.title === "미배정 강사" ? "미배정 강사" : `${g.title}`}
                 {g.company && <span className="ml-2 text-sm font-normal text-slate-500">· {g.company}</span>}
                 <span className="ml-2 text-xs font-normal text-slate-400">강사 {g.teachers.length}명</span>
               </h3>
@@ -126,7 +126,7 @@ export default function TeacherManageList({
                     <td className="px-4 py-3 text-right">
                       {t.ratingAvg != null ? (
                         <span className="font-semibold text-amber-700">
-                          ⭐ {t.ratingAvg}
+                          {t.ratingAvg}
                           <span className="ml-1 text-xs font-normal text-slate-400">({t.ratingCount})</span>
                         </span>
                       ) : (

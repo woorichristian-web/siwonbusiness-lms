@@ -91,7 +91,7 @@ export default function LoginForm() {
 
       <div className="flex items-center justify-between text-sm">
         <a href="/forgot-password" className="text-slate-500 hover:text-brand-600 hover:underline">
-          🔑 비밀번호 찾기
+          비밀번호 찾기
         </a>
         <a href="/signup" className="font-medium text-brand-600 hover:underline">
           회원가입

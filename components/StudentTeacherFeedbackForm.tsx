@@ -46,7 +46,7 @@ export default function StudentTeacherFeedbackForm({
   return (
     <div className="mt-4 rounded-md border border-slate-200 bg-slate-50/60 p-4">
       <h4 className="mb-2 text-sm font-semibold text-slate-700">
-        ⭐ {teacherName} 강사 평가
+        {teacherName} 강사 평가
       </h4>
       <p className="mb-3 text-xs text-slate-500">
         수업에 대한 만족도를 1~10점으로 평가하고 자유롭게 의견을 남겨주세요. (강사·관리자가 확인)

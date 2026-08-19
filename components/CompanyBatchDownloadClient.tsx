@@ -98,7 +98,7 @@ export default function CompanyBatchDownloadClient({
             ? progress
               ? `생성 중... ${progress.done}/${progress.total}`
               : "준비 중..."
-            : `⬇ 전체 ZIP 다운로드 (${reports.length}명)`}
+            : `전체 ZIP 다운로드 (${reports.length}명)`}
         </button>
       </section>
 

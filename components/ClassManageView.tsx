@@ -5,7 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markAttendance, clearAttendance } from "@/lib/actions/attendance";
 import type { AttendanceStatus, ClassFormat, ClassType, Feedback } from "@/lib/types";
-import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS, FEEDBACK_KEYS, feedbackTotal10 } from "@/lib/types";
+import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS, FEEDBACK_KEYS, feedbackTotal10, classTypeEn } from "@/lib/types";
 import FeedbackModal, { type SessionEntry } from "@/components/FeedbackModal";
 
 export interface ClassRow {
@@ -123,7 +123,7 @@ export default function ClassManageView({ rows }: { rows: ClassRow[] }) {
           (unevaluated.length > 0 ? "border-red-100 bg-red-50/40" : "border-emerald-100 bg-emerald-50/40")
         }>
           <h2 className="font-semibold text-slate-800">
-            {unevaluated.length > 0 ? "🔴 Unevaluated" : "✓ All caught up"}
+            {unevaluated.length > 0 ? "Unevaluated" : "✓ All caught up"}
             <span className="ml-2 text-sm font-normal text-slate-500">
               ({unevaluated.length} pending)
             </span>
@@ -135,7 +135,7 @@ export default function ClassManageView({ rows }: { rows: ClassRow[] }) {
 
         {unevaluated.length === 0 ? (
           <p className="p-4 text-center text-sm text-slate-500">
-            All past sessions are checked and evaluated 🎉
+            All past sessions are checked and evaluated.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -265,8 +265,8 @@ function UnevaluatedRow({
             <span className="inline-block h-2 w-2 rounded-full"
               style={{ backgroundColor: fbMissing ? "#ef4444" : "#10b981" }} />
             {fbIsDraft ? "Draft · continue"
-              : fbMissing ? "📝 Write feedback"
-              : "📝 Submitted · view"}
+              : fbMissing ? "Write feedback"
+              : "Submitted · view"}
           </button>
         </td>
       </tr>
@@ -349,11 +349,11 @@ function CourseCard({
       >
         <div>
           <div className="flex items-center gap-2 text-lg font-bold text-brand-900">
-            📚 <span>{courseName}</span>
+            <span>{courseName}</span>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
             <span className="rounded-full bg-slate-100 px-2 py-0.5">
-              {first.class_type === "1on1" ? "1:1" : "Group"}
+              {classTypeEn(first.class_type)}
             </span>
             <span className="rounded-full bg-slate-100 px-2 py-0.5">
               {first.format === "online" ? "Online" : "Offline"}
@@ -518,8 +518,8 @@ function StudentRow({
             }
           >
             {fbStatus === "submitted" && <>✓ {fbAvg!.toFixed(1)} ({fbValues.length}/10)</>}
-            {fbStatus === "draft" && <>📝 Draft ({fbValues.length}/10)</>}
-            {!fbStatus && isPast && <>🔴 Feedback</>}
+            {fbStatus === "draft" && <>Draft ({fbValues.length}/10)</>}
+            {!fbStatus && isPast && <>Feedback</>}
             {!isPast && <>Feedback</>}
           </button>
         </td>
@@ -528,7 +528,7 @@ function StudentRow({
             href={`/teacher/progress/${row.student_id}`}
             className="inline-flex items-center gap-1 rounded-md border border-brand-300 bg-brand-50 px-2 py-1 text-xs text-brand-700 hover:bg-brand-100"
           >
-            📈 Progress
+            Progress
           </Link>
         </td>
         <td className="py-1.5">

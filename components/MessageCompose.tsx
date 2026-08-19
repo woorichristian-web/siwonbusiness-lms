@@ -17,7 +17,7 @@ export interface RecipientGroup {
 
 export interface BulkOption {
   value: string;          // 드롭다운에 표시할 고유 값 (예: "__all_students__")
-  label: string;          // "📢 내 모든 교육생 (5)"
+  label: string;          // "내 모든 교육생 (5)"
   ids: string[];          // 실제 받는 사람들 id 배열
   confirmText: string;    // confirm 다이얼로그 메시지
 }

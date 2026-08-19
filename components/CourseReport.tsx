@@ -34,7 +34,7 @@ export default function CourseReport({ data }: { data: CourseReportData }) {
     <div className="space-y-6">
       {/* Top summary */}
       <section className="card">
-        <h2 className="mb-3 text-base font-semibold text-slate-800">📊 강좌 요약</h2>
+        <h2 className="mb-3 text-base font-semibold text-slate-800">강좌 요약</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="등록 교육생" value={`${data.studentCount}명`} />
           <Stat label="총 차시" value={data.totalSessions != null ? `${data.totalSessions}차시` : "—"} />

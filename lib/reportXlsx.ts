@@ -86,7 +86,7 @@ export function buildTeacherPayrollXlsx(d: TeacherPayrollReport) {
 
     for (const course of comp.courses) {
       courseRows.push(rows.length);
-      rows.push([`📘 ${course.name}${course.code ? ` (${course.code})` : ""} · ${course.period}`]);
+      rows.push([`${course.name}${course.code ? ` (${course.code})` : ""} · ${course.period}`]);
       for (const t of course.teachers) {
         subRows.push(rows.length);
         rows.push(["강사 정보"]);
@@ -149,7 +149,7 @@ export function buildStudentCourseXlsx(d: StudentCourseReport) {
 
     for (const course of comp.courses) {
       courseRows.push(rows.length);
-      rows.push([`📘 ${course.name}${course.code ? ` (${course.code})` : ""} · ${course.period} · 강사: ${course.teacherNames.join(", ") || "-"} · ${course.progress}`]);
+      rows.push([`${course.name}${course.code ? ` (${course.code})` : ""} · ${course.period} · 강사: ${course.teacherNames.join(", ") || "-"} · ${course.progress}`]);
       headerRows.push(rows.length);
       rows.push(["교육생", "아이디", "연락처", "예약 수업", "출석", "체크된 수업", "출석율(%)"]);
       for (const s of course.students)

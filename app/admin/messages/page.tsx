@@ -161,19 +161,19 @@ export default async function AdminMessagesPage() {
 
   const groups: RecipientGroup[] = [
     {
-      label: "👨‍💼 관리자",
+      label: "관리자",
       recipients: admins.map((a) => ({
         id: a.id, name: a.name, sublabel: a.username,
       })),
     },
     {
-      label: "🧑‍🏫 강사",
+      label: "강사",
       recipients: teachers.map((t) => ({
         id: t.id, name: t.name, sublabel: t.username,
       })),
     },
     {
-      label: "🎓 교육생",
+      label: "교육생",
       recipients: students.map((s) => ({
         id: s.id, name: s.name,
         sublabel: s.company_name ? `${s.username} · ${s.company_name}` : s.username,
@@ -186,7 +186,7 @@ export default async function AdminMessagesPage() {
   if (teachers.length > 0) {
     bulkOptions.push({
       value: "__all_teachers__",
-      label: `📢 모든 강사에게 (${teachers.length})`,
+      label: `모든 강사에게 (${teachers.length})`,
       ids: teachers.map((t) => t.id),
       confirmText: `${teachers.length}명의 강사 전체에게 이 메시지를 보낼까요?`,
     });
@@ -194,7 +194,7 @@ export default async function AdminMessagesPage() {
   if (students.length > 0) {
     bulkOptions.push({
       value: "__all_students__",
-      label: `📢 모든 교육생에게 (${students.length})`,
+      label: `모든 교육생에게 (${students.length})`,
       ids: students.map((s) => s.id),
       confirmText: `${students.length}명의 교육생 전체에게 이 메시지를 보낼까요?`,
     });
@@ -202,7 +202,7 @@ export default async function AdminMessagesPage() {
   if (teachers.length > 0 && students.length > 0) {
     bulkOptions.push({
       value: "__everyone__",
-      label: `📢 모든 강사 + 교육생 (${teachers.length + students.length})`,
+      label: `모든 강사 + 교육생 (${teachers.length + students.length})`,
       ids: [...teachers.map((t) => t.id), ...students.map((s) => s.id)],
       confirmText: `강사 ${teachers.length}명 + 교육생 ${students.length}명에게 보낼까요?`,
     });
@@ -216,7 +216,7 @@ export default async function AdminMessagesPage() {
           <h1 className="text-xl font-bold text-slate-800">메시지</h1>
           <p className="text-sm text-slate-500">
             관리자는 강사·교육생 누구에게나 안내 메시지를 보낼 수 있습니다.
-            상단의 "📢" 옵션으로 단체 발송도 가능합니다.
+            상단의 "모든 강사/교육생에게" 옵션으로 단체 발송도 가능합니다.
           </p>
         </header>
 

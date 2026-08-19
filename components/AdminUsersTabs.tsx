@@ -56,21 +56,21 @@ export default function AdminUsersTabs({
           onClick={() => setTab("students")}
           count={students.length}
         >
-          🎓 교육생
+          교육생
         </TabBtn>
         <TabBtn
           active={tab === "teachers"}
           onClick={() => setTab("teachers")}
           count={teacherUsers.length}
         >
-          🧑‍🏫 강사
+          강사
         </TabBtn>
         <TabBtn
           active={tab === "admins"}
           onClick={() => setTab("admins")}
           count={adminUsers.length}
         >
-          👨‍💼 관리자
+          관리자
         </TabBtn>
       </div>
 
@@ -85,7 +85,7 @@ export default function AdminUsersTabs({
             studentGroups.map(([company, list]) => (
               <section key={company} className="rounded-lg border border-slate-200 bg-white">
                 <header className="flex items-center justify-between border-b border-slate-100 px-4 py-2">
-                  <h2 className="font-semibold text-slate-800">🏢 {company}</h2>
+                  <h2 className="font-semibold text-slate-800">{company}</h2>
                   <span className="text-xs text-slate-500">{list.length}명</span>
                 </header>
                 <AdminUsersTable users={list} teachers={teachers} />

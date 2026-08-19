@@ -51,7 +51,7 @@ export default async function AdminProgressPage({
           <>
             {courseProgress.length > 0 && (
               <section className="card mb-4">
-                <h2 className="mb-2 text-sm font-semibold text-slate-700">📖 과정 진도 (수업 내용 기준)</h2>
+                <h2 className="mb-2 text-sm font-semibold text-slate-700">과정 진도 (수업 내용 기준)</h2>
                 <ul className="space-y-1 text-sm">
                   {courseProgress.map((cp) => (
                     <li key={cp.id} className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
