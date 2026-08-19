@@ -1,7 +1,7 @@
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
-import TeacherManageList, { type TeacherRow } from "@/components/TeacherManageList";
+import TeacherManageList, { type TeacherRow, type TeacherGroup } from "@/components/TeacherManageList";
 
 export const dynamic = "force-dynamic";
 
@@ -43,16 +43,30 @@ export default async function AdminTeachersPage() {
     }
   }
 
-  // 담당 과정 수 (활성)
+  // 담당 과정 (활성) + 진행중 과정 그룹
   const courseCnt = new Map<string, number>();
+  let ctRows: { course_id: string; teacher_id: string }[] = [];
   if (ids.length > 0) {
     const { data: cts } = await supabase
       .from("course_teachers")
-      .select("teacher_id")
+      .select("course_id, teacher_id")
       .in("teacher_id", ids)
       .is("assigned_until", null);
-    for (const c of cts ?? [])
+    ctRows = (cts ?? []) as any;
+    for (const c of ctRows)
       courseCnt.set(c.teacher_id, (courseCnt.get(c.teacher_id) ?? 0) + 1);
+  }
+  const activeCourseIds = Array.from(new Set(ctRows.map((r) => r.course_id)));
+  const today = new Date().toISOString().slice(0, 10);
+  let activeCourses: { id: string; name: string; company_name: string | null }[] = [];
+  if (activeCourseIds.length > 0) {
+    const { data: cs } = await supabase
+      .from("courses")
+      .select("id, name, company_name, end_date")
+      .in("id", activeCourseIds);
+    activeCourses = (cs ?? [])
+      .filter((c: any) => !c.end_date || c.end_date >= today)
+      .sort((a: any, b: any) => a.name.localeCompare(b.name)) as any;
   }
 
   const rows: TeacherRow[] = list.map((t) => {
@@ -79,6 +93,23 @@ export default async function AdminTeachersPage() {
     totalClasses: [...classesById.values()].reduce((a, b) => a + b, 0),
   };
 
+  // 진행중 과정별 그룹 (같은 강사가 여러 과정에 있으면 각 그룹마다 표시)
+  const rowById = new Map(rows.map((r) => [r.id, r]));
+  const groups: TeacherGroup[] = activeCourses.map((c) => ({
+    key: c.id,
+    title: c.name,
+    company: c.company_name ?? null,
+    teachers: ctRows
+      .filter((r) => r.course_id === c.id)
+      .map((r) => rowById.get(r.teacher_id))
+      .filter((x): x is TeacherRow => !!x)
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  })).filter((g) => g.teachers.length > 0);
+  const assignedIds = new Set(ctRows.map((r) => r.teacher_id));
+  const unassigned = rows.filter((r) => !assignedIds.has(r.id));
+  if (unassigned.length > 0)
+    groups.push({ key: "__unassigned__", title: "미배정 강사", company: null, teachers: unassigned });
+
   return (
     <>
       <AppHeader profile={profile} />
@@ -87,7 +118,7 @@ export default async function AdminTeachersPage() {
           <h1 className="text-xl font-bold text-slate-800">강사 관리</h1>
           <p className="text-sm text-slate-500">전체 현황 대시보드 · 강사 검색 · 강사별 상세</p>
         </header>
-        <TeacherManageList rows={rows} dashboard={dashboard} />
+        <TeacherManageList groups={groups} dashboard={dashboard} />
       </main>
     </>
   );

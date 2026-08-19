@@ -14,8 +14,11 @@ export default function NavLink({
   badge?: number;
 }) {
   const pathname = usePathname();
+  // "/admin"(관리자 홈) 같은 허브 링크는 정확히 일치할 때만 활성 —
+  // 하위 경로(/admin/...)에서 홈까지 같이 켜지는 것 방지
+  const HUB = new Set(["/", "/admin"]);
   const active =
-    pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
+    pathname === href || (!HUB.has(href) && pathname.startsWith(href + "/"));
 
   return (
     <Link
