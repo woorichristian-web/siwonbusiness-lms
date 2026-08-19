@@ -70,7 +70,7 @@ export default function AdminUsersTable({
               <td className="px-4 py-2 text-slate-600">{u.learning_purpose ?? "—"}</td>
               <td className="px-4 py-2 text-slate-600">
                 <div className="space-y-0.5">
-                  <div className="text-xs">방식: {(u.preferred_format ?? []).join(", ") || "—"}</div>
+                  <div className="text-xs">방식: {(u.preferred_format ?? []).map(prefLabel).join(", ") || "—"}</div>
                   <div className="text-xs">시간: {(u.preferred_time ?? []).join(", ") || "—"}</div>
                 </div>
               </td>
@@ -115,4 +115,18 @@ export default function AdminUsersTable({
 
 function roleLabel(r: Role) {
   return r === "admin" ? "관리자" : r === "teacher" ? "강사" : "교육생";
+}
+
+// 선호 방식/수업형태 원값 → 표시 라벨 (예: small_group → Group 수업)
+function prefLabel(v: string) {
+  const map: Record<string, string> = {
+    online: "온라인",
+    offline: "오프라인",
+    "1on1": "1:1 수업",
+    "1on1_coaching": "1:1 Coaching",
+    group: "Group 수업",
+    group_coaching: "Group Coaching",
+    small_group: "Group 수업",
+  };
+  return map[v] ?? v;
 }
