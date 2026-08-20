@@ -11,6 +11,7 @@ import {
   getCourseNameReport,
 } from "@/lib/actions/course";
 import { buildCourseNameXlsx } from "@/lib/reportXlsx";
+import { getCourseSurveyAdmin } from "@/lib/actions/survey";
 
 export interface CourseRow {
   id: string;
@@ -422,9 +423,12 @@ function CourseCard({
             {course.class_time && <span>{course.class_time}{course.duration_min ? ` · ${course.duration_min}분` : ""}</span>}
           </div>
         </div>
-        <button className="btn-ghost shrink-0 !border !border-slate-300 text-sm" onClick={onEdit}>
-          수정
-        </button>
+        <div className="flex shrink-0 gap-2">
+          <SurveyResultsButton course={course} />
+          <button className="btn-ghost !border !border-slate-300 text-sm" onClick={onEdit}>
+            수정
+          </button>
+        </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <span className="text-xs font-medium text-slate-500">배정 강사:</span>
@@ -439,6 +443,129 @@ function CourseCard({
         )}
       </div>
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------
+// 설문 결과 (센터 전용 — 실명 열람)
+// ---------------------------------------------------------------------
+type SurveyRoundData = {
+  round: number; label: string; open: string; close: string; avg: number | null;
+  responses: { name: string; username: string; rating: number; comment: string | null; comment_en: string | null; created_at: string }[];
+};
+
+function SurveyResultsButton({ course }: { course: CourseRow }) {
+  const [pending, startTransition] = useTransition();
+  const [data, setData] = useState<{ courseName: string; rounds: SurveyRoundData[] } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  function open() {
+    setErr(null);
+    startTransition(async () => {
+      const r = await getCourseSurveyAdmin(course.id);
+      if (!r.ok) { setErr(r.error); return; }
+      setData({ courseName: r.courseName, rounds: r.rounds });
+    });
+  }
+
+  return (
+    <>
+      <button className="btn-ghost !border !border-slate-300 text-sm" disabled={pending} onClick={open}>
+        {pending ? "불러오는 중..." : "설문 결과"}
+      </button>
+      {err && <span className="self-center text-xs text-red-600">{err}</span>}
+      {data && <SurveyResultsModal data={data} onClose={() => setData(null)} />}
+    </>
+  );
+}
+
+function fmtD(iso: string) {
+  return new Date(iso).toLocaleDateString("ko-KR", { year: "numeric", month: "numeric", day: "numeric" });
+}
+
+function SurveyResultsModal({
+  data, onClose,
+}: {
+  data: { courseName: string; rounds: SurveyRoundData[] };
+  onClose: () => void;
+}) {
+  const now = Date.now();
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <header className="border-b border-slate-100 px-5 py-4">
+          <h3 className="text-base font-bold text-slate-800">만족도 설문 결과 — {data.courseName}</h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            센터 전용 화면입니다. 강사에게는 익명 취합본만 전달되지만, 여기서는 응답자 실명과 개별 점수·코멘트를 모두 확인할 수 있습니다.
+          </p>
+        </header>
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
+          {data.rounds.length === 0 && (
+            <p className="py-6 text-center text-sm text-slate-400">과정 기간이 설정되지 않아 설문 라운드가 없습니다.</p>
+          )}
+          {data.rounds.map((r) => {
+            const openT = new Date(r.open).getTime(), closeT = new Date(r.close).getTime();
+            const status = now < openT ? "예정" : now < closeT ? "진행 중" : "마감";
+            const statusCls =
+              status === "진행 중" ? "bg-emerald-50 text-emerald-700" :
+              status === "마감" ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-700";
+            return (
+              <section key={r.round} className="rounded-lg border border-slate-200">
+                <header className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-2.5">
+                  <span className="text-sm font-bold text-slate-800">{r.round}차 설문 ({r.label})</span>
+                  <span className={"rounded-full px-2 py-0.5 text-[11px] font-semibold " + statusCls}>{status}</span>
+                  <span className="text-xs text-slate-500">{fmtD(r.open)} ~ {fmtD(r.close)}</span>
+                  <span className="ml-auto text-xs text-slate-500">
+                    응답 {r.responses.length}건{r.avg != null && <> · 평균 <b className="text-slate-800">{r.avg}</b>/10</>}
+                  </span>
+                </header>
+                {r.responses.length === 0 ? (
+                  <p className="px-4 py-3 text-center text-xs text-slate-400">아직 응답이 없습니다.</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="text-left text-xs uppercase text-slate-400">
+                      <tr>
+                        <th className="px-4 py-1.5">교육생</th>
+                        <th className="px-2 py-1.5">점수</th>
+                        <th className="px-2 py-1.5">코멘트</th>
+                        <th className="px-4 py-1.5 text-right">제출일</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {r.responses.map((x, i) => (
+                        <tr key={i} className="align-top">
+                          <td className="whitespace-nowrap px-4 py-2">
+                            <span className="font-medium text-slate-800">{x.name}</span>
+                            {x.username && <span className="ml-1.5 text-xs text-slate-400">@{x.username}</span>}
+                          </td>
+                          <td className="px-2 py-2 font-bold text-brand-700">{x.rating}</td>
+                          <td className="px-2 py-2 text-slate-600">
+                            {x.comment ? (
+                              <>
+                                {x.comment}
+                                {x.comment_en && x.comment_en !== x.comment && (
+                                  <span className="mt-0.5 block text-xs text-slate-400">EN: {x.comment_en}</span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-2 text-right text-xs text-slate-400">{fmtD(x.created_at)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </section>
+            );
+          })}
+        </div>
+        <footer className="flex justify-end border-t border-slate-100 px-5 py-3">
+          <button className="btn-ghost" onClick={onClose}>닫기</button>
+        </footer>
+      </div>
+    </div>
   );
 }
 
