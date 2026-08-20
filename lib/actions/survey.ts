@@ -95,7 +95,7 @@ export async function getCourseSurveyAdmin(courseId: string) {
   const admin = createAdminClient();
   const { data: course } = await admin
     .from("courses")
-    .select("name, start_date, end_date")
+    .select("name, code, company_name, start_date, end_date")
     .eq("id", courseId)
     .maybeSingle();
   if (!course) return { ok: false as const, error: "과정을 찾을 수 없습니다." };
@@ -114,17 +114,51 @@ export async function getCourseSurveyAdmin(courseId: string) {
     for (const p of ps ?? []) names.set(p.id, { name: p.name, username: p.username });
   }
 
+  // 교육생 → 담당 강사 매핑 (이 과정 예약이 가장 많은 강사 = 주 강사).
+  // 한 과정을 여러 강사가 가르치는 경우 응답을 강사별로 구분하기 위함.
+  const { data: bks } = await admin
+    .from("bookings").select("student_id, slot_id").eq("course_id", courseId);
+  const slotIds = Array.from(new Set((bks ?? []).map((b: any) => b.slot_id)));
+  const slotTeacher = new Map<string, string>();
+  if (slotIds.length > 0) {
+    const { data: sl } = await admin
+      .from("time_slots").select("id, teacher_id").in("id", slotIds);
+    for (const s of sl ?? []) slotTeacher.set(s.id, s.teacher_id);
+  }
+  const perStudent = new Map<string, Map<string, number>>();
+  for (const b of bks ?? []) {
+    const t = slotTeacher.get(b.slot_id);
+    if (!t) continue;
+    if (!perStudent.has(b.student_id)) perStudent.set(b.student_id, new Map());
+    const m = perStudent.get(b.student_id)!;
+    m.set(t, (m.get(t) ?? 0) + 1);
+  }
+  const primaryTeacher = new Map<string, string>();
+  for (const [sid, m] of perStudent)
+    primaryTeacher.set(sid, Array.from(m.entries()).sort((a, b) => b[1] - a[1])[0][0]);
+  const tIds = Array.from(new Set(Array.from(primaryTeacher.values())));
+  const tNames = new Map<string, string>();
+  if (tIds.length > 0) {
+    const { data: tp } = await admin.from("profiles").select("id, name").in("id", tIds);
+    for (const p of tp ?? []) tNames.set(p.id, p.name);
+  }
+
   const rounds = surveyRounds(course.start_date, course.end_date).map((r) => {
     const responses = (rows ?? [])
       .filter((x: any) => x.round === r.round)
-      .map((x: any) => ({
-        name: names.get(x.student_id)?.name ?? "(탈퇴한 회원)",
-        username: names.get(x.student_id)?.username ?? "",
-        rating: x.rating as number,
-        comment: (x.comment ?? null) as string | null,
-        comment_en: (x.comment_en ?? null) as string | null,
-        created_at: x.created_at as string,
-      }));
+      .map((x: any) => {
+        const tid = primaryTeacher.get(x.student_id) ?? null;
+        return {
+          name: names.get(x.student_id)?.name ?? "(탈퇴한 회원)",
+          username: names.get(x.student_id)?.username ?? "",
+          teacher_id: tid,
+          teacher_name: tid ? (tNames.get(tid) ?? "(알 수 없음)") : "미배정",
+          rating: x.rating as number,
+          comment: (x.comment ?? null) as string | null,
+          comment_en: (x.comment_en ?? null) as string | null,
+          created_at: x.created_at as string,
+        };
+      });
     const avg = responses.length
       ? Math.round((responses.reduce((s, x) => s + x.rating, 0) / responses.length) * 10) / 10
       : null;
@@ -138,7 +172,22 @@ export async function getCourseSurveyAdmin(courseId: string) {
     };
   });
 
-  return { ok: true as const, courseName: course.name, rounds };
+  // 엑셀 메타 (작성자·다운로드 날짜)
+  const { data: meProfile } = await supabase
+    .from("profiles").select("name").eq("id", user.id).single();
+  const kst = new Date(Date.now() + 9 * 3600 * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const generatedAt = `${kst.getUTCFullYear()}-${pad(kst.getUTCMonth() + 1)}-${pad(kst.getUTCDate())} ${pad(kst.getUTCHours())}:${pad(kst.getUTCMinutes())}`;
+
+  return {
+    ok: true as const,
+    courseName: course.name,
+    courseCode: (course.code ?? null) as string | null,
+    companyName: (course.company_name ?? null) as string | null,
+    author: meProfile?.name ?? "관리자",
+    generatedAt,
+    rounds,
+  };
 }
 
 /**

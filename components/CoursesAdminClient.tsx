@@ -10,7 +10,7 @@ import {
   removeCourseTeacher,
   getCourseNameReport,
 } from "@/lib/actions/course";
-import { buildCourseNameXlsx } from "@/lib/reportXlsx";
+import { buildCourseNameXlsx, buildSurveyXlsx, type SurveyXlsxData } from "@/lib/reportXlsx";
 import { getCourseSurveyAdmin } from "@/lib/actions/survey";
 
 export interface CourseRow {
@@ -449,14 +449,11 @@ function CourseCard({
 // ---------------------------------------------------------------------
 // 설문 결과 (센터 전용 — 실명 열람)
 // ---------------------------------------------------------------------
-type SurveyRoundData = {
-  round: number; label: string; open: string; close: string; avg: number | null;
-  responses: { name: string; username: string; rating: number; comment: string | null; comment_en: string | null; created_at: string }[];
-};
+type SurveyRoundData = SurveyXlsxData["rounds"][number];
 
 function SurveyResultsButton({ course }: { course: CourseRow }) {
   const [pending, startTransition] = useTransition();
-  const [data, setData] = useState<{ courseName: string; rounds: SurveyRoundData[] } | null>(null);
+  const [data, setData] = useState<SurveyXlsxData | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   function open() {
@@ -464,7 +461,10 @@ function SurveyResultsButton({ course }: { course: CourseRow }) {
     startTransition(async () => {
       const r = await getCourseSurveyAdmin(course.id);
       if (!r.ok) { setErr(r.error); return; }
-      setData({ courseName: r.courseName, rounds: r.rounds });
+      setData({
+        courseName: r.courseName, courseCode: r.courseCode, companyName: r.companyName,
+        author: r.author, generatedAt: r.generatedAt, rounds: r.rounds,
+      });
     });
   }
 
@@ -486,10 +486,23 @@ function fmtD(iso: string) {
 function SurveyResultsModal({
   data, onClose,
 }: {
-  data: { courseName: string; rounds: SurveyRoundData[] };
+  data: SurveyXlsxData;
   onClose: () => void;
 }) {
   const now = Date.now();
+  // 라운드 안에서 강사별 그룹 (여러 강사가 가르치는 과정 대비)
+  function groupByTeacher(responses: SurveyRoundData["responses"]) {
+    const m = new Map<string, { name: string; items: SurveyRoundData["responses"] }>();
+    for (const x of responses) {
+      const key = x.teacher_id ?? "none";
+      if (!m.has(key)) m.set(key, { name: x.teacher_name, items: [] });
+      m.get(key)!.items.push(x);
+    }
+    return Array.from(m.values()).map((g) => ({
+      ...g,
+      avg: Math.round((g.items.reduce((s, v) => s + v.rating, 0) / g.items.length) * 10) / 10,
+    }));
+  }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -522,46 +535,57 @@ function SurveyResultsModal({
                 {r.responses.length === 0 ? (
                   <p className="px-4 py-3 text-center text-xs text-slate-400">아직 응답이 없습니다.</p>
                 ) : (
-                  <table className="w-full text-sm">
-                    <thead className="text-left text-xs uppercase text-slate-400">
-                      <tr>
-                        <th className="px-4 py-1.5">교육생</th>
-                        <th className="px-2 py-1.5">점수</th>
-                        <th className="px-2 py-1.5">코멘트</th>
-                        <th className="px-4 py-1.5 text-right">제출일</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {r.responses.map((x, i) => (
-                        <tr key={i} className="align-top">
-                          <td className="whitespace-nowrap px-4 py-2">
-                            <span className="font-medium text-slate-800">{x.name}</span>
-                            {x.username && <span className="ml-1.5 text-xs text-slate-400">@{x.username}</span>}
-                          </td>
-                          <td className="px-2 py-2 font-bold text-brand-700">{x.rating}</td>
-                          <td className="px-2 py-2 text-slate-600">
-                            {x.comment ? (
-                              <>
-                                {x.comment}
-                                {x.comment_en && x.comment_en !== x.comment && (
-                                  <span className="mt-0.5 block text-xs text-slate-400">EN: {x.comment_en}</span>
+                  groupByTeacher(r.responses).map((g, gi) => (
+                    <div key={gi}>
+                      <div className="flex items-center gap-2 border-b border-slate-100 bg-brand-50/50 px-4 py-1.5">
+                        <span className="text-xs font-bold text-brand-800">강사 {g.name}</span>
+                        <span className="text-[11px] text-slate-500">응답 {g.items.length}건 · 평균 <b>{g.avg}</b>/10</span>
+                      </div>
+                      <table className="w-full text-sm">
+                        <thead className="text-left text-xs uppercase text-slate-400">
+                          <tr>
+                            <th className="px-4 py-1.5">교육생</th>
+                            <th className="px-2 py-1.5">점수</th>
+                            <th className="px-2 py-1.5">코멘트</th>
+                            <th className="px-4 py-1.5 text-right">제출일</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {g.items.map((x, i) => (
+                            <tr key={i} className="align-top">
+                              <td className="whitespace-nowrap px-4 py-2">
+                                <span className="font-medium text-slate-800">{x.name}</span>
+                                {x.username && <span className="ml-1.5 text-xs text-slate-400">@{x.username}</span>}
+                              </td>
+                              <td className="px-2 py-2 font-bold text-brand-700">{x.rating}</td>
+                              <td className="px-2 py-2 text-slate-600">
+                                {x.comment ? (
+                                  <>
+                                    {x.comment}
+                                    {x.comment_en && x.comment_en !== x.comment && (
+                                      <span className="mt-0.5 block text-xs text-slate-400">EN: {x.comment_en}</span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-slate-300">—</span>
                                 )}
-                              </>
-                            ) : (
-                              <span className="text-slate-300">—</span>
-                            )}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-2 text-right text-xs text-slate-400">{fmtD(x.created_at)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-2 text-right text-xs text-slate-400">{fmtD(x.created_at)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))
                 )}
               </section>
             );
           })}
         </div>
-        <footer className="flex justify-end border-t border-slate-100 px-5 py-3">
+        <footer className="flex items-center justify-between border-t border-slate-100 px-5 py-3">
+          <button className="btn text-sm" onClick={() => buildSurveyXlsx(data)}>
+            Excel 다운로드
+          </button>
           <button className="btn-ghost" onClick={onClose}>닫기</button>
         </footer>
       </div>

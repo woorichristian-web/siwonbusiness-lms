@@ -214,3 +214,108 @@ export function buildCourseNameXlsx(d: CourseNameReport) {
   const safe = d.courseName.replace(/[^\w가-힣]+/g, "_").slice(0, 30);
   XLSX.writeFile(wb, `과정데이터_${safe}_${yymmdd()}.xlsx`);
 }
+
+// ---------------------------------------------------------------------
+// 만족도 설문 결과 리포트 (센터 전용 · 실명)
+// 시트: [종합](라운드×강사 요약) + 라운드별 시트(강사 블록 아래 실명 응답)
+// ---------------------------------------------------------------------
+export interface SurveyXlsxData {
+  courseName: string;
+  courseCode: string | null;
+  companyName: string | null;
+  author: string;
+  generatedAt: string;
+  rounds: {
+    round: number; label: string; open: string; close: string; avg: number | null;
+    responses: {
+      name: string; username: string;
+      teacher_id: string | null; teacher_name: string;
+      rating: number; comment: string | null; comment_en: string | null; created_at: string;
+    }[];
+  }[];
+}
+
+export function buildSurveyXlsx(d: SurveyXlsxData) {
+  const wb = XLSX.utils.book_new();
+  const used = new Set<string>();
+  const day = (iso: string) => iso.slice(0, 10);
+  const title = `만족도 설문 결과 — ${d.courseName}${d.courseCode ? ` (${d.courseCode})` : ""}${d.companyName ? ` · ${d.companyName}` : ""}`;
+
+  // 1) 종합 — 라운드 × 강사 요약
+  {
+    const rows: any[][] = [
+      ...metaRows(title, d.author, d.generatedAt),
+      ["라운드", "설문 기간", "강사", "응답 수", "평균 점수(10점)"],
+    ];
+    const subRows: number[] = [];
+    for (const r of d.rounds) {
+      const byTeacher = new Map<string, { name: string; ratings: number[] }>();
+      for (const x of r.responses) {
+        const key = x.teacher_id ?? "none";
+        if (!byTeacher.has(key)) byTeacher.set(key, { name: x.teacher_name, ratings: [] });
+        byTeacher.get(key)!.ratings.push(x.rating);
+      }
+      const period = `${day(r.open)} ~ ${day(r.close)}`;
+      if (byTeacher.size === 0) {
+        rows.push([`${r.round}차 (${r.label})`, period, "-", 0, "-"]);
+      } else {
+        for (const [, t] of byTeacher) {
+          const avg = Math.round((t.ratings.reduce((s, v) => s + v, 0) / t.ratings.length) * 10) / 10;
+          rows.push([`${r.round}차 (${r.label})`, period, t.name, t.ratings.length, avg]);
+        }
+        if (byTeacher.size > 1) {
+          subRows.push(rows.length);
+          rows.push([`${r.round}차 전체`, "", "", r.responses.length, r.avg ?? "-"]);
+        }
+      }
+    }
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [{ wch: 13 }, { wch: 25 }, { wch: 14 }, { wch: 9 }, { wch: 14 }];
+    applyMetaStyles(ws, 5);
+    styleRow(ws, 4, 5, HS);
+    for (const r of subRows) styleRow(ws, r, 5, SUB);
+    XLSX.utils.book_append_sheet(wb, ws, safeSheet("종합", used));
+  }
+
+  // 2) 라운드별 시트 — 강사 블록 + 실명 응답
+  for (const r of d.rounds) {
+    const rows: any[][] = metaRows(
+      `${r.round}차 설문 (${r.label}) — ${d.courseName} · ${day(r.open)} ~ ${day(r.close)}`,
+      d.author, d.generatedAt,
+    );
+    const teacherRows: number[] = [];
+    const headerRows: number[] = [];
+
+    const byTeacher = new Map<string, { name: string; items: typeof r.responses }>();
+    for (const x of r.responses) {
+      const key = x.teacher_id ?? "none";
+      if (!byTeacher.has(key)) byTeacher.set(key, { name: x.teacher_name, items: [] });
+      byTeacher.get(key)!.items.push(x);
+    }
+
+    if (byTeacher.size === 0) {
+      rows.push(["아직 응답이 없습니다."]);
+    }
+    for (const [, t] of byTeacher) {
+      const avg = Math.round((t.items.reduce((s, v) => s + v.rating, 0) / t.items.length) * 10) / 10;
+      teacherRows.push(rows.length);
+      rows.push([`강사: ${t.name} · 응답 ${t.items.length}건 · 평균 ${avg}/10`]);
+      headerRows.push(rows.length);
+      rows.push(["교육생", "아이디", "점수(10점)", "코멘트", "코멘트(영문)", "제출일"]);
+      for (const x of t.items) {
+        rows.push([x.name, x.username, x.rating, x.comment ?? "", x.comment_en ?? "", day(x.created_at)]);
+      }
+      rows.push([]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [{ wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 45 }, { wch: 45 }, { wch: 12 }];
+    applyMetaStyles(ws, 6);
+    for (const rr of teacherRows) styleRow(ws, rr, 6, COURSE);
+    for (const rr of headerRows) styleRow(ws, rr, 6, HS);
+    XLSX.utils.book_append_sheet(wb, ws, safeSheet(`${r.round}차 ${r.label}`, used));
+  }
+
+  const safe = (d.courseCode || d.courseName).replace(/[^\w가-힣]+/g, "_").slice(0, 30);
+  XLSX.writeFile(wb, `설문결과_${safe}_${yymmdd()}.xlsx`);
+}
