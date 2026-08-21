@@ -19,6 +19,17 @@ export async function markAttendance(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
 
+  // notes 파라미터가 없으면(상태만 변경) 기존 메모를 보존한다.
+  let finalNotes: string | null = notes?.trim() || null;
+  if (notes === undefined) {
+    const { data: cur } = await supabase
+      .from("attendance")
+      .select("notes")
+      .eq("booking_id", bookingId)
+      .maybeSingle();
+    finalNotes = cur?.notes ?? null;
+  }
+
   const { error } = await supabase
     .from("attendance")
     .upsert(
@@ -27,7 +38,7 @@ export async function markAttendance(
         status,
         marked_by: user.id,
         marked_at: new Date().toISOString(),
-        notes: notes ?? null,
+        notes: finalNotes,
       },
       { onConflict: "booking_id" }
     );

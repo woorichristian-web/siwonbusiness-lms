@@ -16,6 +16,22 @@ export default async function AdminProgressPage({
   const profile = await requireRole(["admin"]);
   const data = await getStudentProgress(params.studentId);
 
+  // 강사가 남긴 수업 메모 (attendance.notes) — 강사·센터만 열람, 메모가 있는 수업만
+  const supabaseMemo = createClient();
+  const { data: memoRows } = await supabaseMemo
+    .from("attendance")
+    .select("status, notes, bookings!inner(student_id, start_at)")
+    .eq("bookings.student_id", params.studentId)
+    .not("notes", "is", null)
+    .order("marked_at", { ascending: false });
+  const classMemos = (memoRows ?? [])
+    .filter((m: any) => (m.notes ?? "").trim())
+    .map((m: any) => ({
+      date: m.bookings?.start_at as string,
+      status: m.status as string,
+      notes: m.notes as string,
+    }));
+
   // 과정 진도 (어디까지·어떤 내용까지 수업했는지)
   const supabase = createClient();
   const { data: enrCp } = await supabase
@@ -59,6 +75,23 @@ export default async function AdminProgressPage({
                       {cp.company ? <span className="text-slate-400"> · {cp.company}</span> : null}
                       <div className="mt-0.5 text-xs text-emerald-700">{cp.label}</div>
                       {cp.next && <div className="text-xs text-slate-400">다음 차시: {cp.next}</div>}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {classMemos.length > 0 && (
+              <section className="card mb-4">
+                <h2 className="mb-1 text-sm font-semibold text-slate-700">수업 메모 (강사 작성)</h2>
+                <p className="mb-2 text-xs text-slate-400">강사와 센터만 볼 수 있으며, 교육생에게는 표시되지 않습니다.</p>
+                <ul className="space-y-1.5 text-sm">
+                  {classMemos.map((m, i) => (
+                    <li key={i} className="rounded-md border border-amber-100 bg-amber-50/50 px-3 py-2">
+                      <div className="text-xs text-slate-500">
+                        {m.date ? new Date(m.date).toLocaleDateString("ko-KR", { year: "numeric", month: "numeric", day: "numeric", weekday: "short" }) : "—"}
+                        <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">{m.status}</span>
+                      </div>
+                      <p className="mt-0.5 whitespace-pre-wrap text-slate-700">{m.notes}</p>
                     </li>
                   ))}
                 </ul>

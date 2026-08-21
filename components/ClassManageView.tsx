@@ -21,6 +21,8 @@ export interface ClassRow {
   class_type: ClassType;
   format: ClassFormat;
   attendance: AttendanceStatus | null;
+  /** 강사·센터만 보는 수업 메모 (attendance.notes) — 학생에게는 표시하지 않는다 */
+  attendance_notes: string | null;
   feedback: Feedback | null;
 }
 
@@ -499,6 +501,12 @@ function StudentRow({
             </select>
           ) : (
             <span className="text-xs text-slate-400">— (upcoming)</span>
+          )}
+          {/* 수업 메모 — 있을 때만 출석 하단에 표시 (강사·센터 전용) */}
+          {row.attendance_notes && (
+            <p className="mt-1 max-w-[240px] whitespace-pre-wrap rounded bg-amber-50 px-1.5 py-1 text-[11px] leading-snug text-slate-600">
+              Memo: {row.attendance_notes}
+            </p>
           )}
         </td>
         <td className="py-1.5">

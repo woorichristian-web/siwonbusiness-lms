@@ -393,7 +393,7 @@ function StudentDetailModal({
           <select
             className="input"
             value={status}
-            disabled={!isPast || pending}
+            disabled={pending}
             onChange={(e) => setStatus(e.target.value as AttendanceStatus | "")}
           >
             <option value="">Not marked</option>
@@ -407,15 +407,13 @@ function StudentDetailModal({
             className="input min-h-[80px]"
             placeholder="Notes about this class — e.g., topics covered, student progress, follow-up items."
             value={notes}
-            disabled={!isPast || pending}
+            disabled={pending}
             onChange={(e) => setNotes(e.target.value)}
           />
-
-          {!isPast && (
-            <p className="mt-2 text-xs text-amber-600">
-              This class hasn't started yet — attendance can be marked after the session.
-            </p>
-          )}
+          <p className="mt-2 text-xs text-slate-400">
+            Memos are visible to you and the center only — never to students.
+            {!isPast && " You can pre-set a status (e.g., Reschedule) and memo before the class."}
+          </p>
         </div>
 
         {/* Feedback shortcut — only for past classes */}
@@ -452,11 +450,9 @@ function StudentDetailModal({
 
         <div className="mt-6 flex justify-end gap-2">
           <button className="btn-ghost" onClick={onClose}>Close</button>
-          {isPast && (
-            <button className="btn" disabled={pending} onClick={save}>
-              {pending ? "Saving..." : "Save attendance"}
-            </button>
-          )}
+          <button className="btn" disabled={pending} onClick={save}>
+            {pending ? "Saving..." : "Save attendance"}
+          </button>
         </div>
       </div>
 

@@ -44,13 +44,15 @@ export default async function TeacherClassManagePage() {
   // Attendance
   const bookingIds = bookingsRaw.map((b) => b.id);
   const attendanceByBooking = new Map<string, "present" | "absent" | "late" | "reschedule" | "other">();
+  const attendanceNotesByBooking = new Map<string, string | null>();
   if (bookingIds.length > 0) {
     const { data: atts } = await supabase
       .from("attendance")
-      .select("booking_id, status")
+      .select("booking_id, status, notes")
       .in("booking_id", bookingIds);
     for (const a of atts ?? []) {
       attendanceByBooking.set(a.booking_id, a.status as any);
+      attendanceNotesByBooking.set(a.booking_id, a.notes ?? null);
     }
   }
 
@@ -82,6 +84,7 @@ export default async function TeacherClassManagePage() {
       class_type: slot?.class_type ?? "1on1",
       format: slot?.format ?? "online",
       attendance: attendanceByBooking.get(b.id) ?? null,
+      attendance_notes: attendanceNotesByBooking.get(b.id) ?? null,
       feedback: fb ?? null,
     };
   });
