@@ -14,41 +14,32 @@ export default async function AdminStudentsPage() {
   const profile = await requireRole(["admin"]);
   const supabase = createClient();
 
-  const { data: studentRows } = await supabase
-    .from("profiles")
-    .select("id, name, username, company_name, course_name")
-    .eq("role", "student")
-    .order("name");
+  // 독립 쿼리 병렬 실행 (페이지 이동 속도 개선)
+  const [{ data: studentRows }, { data: courseRows }, { data: cs }, { data: bookings }] =
+    await Promise.all([
+      supabase.from("profiles")
+        .select("id, name, username, company_name, course_name")
+        .eq("role", "student").order("name"),
+      supabase.from("courses")
+        .select("id, name, company_name").order("created_at", { ascending: false }),
+      supabase.from("course_students").select("course_id, student_id"),
+      supabase.from("bookings")
+        .select("id, course_id").eq("status", "confirmed").not("course_id", "is", null),
+    ]);
   const students = (studentRows ?? []) as any[];
-
-  const { data: courseRows } = await supabase
-    .from("courses")
-    .select("id, name, company_name")
-    .order("created_at", { ascending: false });
   const courses = (courseRows ?? []) as any[];
 
   // 과정별 학생
   const studentCourseIds = new Map<string, string[]>(); // student -> [courseId]
   const courseStudentIds = new Map<string, string[]>(); // course -> [studentId]
-  if (courses.length > 0) {
-    const { data: cs } = await supabase
-      .from("course_students")
-      .select("course_id, student_id");
-    for (const r of cs ?? []) {
-      (studentCourseIds.get(r.student_id) ?? studentCourseIds.set(r.student_id, []).get(r.student_id)!).push(r.course_id);
-      (courseStudentIds.get(r.course_id) ?? courseStudentIds.set(r.course_id, []).get(r.course_id)!).push(r.student_id);
-    }
+  for (const r of cs ?? []) {
+    (studentCourseIds.get(r.student_id) ?? studentCourseIds.set(r.student_id, []).get(r.student_id)!).push(r.course_id);
+    (courseStudentIds.get(r.course_id) ?? courseStudentIds.set(r.course_id, []).get(r.course_id)!).push(r.student_id);
   }
 
   // 과정별 출석 집계 (bookings.course_id + attendance)
   const courseStats: Record<string, { students: number; bookings: number; attended: number; markedTotal: number }> = {};
   for (const c of courses) courseStats[c.id] = { students: (courseStudentIds.get(c.id) ?? []).length, bookings: 0, attended: 0, markedTotal: 0 };
-
-  const { data: bookings } = await supabase
-    .from("bookings")
-    .select("id, course_id")
-    .eq("status", "confirmed")
-    .not("course_id", "is", null);
   const bkById = new Map<string, string>(); // booking -> course
   for (const b of bookings ?? []) {
     bkById.set(b.id, b.course_id);

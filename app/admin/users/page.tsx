@@ -11,25 +11,19 @@ export default async function AdminUsersPage() {
   const profile = await requireRole(["admin"]);
   const supabase = createClient();
 
-  const { data: rows } = await supabase
-    .from("profiles")
-    .select("*")
-    .order("created_at", { ascending: false });
+  // 독립 쿼리 병렬 실행 (페이지 이동 속도 개선)
+  const [{ data: rows }, { data: tMeta }] = await Promise.all([
+    supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+    supabase.from("teachers").select("profile_id, languages"),
+  ]);
 
   let allProfiles = (rows ?? []) as Profile[];
 
   // 강사 사용 언어 부착 (회원 정보 표시용)
-  const teacherIds = allProfiles.filter((p) => p.role === "teacher").map((p) => p.id);
-  if (teacherIds.length > 0) {
-    const { data: tMeta } = await supabase
-      .from("teachers")
-      .select("profile_id, languages")
-      .in("profile_id", teacherIds);
-    const langById = new Map((tMeta ?? []).map((m: any) => [m.profile_id, m.languages]));
-    allProfiles = allProfiles.map((p) =>
-      p.role === "teacher" ? ({ ...p, languages: langById.get(p.id) ?? null } as any) : p,
-    );
-  }
+  const langById = new Map((tMeta ?? []).map((m: any) => [m.profile_id, m.languages]));
+  allProfiles = allProfiles.map((p) =>
+    p.role === "teacher" ? ({ ...p, languages: langById.get(p.id) ?? null } as any) : p,
+  );
 
   // 강사 목록 (편집 모달의 배정 강사 드롭다운용)
   const teachers = allProfiles

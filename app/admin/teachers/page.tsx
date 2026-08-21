@@ -9,53 +9,37 @@ export default async function AdminTeachersPage() {
   const profile = await requireRole(["admin"]);
   const supabase = createClient();
 
-  const { data: teachers } = await supabase
-    .from("profiles")
-    .select("id, name, username")
-    .eq("role", "teacher")
-    .order("name");
+  // 독립 쿼리 병렬 실행 (페이지 이동 속도 개선)
+  const [{ data: teachers }, { data: metas }, { data: fbs }, { data: cts }] =
+    await Promise.all([
+      supabase.from("profiles").select("id, name, username").eq("role", "teacher").order("name"),
+      supabase.from("teachers").select("profile_id, number_of_classes"),
+      supabase.from("student_teacher_feedback").select("teacher_id, rating"),
+      supabase.from("course_teachers").select("course_id, teacher_id").is("assigned_until", null),
+    ]);
   const list = (teachers ?? []) as any[];
-  const ids = list.map((t) => t.id);
+  const teacherIdSet = new Set(list.map((t) => t.id));
 
   // 메타 (진행 수업 수)
   const classesById = new Map<string, number>();
-  if (ids.length > 0) {
-    const { data: metas } = await supabase
-      .from("teachers")
-      .select("profile_id, number_of_classes")
-      .in("profile_id", ids);
-    for (const m of metas ?? [])
-      classesById.set(m.profile_id, m.number_of_classes ?? 0);
-  }
+  for (const m of metas ?? [])
+    if (teacherIdSet.has(m.profile_id)) classesById.set(m.profile_id, m.number_of_classes ?? 0);
 
   // 만족도 (student_teacher_feedback: 1~10)
   const ratingSum = new Map<string, number>();
   const ratingCnt = new Map<string, number>();
-  if (ids.length > 0) {
-    const { data: fbs } = await supabase
-      .from("student_teacher_feedback")
-      .select("teacher_id, rating")
-      .in("teacher_id", ids);
-    for (const f of fbs ?? []) {
-      if (typeof f.rating !== "number") continue;
-      ratingSum.set(f.teacher_id, (ratingSum.get(f.teacher_id) ?? 0) + f.rating);
-      ratingCnt.set(f.teacher_id, (ratingCnt.get(f.teacher_id) ?? 0) + 1);
-    }
+  for (const f of fbs ?? []) {
+    if (typeof f.rating !== "number" || !teacherIdSet.has(f.teacher_id)) continue;
+    ratingSum.set(f.teacher_id, (ratingSum.get(f.teacher_id) ?? 0) + f.rating);
+    ratingCnt.set(f.teacher_id, (ratingCnt.get(f.teacher_id) ?? 0) + 1);
   }
 
   // 담당 과정 (활성) + 진행중 과정 그룹
   const courseCnt = new Map<string, number>();
-  let ctRows: { course_id: string; teacher_id: string }[] = [];
-  if (ids.length > 0) {
-    const { data: cts } = await supabase
-      .from("course_teachers")
-      .select("course_id, teacher_id")
-      .in("teacher_id", ids)
-      .is("assigned_until", null);
-    ctRows = (cts ?? []) as any;
-    for (const c of ctRows)
-      courseCnt.set(c.teacher_id, (courseCnt.get(c.teacher_id) ?? 0) + 1);
-  }
+  const ctRows: { course_id: string; teacher_id: string }[] =
+    ((cts ?? []) as any[]).filter((c) => teacherIdSet.has(c.teacher_id));
+  for (const c of ctRows)
+    courseCnt.set(c.teacher_id, (courseCnt.get(c.teacher_id) ?? 0) + 1);
   const activeCourseIds = Array.from(new Set(ctRows.map((r) => r.course_id)));
   const today = new Date().toISOString().slice(0, 10);
   let activeCourses: { id: string; name: string; company_name: string | null }[] = [];

@@ -87,6 +87,9 @@ export default function AdminTeacherUploadForm() {
       ],
       sheetName: "Teachers",
       fileName: "teachers_template.xlsx",
+      validations: {
+        birth_date: { date: true },
+      },
     });
   }
 

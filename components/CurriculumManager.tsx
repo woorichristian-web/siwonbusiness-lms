@@ -40,6 +40,7 @@ export default function CurriculumManager({
       sample: [[1, "2026-08-11", "Introductions", "Warm-up + 자기소개", "교재 p.1-3"]],
       sheetName: "Curriculum",
       fileName: "curriculum_template.xlsx",
+      validations: { "날짜": { date: true } },
     });
   }
   function downloadCurrent() {

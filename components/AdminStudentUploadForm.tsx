@@ -85,6 +85,11 @@ export default function AdminStudentUploadForm() {
       ],
       sheetName: "교육생",
       fileName: "educatee_upload_template.xlsx",
+      validations: {
+        birth_date: { date: true },
+        course_start_date: { date: true },
+        course_end_date: { date: true },
+      },
     });
   }
 

@@ -107,6 +107,14 @@ export default function AdminUploadForm() {
       ],
       sheetName: "강사시간표",
       fileName: "teacher_schedule_template.xlsx",
+      validations: {
+        // 요일: 드롭다운 제공하되 "mon,tue" 같은 복수 입력도 허용
+        day: { list: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"], strict: false },
+        format: { list: ["online", "offline"] },
+        class_type: { list: ["1on1", "1on1_coaching", "group", "group_coaching"] },
+        start_at: { date: true },
+        end_at: { date: true },
+      },
     });
   }
 
