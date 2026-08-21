@@ -71,15 +71,21 @@ export default function TeacherMessageCompose({
   students,
   sent,
   english,
+  courseGroups = [],
+  centerId = null,
 }: {
   students: Student[];
   sent: SentMessage[];
   english?: boolean;
+  /** 과정별 학생 그룹 — 드롭다운에 과정명 optgroup 으로 표시 */
+  courseGroups?: { course: string; students: Student[] }[];
+  /** 센터(관리자) 대표 계정 — 최상단 표시 + 기본 선택 */
+  centerId?: string | null;
 }) {
   const router = useRouter();
   const t = english ? T.en : T.ko;
   const [pending, startTransition] = useTransition();
-  const [recipientId, setRecipientId] = useState("");
+  const [recipientId, setRecipientId] = useState(centerId ?? "");
   const [body, setBody] = useState("");
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
@@ -131,16 +137,35 @@ export default function TeacherMessageCompose({
           <select className="input" value={recipientId}
             onChange={(e) => setRecipientId(e.target.value)}>
             <option value="">{t.selectPlaceholder}</option>
+            {/* 센터 — 최상단, 기본 선택 */}
+            {centerId && (
+              <option value={centerId}>
+                {english ? "Siwonschool Center" : "시원스쿨 센터"}
+              </option>
+            )}
             {students.length > 0 && (
               <option value={ALL_VALUE}>
                 {t.allStudents} ({students.length})
               </option>
             )}
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} ({s.username}){s.company_name ? ` · ${s.company_name}` : ""}
-              </option>
-            ))}
+            {/* 하단 — 수업(과정)별 학생 그룹 */}
+            {courseGroups.length > 0 ? (
+              courseGroups.map((g) => (
+                <optgroup key={g.course} label={g.course}>
+                  {g.students.map((s) => (
+                    <option key={g.course + s.id} value={s.id}>
+                      {s.name} ({s.username}){s.company_name ? ` · ${s.company_name}` : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              ))
+            ) : (
+              students.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.username}){s.company_name ? ` · ${s.company_name}` : ""}
+                </option>
+              ))
+            )}
           </select>
           {students.length === 0 && (
             <p className="mt-1 text-xs text-slate-400">{t.noStudents}</p>

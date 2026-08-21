@@ -35,6 +35,8 @@ export default async function TeacherMessagesPage() {
   // 2) 받는 사람 목록 (강사: 본인 수업에 신청한 학생, 관리자: 모든 학생)
   // ====================================================================
   let students: { id: string; name: string; username: string; company_name: string | null }[] = [];
+  // 수업(과정)별 학생 그룹 — 드롭다운 하단에 과정명으로 묶어 표시
+  let courseGroups: { course: string; students: typeof students }[] = [];
   if (isTeacher) {
     const { data: slots } = await supabase
       .from("time_slots")
@@ -44,7 +46,7 @@ export default async function TeacherMessagesPage() {
     if (slotIds.length > 0) {
       const { data: bookings } = await supabase
         .from("bookings")
-        .select("student_id")
+        .select("student_id, course_id")
         .in("slot_id", slotIds)
         .eq("status", "confirmed");
       const studentIds = Array.from(new Set((bookings ?? []).map((b: any) => b.student_id)));
@@ -54,6 +56,30 @@ export default async function TeacherMessagesPage() {
           .select("id, name, username, company_name")
           .in("id", studentIds);
         students = (profs ?? []) as any;
+
+        // 과정명 조회 후 과정별로 학생 묶기 (과정 미지정 예약은 "Other")
+        const courseIds = Array.from(new Set((bookings ?? []).map((b: any) => b.course_id).filter(Boolean)));
+        const courseNames = new Map<string, string>();
+        if (courseIds.length > 0) {
+          const { data: cs } = await supabase
+            .from("courses").select("id, name").in("id", courseIds);
+          for (const c of cs ?? []) courseNames.set(c.id, c.name);
+        }
+        const byId = new Map(students.map((s) => [s.id, s]));
+        const grouped = new Map<string, Map<string, (typeof students)[number]>>();
+        for (const b of bookings ?? []) {
+          const st = byId.get(b.student_id);
+          if (!st) continue;
+          const key = b.course_id ? (courseNames.get(b.course_id) ?? "Other") : "Other";
+          if (!grouped.has(key)) grouped.set(key, new Map());
+          grouped.get(key)!.set(st.id, st);
+        }
+        courseGroups = Array.from(grouped.entries())
+          .sort(([a], [b]) => (a === "Other" ? 1 : b === "Other" ? -1 : a.localeCompare(b)))
+          .map(([course, m]) => ({
+            course,
+            students: Array.from(m.values()).sort((a, b) => a.name.localeCompare(b.name)),
+          }));
       }
     }
   } else {
@@ -83,10 +109,22 @@ export default async function TeacherMessagesPage() {
   if (recipientIds.length > 0) {
     const { data: rs } = await supabase
       .from("profiles")
-      .select("id, name")
+      .select("id, name, role")
       .in("id", recipientIds);
-    for (const r of rs ?? []) recipientNames.set(r.id, r.name);
+    for (const r of rs ?? [])
+      recipientNames.set(r.id, r.role === "admin" ? "Siwonschool Center" : r.name);
   }
+
+  // 센터(관리자) 대표 계정 — 드롭다운 최상단 + 기본 선택. QA 계정 제외.
+  const { data: adminRows } = await supabase
+    .from("profiles")
+    .select("id, name, username")
+    .eq("role", "admin")
+    .order("name");
+  const centerId =
+    (adminRows ?? []).filter(
+      (a: any) => a.username !== "qa.shot" && !String(a.name ?? "").startsWith("QA"),
+    )[0]?.id ?? null;
 
   return (
     <>
@@ -121,6 +159,8 @@ export default async function TeacherMessagesPage() {
           </h2>
           <TeacherMessageCompose
             students={students}
+            courseGroups={courseGroups}
+            centerId={centerId}
             sent={(sent ?? []).map((m: any) => ({
               ...m,
               recipient_name: recipientNames.get(m.recipient_id) ?? "—",
