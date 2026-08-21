@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import AppHeader from "@/components/AppHeader";
 import ConversationView from "@/components/ConversationView";
 
@@ -50,13 +51,16 @@ export default async function ChatRoomPage({
   ]);
   const partIds = (parts ?? []).map((p) => p.profile_id);
 
-  // 발신자에는 참여자가 아닌 센터(관리자)도 있을 수 있으므로
-  // 참여자 ∪ 메시지 발신자 전체의 프로필을 조회한다.
+  // 발신자에는 참여자가 아닌 센터(관리자)도 있을 수 있고, profiles RLS 는
+  // 역할에 따라 일부 행을 숨기므로(예: 교육생↔같은 반 교육생) 이름이
+  // "알 수 없음"으로 뜨는 문제가 있었다. 방 접근 자체는 위에서 RLS 로
+  // 이미 검증됐으므로, 표시용 이름 조회만 admin 클라이언트로 수행한다.
   const personIds = Array.from(
     new Set([...partIds, ...((msgs ?? []).map((m: any) => m.sender_id))]),
   );
+  const adminDb = createAdminClient();
   const { data: peopleRaw } = personIds.length
-    ? await supabase
+    ? await adminDb
         .from("profiles")
         .select("id, name, english_name, username, role")
         .in("id", personIds)
