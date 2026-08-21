@@ -5,6 +5,7 @@ import TeacherScheduleTabs from "@/components/TeacherScheduleTabs";
 import type { TimeSlot } from "@/lib/types";
 import type { BookingEvent, ClassSlotEvent } from "@/components/ClassSchedulesView";
 import type { TeacherCourse, CoursePattern } from "@/components/TeacherCoursesView";
+import { getTestCourseIds } from "@/lib/testCourses";
 
 export const dynamic = "force-dynamic";
 
@@ -21,12 +22,18 @@ export default async function TeacherSchedulePage() {
   const zoomUrl = teacherRow?.zoom_url ?? null;
   const teamsUrl = teacherRow?.teams_url ?? null;
 
-  // 1) Teacher's slots
-  const { data: slots } = await supabase
-    .from("time_slots")
-    .select("*")
-    .eq("teacher_id", profile.id)
-    .order("start_at", { ascending: true });
+  // 1) Teacher's slots — 테스트 과정 소속 슬롯은 강사에게 숨김
+  const [{ data: slotsAll }, testIds] = await Promise.all([
+    supabase
+      .from("time_slots")
+      .select("*")
+      .eq("teacher_id", profile.id)
+      .order("start_at", { ascending: true }),
+    getTestCourseIds(supabase),
+  ]);
+  const slots = (slotsAll ?? []).filter(
+    (s: any) => !s.course_id || !testIds.has(s.course_id),
+  );
 
   const slotIds = (slots ?? []).map((s: any) => s.id);
   const slotById = new Map<string, any>();
@@ -53,7 +60,7 @@ export default async function TeacherSchedulePage() {
   if (studentIds.length > 0) {
     const { data: students } = await supabase
       .from("profiles")
-      .select("id, name, username, company_name, phone, course_name")
+      .select("id, name, english_name, username, company_name, phone, course_name")
       .in("id", studentIds);
     for (const s of students ?? []) studentById.set(s.id, s);
   }
@@ -90,7 +97,8 @@ export default async function TeacherSchedulePage() {
       id: b.id,
       slot_id: b.slot_id,
       student_id: b.student_id,
-      student_name: s?.name ?? "Unknown",
+      // 강사에게는 영문 이름을 우선 표시 (없으면 한글 이름)
+      student_name: s?.english_name?.trim() || s?.name || "Unknown",
       student_username: s?.username ?? "",
       student_company: s?.company_name ?? null,
       student_phone: s?.phone ?? null,
@@ -135,7 +143,7 @@ export default async function TeacherSchedulePage() {
     .is("assigned_until", null);
   const myCourseIds = Array.from(
     new Set((myCourseLinks ?? []).map((r: any) => r.course_id)),
-  );
+  ).filter((id) => !testIds.has(id)); // 테스트 과정은 강사에게 숨김
 
   if (myCourseIds.length > 0) {
     const [{ data: courseRows }, { data: enrollRows }] = await Promise.all([
@@ -152,9 +160,10 @@ export default async function TeacherSchedulePage() {
     if (enrollIds.length > 0) {
       const { data: ps } = await supabase
         .from("profiles")
-        .select("id, name")
+        .select("id, name, english_name")
         .in("id", enrollIds);
-      for (const p of ps ?? []) nameById.set(p.id, p.name);
+      for (const p of ps ?? [])
+        nameById.set(p.id, (p as any).english_name?.trim() || p.name);
     }
     const studentsByCourse = new Map<string, string[]>();
     for (const r of enrollRows ?? []) {
@@ -211,7 +220,7 @@ export default async function TeacherSchedulePage() {
           period_end: b.end_at as string,
           sessions_count: 0,
           patterns: new Map<string, CoursePattern>(),
-          students: [s?.name ?? "Unknown"],
+          students: [s?.english_name?.trim() || s?.name || "Unknown"],
         };
         courseByStudent.set(b.student_id, c);
       }
@@ -262,7 +271,7 @@ export default async function TeacherSchedulePage() {
           bookingEvents={bookingEvents}
           classSlots={classSlots}
           courses={courses}
-          availabilityLocked={(myCourseLinks ?? []).length > 0}
+          availabilityLocked={myCourseIds.length > 0}
         />
       </main>
     </>

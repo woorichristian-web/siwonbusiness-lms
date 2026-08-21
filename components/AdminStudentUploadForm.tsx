@@ -35,6 +35,7 @@ export default function AdminStudentUploadForm() {
         username: String(r.username ?? "").trim(),
         password: String(r.password ?? "").trim(),
         name: String(r.name ?? "").trim(),
+        english_name: String(r.english_name ?? "").trim() || undefined,
         birth_date: pickDate(r.birth_date),
         phone: String(r.phone ?? "").trim() || undefined,
         residence_area: String(r.residence_area ?? "").trim() || undefined,
@@ -69,14 +70,14 @@ export default function AdminStudentUploadForm() {
   function downloadTemplate() {
     downloadStyledTemplate({
       headers: [
-        "username", "password", "name", "birth_date", "phone", "residence_area",
+        "username", "password", "name", "english_name", "birth_date", "phone", "residence_area",
         "company_name", "industry", "job_role", "learning_purpose",
         "assigned_teacher_username", "course_name",
         "course_start_date", "course_end_date", "course_total_sessions", "schedule",
       ],
       sample: [
         [
-          "kim123", "kim1234567", "김길동", "1990-05-15", "010-1234-5678", "서울",
+          "kim123", "kim1234567", "김길동", "Gil Kim", "1990-05-15", "010-1234-5678", "서울",
           "Afinit", "IT/소프트웨어", "개발/엔지니어링", "비즈니스 이메일/문서 작성",
           "jayrho", "Business Expressions & Conversations",
           "2026-08-11", "2026-12-29", 24,

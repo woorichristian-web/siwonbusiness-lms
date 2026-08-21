@@ -37,24 +37,43 @@ export default async function ChatRoomPage({
     );
   }
 
-  const { data: parts } = await supabase
-    .from("conversation_participants")
-    .select("profile_id")
-    .eq("conversation_id", conv.id);
+  const [{ data: parts }, { data: msgs }] = await Promise.all([
+    supabase
+      .from("conversation_participants")
+      .select("profile_id")
+      .eq("conversation_id", conv.id),
+    supabase
+      .from("conversation_messages")
+      .select("id, sender_id, body, attachment_path, attachment_name, attachment_type, created_at")
+      .eq("conversation_id", conv.id)
+      .order("created_at", { ascending: true }),
+  ]);
   const partIds = (parts ?? []).map((p) => p.profile_id);
 
-  const { data: people } = partIds.length
+  // 발신자에는 참여자가 아닌 센터(관리자)도 있을 수 있으므로
+  // 참여자 ∪ 메시지 발신자 전체의 프로필을 조회한다.
+  const personIds = Array.from(
+    new Set([...partIds, ...((msgs ?? []).map((m: any) => m.sender_id))]),
+  );
+  const { data: peopleRaw } = personIds.length
     ? await supabase
         .from("profiles")
-        .select("id, name, username, role")
-        .in("id", partIds)
+        .select("id, name, english_name, username, role")
+        .in("id", personIds)
     : { data: [] as any[] };
 
-  const { data: msgs } = await supabase
-    .from("conversation_messages")
-    .select("id, sender_id, body, attachment_path, attachment_name, attachment_type, created_at")
-    .eq("conversation_id", conv.id)
-    .order("created_at", { ascending: true });
+  // 표시 이름 — 강사가 보면 교육생은 영문 이름 우선, 센터(관리자) 발신자는
+  // 역할에 맞는 센터 명칭으로. 센터·교육생이 보면 한글 이름 그대로.
+  const partSet = new Set(partIds);
+  const people = ((peopleRaw ?? []) as any[]).map((p) => {
+    let displayName = p.name;
+    if (p.role === "admin") {
+      displayName = profile.role === "teacher" ? "Siwonschool Center" : "시원스쿨 센터";
+    } else if (p.role === "student" && profile.role === "teacher") {
+      displayName = p.english_name?.trim() || p.name;
+    }
+    return { ...p, name: displayName, isParticipant: partSet.has(p.id) };
+  });
 
   return (
     <>

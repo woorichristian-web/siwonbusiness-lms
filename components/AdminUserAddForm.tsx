@@ -22,6 +22,7 @@ export default function AdminUserAddForm({ teachers = [] }: { teachers?: Teacher
 
   const [role, setRole] = useState<Role>("student");
   const [name, setName] = useState("");
+  const [englishName, setEnglishName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -49,6 +50,7 @@ export default function AdminUserAddForm({ teachers = [] }: { teachers?: Teacher
       const prefArr = [prefFormat, prefType].filter(Boolean);
       const r = await adminCreateUser({
         role, name, username, password,
+        english_name: englishName.trim() || undefined,
         birth_date: birthDate || undefined,
         phone: phone || undefined,
         residence_area: region || undefined,
@@ -65,7 +67,7 @@ export default function AdminUserAddForm({ teachers = [] }: { teachers?: Teacher
       });
       if (!r.ok) { setError(r.error ?? "실패"); return; }
       setSuccess(`${name} (${username}) 계정 생성 완료`);
-      setName(""); setUsername(""); setPassword("");
+      setName(""); setEnglishName(""); setUsername(""); setPassword("");
       setBirthDate(""); setPhone("");
       setRegion(""); setCompany(""); setIndustry(""); setJobRole(""); setPurpose("");
       setPrefFormat(""); setPrefType("");
@@ -101,6 +103,12 @@ export default function AdminUserAddForm({ teachers = [] }: { teachers?: Teacher
           <div>
             <label className="label">이름 *</label>
             <input className="input" required value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">영문 이름</label>
+            <input className="input" placeholder="예: Gil Kim" value={englishName}
+              onChange={(e) => setEnglishName(e.target.value)} />
+            <p className="mt-0.5 text-[11px] text-slate-400">입력 시 강사 화면에는 이 이름이 표시됩니다.</p>
           </div>
           <div>
             <label className="label">생년월일</label>

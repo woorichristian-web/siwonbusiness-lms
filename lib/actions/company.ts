@@ -94,6 +94,7 @@ export async function updateMemberAdminFields(
     admin_notes?: string | null;
     assigned_teacher_id?: string | null;
     name?: string;
+    english_name?: string | null;
     residence_area?: string | null;
     company_name?: string;
     industry?: string | null;

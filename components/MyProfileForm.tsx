@@ -26,6 +26,7 @@ export default function MyProfileForm({ profile }: { profile: Profile }) {
   const initTypes = (profile.preferred_format ?? []).filter((v) => v === "1on1" || v === "small_group");
 
   const [name, setName] = useState(profile.name ?? "");
+  const [englishName, setEnglishName] = useState((profile as any).english_name ?? "");
   const [birth, setBirth] = useState(profile.birth_date ?? "");
   const [phone, setPhone] = useState(profile.phone ?? "");
   const [region, setRegion] = useState(profile.residence_area ?? "");
@@ -51,6 +52,7 @@ export default function MyProfileForm({ profile }: { profile: Profile }) {
     startTransition(async () => {
       const r = await updateMyProfile({
         name,
+        english_name: englishName.trim() || null,
         birth_date: birth || null,
         phone: phone || null,
         residence_area: region || null,
@@ -113,6 +115,14 @@ export default function MyProfileForm({ profile }: { profile: Profile }) {
             <div>
               <label className="label">이름 *</label>
               <input className="input" required value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">영문 이름</label>
+              <input className="input" placeholder="예: Gil Kim" value={englishName}
+                onChange={(e) => setEnglishName(e.target.value)} />
+              <p className="mt-0.5 text-[11px] text-slate-400">
+                입력하면 강사에게 이 영문 이름이 표시됩니다. (한글 이름 표기는 그대로)
+              </p>
             </div>
             <div>
               <label className="label">생년월일</label>

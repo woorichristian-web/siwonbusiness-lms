@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import ClassManageView, { type ClassRow } from "@/components/ClassManageView";
 import CurriculumManager, { type CurriculumItem } from "@/components/CurriculumManager";
+import { getTestCourseIds } from "@/lib/testCourses";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +11,17 @@ export default async function TeacherClassManagePage() {
   const profile = await requireRole(["teacher", "admin"]);
   const supabase = createClient();
 
-  // Teacher's slots
-  const { data: slots } = await supabase
-    .from("time_slots")
-    .select("id, class_type, format")
-    .eq("teacher_id", profile.id);
+  // Teacher's slots — 테스트 과정 소속 슬롯은 숨김
+  const [{ data: slotsAll }, testIds] = await Promise.all([
+    supabase
+      .from("time_slots")
+      .select("id, class_type, format, course_id")
+      .eq("teacher_id", profile.id),
+    getTestCourseIds(supabase),
+  ]);
+  const slots = (slotsAll ?? []).filter(
+    (s: any) => !s.course_id || !testIds.has(s.course_id),
+  );
   const slotById = new Map<string, any>();
   for (const s of slots ?? []) slotById.set(s.id, s);
   const slotIds = (slots ?? []).map((s: any) => s.id);
@@ -36,7 +43,7 @@ export default async function TeacherClassManagePage() {
   if (studentIds.length > 0) {
     const { data: students } = await supabase
       .from("profiles")
-      .select("id, name, username, company_name, course_name")
+      .select("id, name, english_name, username, company_name, course_name")
       .in("id", studentIds);
     for (const s of students ?? []) studentById.set(s.id, s);
   }
@@ -77,7 +84,8 @@ export default async function TeacherClassManagePage() {
       start_at: b.start_at,
       end_at: b.end_at,
       student_id: b.student_id,
-      student_name: s?.name ?? "Unknown",
+      // 강사에게는 영문 이름을 우선 표시 (없으면 한글 이름)
+      student_name: s?.english_name?.trim() || s?.name || "Unknown",
       student_username: s?.username ?? "",
       student_company: s?.company_name ?? null,
       course_name: s?.course_name ?? null,
@@ -95,7 +103,8 @@ export default async function TeacherClassManagePage() {
     .select("course_id")
     .eq("teacher_id", profile.id)
     .is("assigned_until", null);
-  const myCourseIds = Array.from(new Set((myCts ?? []).map((r: any) => r.course_id)));
+  const myCourseIds = Array.from(new Set((myCts ?? []).map((r: any) => r.course_id)))
+    .filter((id) => !testIds.has(id)); // 테스트 과정 숨김
   let myCourses: {
     id: string; name: string; curriculum_updated_at: string | null; items: CurriculumItem[];
   }[] = [];

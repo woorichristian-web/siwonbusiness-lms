@@ -30,6 +30,7 @@ export interface CourseRow {
   class_time: string | null;
   duration_min: number | null;
   total_sessions: number | null;
+  is_test?: boolean | null;
 }
 export interface TeacherOption {
   id: string;
@@ -181,6 +182,7 @@ function CreateForm({
     total_sessions: initial?.total_sessions != null ? String(initial.total_sessions) : "",
   });
   const [weekdays, setWeekdays] = useState<string[]>(initial?.weekdays ?? []);
+  const [isTest, setIsTest] = useState<boolean>(!!initial?.is_test);
   const [customBook, setCustomBook] = useState(
     !!(initial?.textbook && !TEXTBOOKS.includes(initial.textbook)),
   );
@@ -206,6 +208,7 @@ function CreateForm({
         weekdays, class_time: f.class_time || null,
         duration_min: f.duration_min ? Number(f.duration_min) : null,
         total_sessions: f.total_sessions ? Number(f.total_sessions) : null,
+        is_test: isTest,
       };
       const r = initial
         ? await updateCourse(initial.id, payload)
@@ -344,6 +347,17 @@ function CreateForm({
           )}
         </Field>
       </div>
+      <label className="flex cursor-pointer items-start gap-2 rounded-md border border-amber-200 bg-amber-50/50 p-2.5">
+        <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-slate-300"
+          checked={isTest} onChange={(e) => setIsTest(e.target.checked)} />
+        <span className="text-sm">
+          <b className="text-amber-800">Test course (테스트 과정)</b>
+          <span className="mt-0.5 block text-xs text-slate-500">
+            체크 시 센터에서만 보이는 테스트용 과정으로 생성됩니다. 강사·교육생을 배정해도
+            그들의 화면(일정·수강현황·대화방·설문 등) 어디에도 노출되지 않습니다.
+          </span>
+        </span>
+      </label>
       <Field label="수업 요일">
         <div className="flex flex-wrap gap-1.5">
           {WEEKDAYS.map(([d, ko]) => (
@@ -406,6 +420,11 @@ function CourseCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h4 className="text-lg font-bold text-slate-800">{course.company_name ?? "(회사 미지정)"}</h4>
+            {course.is_test && (
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800" title="센터에서만 보이는 테스트 과정">
+                TEST
+              </span>
+            )}
             <span className="rounded-full bg-brand-50 px-3 py-0.5 text-sm font-bold text-brand-700">
               교육생 {studentCount}명
             </span>

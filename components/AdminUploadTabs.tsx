@@ -38,6 +38,7 @@ export default function AdminUploadTabs({ companies }: { companies: string[] }) 
               ["username", "아이디 (영/숫자, 3~20자)", "kim123"],
               ["password", "임시 비밀번호 (8자 이상)", "kim1234567"],
               ["name", "이름", "김길동"],
+              ["english_name", "영문 이름 (입력 시 강사에게 이 이름이 표시)", "Gil Kim"],
               ["birth_date", "생년월일 (YYYY-MM-DD)", "1990-05-15"],
               ["phone", "연락처", "010-1234-5678"],
               ["residence_area", "주거 지역", "서울"],

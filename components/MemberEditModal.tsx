@@ -24,6 +24,7 @@ export default function MemberEditModal({
   const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState(member.name);
+  const [englishName, setEnglishName] = useState((member as any).english_name ?? "");
   const [phone, setPhone] = useState(member.phone ?? "");
   const [region, setRegion] = useState(member.residence_area ?? "");
   const [industry, setIndustry] = useState(member.industry ?? "");
@@ -44,6 +45,7 @@ export default function MemberEditModal({
     startTransition(async () => {
       const r = await updateMemberAdminFields(member.id, {
         name: name.trim(),
+        english_name: englishName.trim() || null,
         phone: phone.trim() || null,
         residence_area: region || null,
         industry: industry || null,
@@ -72,9 +74,17 @@ export default function MemberEditModal({
         )}
 
         <div className="space-y-3">
-          <div>
-            <label className="label">이름</label>
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">이름</label>
+              <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">영문 이름</label>
+              <input className="input" placeholder="예: Gil Kim" value={englishName}
+                onChange={(e) => setEnglishName(e.target.value)} />
+              <p className="mt-0.5 text-[11px] text-slate-400">입력 시 강사에게 이 이름이 표시됩니다.</p>
+            </div>
           </div>
           <div>
             <label className="label">연락처</label>

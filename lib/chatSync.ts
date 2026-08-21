@@ -23,10 +23,11 @@ export async function syncCourseChatRooms(courseId: string) {
 
     const { data: course } = await admin
       .from("courses")
-      .select("id, name, weekdays, class_time")
+      .select("id, name, weekdays, class_time, is_test")
       .eq("id", courseId)
       .maybeSingle();
     if (!course) return;
+    if ((course as any).is_test) return; // 테스트 과정은 대화방을 만들지 않음
 
     // 배정 강사 (현재 활성)
     const { data: cts } = await admin

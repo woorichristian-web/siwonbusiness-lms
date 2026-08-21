@@ -35,6 +35,8 @@ export interface CourseInput {
   class_time?: string | null;
   duration_min?: number | null;
   total_sessions?: number | null;
+  /** 테스트 과정 — 센터에서만 보이고 강사·교육생에게는 숨김 */
+  is_test?: boolean;
 }
 
 function clean(input: CourseInput) {
@@ -54,6 +56,7 @@ function clean(input: CourseInput) {
     class_time: input.class_time?.trim() || null,
     duration_min: input.duration_min ?? null,
     total_sessions: input.total_sessions ?? null,
+    is_test: input.is_test ?? false,
   };
 }
 

@@ -25,6 +25,8 @@ async function assertAdmin() {
 export interface NewUserInput {
   role: Role;
   name: string;
+  /** 영문 이름 — 입력 시 강사 화면에 이 이름이 기본 표시 */
+  english_name?: string;
   username: string;
   password: string;
   birth_date?: string;
@@ -73,6 +75,7 @@ export async function adminCreateUser(input: NewUserInput) {
     role: input.role,
     username: input.username.toLowerCase(),
     name: input.name,
+    english_name: input.english_name?.trim() || null,
     birth_date: input.birth_date || null,
     phone: input.phone || null,
     residence_area: input.residence_area || null,
@@ -153,6 +156,8 @@ export interface StudentImportRow {
   username: string;
   password: string;
   name: string;
+  /** 영문 이름 — 입력 시 강사 화면에 이 이름이 기본 표시된다 */
+  english_name?: string;
   birth_date?: string;
   phone?: string;
   residence_area?: string;
@@ -319,6 +324,7 @@ export async function adminBulkUploadStudents(
       role: "student",
       username: r.username.toLowerCase(),
       name: r.name.trim(),
+      english_name: r.english_name?.trim() || null,
       birth_date: r.birth_date || null,
       phone: r.phone || null,
       residence_area: r.residence_area || null,

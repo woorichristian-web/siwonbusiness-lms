@@ -9,6 +9,8 @@ import { createClient } from "@/lib/supabase/server";
  */
 export interface MyProfileInput {
   name?: string;
+  /** 영문 이름 — 입력 시 강사 화면에 이 이름이 기본 표시 (한글 이름 표기는 그대로) */
+  english_name?: string | null;
   birth_date?: string | null;
   phone?: string | null;
   residence_area?: string | null;
@@ -33,6 +35,7 @@ export async function updateMyProfile(input: MyProfileInput) {
 
   const patch: Record<string, any> = {};
   if (input.name !== undefined) patch.name = input.name.trim();
+  if (input.english_name !== undefined) patch.english_name = input.english_name?.trim() || null;
   if (input.birth_date !== undefined) patch.birth_date = input.birth_date || null;
   if (input.phone !== undefined) patch.phone = input.phone || null;
   if (input.residence_area !== undefined) patch.residence_area = input.residence_area || null;

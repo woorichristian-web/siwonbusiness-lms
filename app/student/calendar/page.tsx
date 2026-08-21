@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import StudentCalendar from "@/components/StudentCalendar";
 import type { BookableSlot } from "@/lib/types";
+import { getTestCourseIds } from "@/lib/testCourses";
 
 export const dynamic = "force-dynamic";
 
@@ -37,11 +38,18 @@ export default async function StudentCalendarPage() {
   const slotIds = Array.from(new Set((myBookings ?? []).map((b: any) => b.slot_id)));
   const slotMeta = new Map<string, any>();
   if (slotIds.length > 0) {
-    const { data: slots } = await supabase
-      .from("time_slots")
-      .select("id, teacher_id, format, class_type, capacity, status")
-      .in("id", slotIds);
-    for (const s of slots ?? []) slotMeta.set(s.id, s);
+    const [{ data: slots }, testIds] = await Promise.all([
+      supabase
+        .from("time_slots")
+        .select("id, teacher_id, format, class_type, capacity, status, course_id")
+        .in("id", slotIds),
+      getTestCourseIds(supabase),
+    ]);
+    for (const s of slots ?? []) {
+      // 테스트 과정 소속 수업은 교육생에게 숨김
+      if (s.course_id && testIds.has(s.course_id)) continue;
+      slotMeta.set(s.id, s);
+    }
   }
 
   // 강사 정보 (이름, zoom_url, teams_url)

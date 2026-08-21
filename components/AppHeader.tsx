@@ -9,6 +9,7 @@ import NavLink from "@/components/NavLink";
 import NavMyPageDropdown from "@/components/NavMyPageDropdown";
 import SurveyPopup, { type PendingSurvey } from "@/components/SurveyPopup";
 import { openRounds } from "@/lib/survey";
+import { getTestCourseIds } from "@/lib/testCourses";
 
 export default async function AppHeader({ profile }: { profile: Profile }) {
   // 안 읽은 메시지 (개수 + 최근 5건은 팝업에 사용)
@@ -48,12 +49,13 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
       .eq("student_id", profile.id);
     const cIds = Array.from(new Set((myCourses ?? []).map((r: any) => r.course_id)));
     if (cIds.length > 0) {
-      const [{ data: cs }, { data: resp }] = await Promise.all([
+      const [{ data: cs }, { data: resp }, testIds] = await Promise.all([
         supabase.from("courses").select("id, name, start_date, end_date").in("id", cIds),
         supabase.from("survey_responses").select("course_id, round").eq("student_id", profile.id).in("course_id", cIds),
+        getTestCourseIds(supabase),
       ]);
       const done = new Set((resp ?? []).map((r: any) => `${r.course_id}|${r.round}`));
-      for (const c of cs ?? []) {
+      for (const c of (cs ?? []).filter((x: any) => !testIds.has(x.id))) {
         for (const r of openRounds(c.start_date, c.end_date)) {
           if (!done.has(`${c.id}|${r.round}`)) {
             pendingSurveys.push({

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { classTypeKo } from "@/lib/types";
 import { requireRole } from "@/lib/auth";
+import { getTestCourseIds } from "@/lib/testCourses";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import StudentTeacherFeedbackForm from "@/components/StudentTeacherFeedbackForm";
@@ -18,14 +19,19 @@ export default async function StudentStatusPage() {
   const profile = await requireRole(["student", "admin"]);
   const supabase = createClient();
 
-  // 본인 모든 예약
-  const { data: bookings } = await supabase
-    .from("bookings")
-    .select("id, slot_id, start_at, end_at, status, created_at, cancelled_at")
-    .eq("student_id", profile.id)
-    .order("start_at", { ascending: true });
+  // 본인 모든 예약 — 테스트 과정 소속 예약은 숨김
+  const [{ data: bookings }, testIds] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("id, slot_id, start_at, end_at, status, created_at, cancelled_at, course_id")
+      .eq("student_id", profile.id)
+      .order("start_at", { ascending: true }),
+    getTestCourseIds(supabase),
+  ]);
 
-  const all = bookings ?? [];
+  const all = (bookings ?? []).filter(
+    (b: any) => !b.course_id || !testIds.has(b.course_id),
+  );
   const confirmed = all.filter((b: any) => b.status === "confirmed");
   const cancelled = all.filter((b: any) => b.status === "cancelled");
   const now = new Date();
@@ -123,7 +129,8 @@ export default async function StudentStatusPage() {
     .from("course_students")
     .select("course_id")
     .eq("student_id", profile.id);
-  const myCourseIds = Array.from(new Set((myCs ?? []).map((r: any) => r.course_id)));
+  const myCourseIds = Array.from(new Set((myCs ?? []).map((r: any) => r.course_id)))
+    .filter((id) => !testIds.has(id)); // 테스트 과정 숨김
   let curricula: {
     id: string; name: string; curriculum_updated_at: string | null; items: CurriculumItem[];
   }[] = [];

@@ -4,6 +4,7 @@ import AppHeader from "@/components/AppHeader";
 import TeacherMessageCompose from "@/components/TeacherMessageCompose";
 import StudentMessageList from "@/components/StudentMessageList";
 import type { Message } from "@/lib/types";
+import { getTestCourseIds } from "@/lib/testCourses";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +39,16 @@ export default async function TeacherMessagesPage() {
   // 수업(과정)별 학생 그룹 — 드롭다운 하단에 과정명으로 묶어 표시
   let courseGroups: { course: string; students: typeof students }[] = [];
   if (isTeacher) {
-    const { data: slots } = await supabase
-      .from("time_slots")
-      .select("id")
-      .eq("teacher_id", profile.id);
-    const slotIds = (slots ?? []).map((s: any) => s.id);
+    const [{ data: slots }, testIds] = await Promise.all([
+      supabase
+        .from("time_slots")
+        .select("id, course_id")
+        .eq("teacher_id", profile.id),
+      getTestCourseIds(supabase),
+    ]);
+    const slotIds = (slots ?? [])
+      .filter((s: any) => !s.course_id || !testIds.has(s.course_id))
+      .map((s: any) => s.id);
     if (slotIds.length > 0) {
       const { data: bookings } = await supabase
         .from("bookings")
@@ -53,9 +59,13 @@ export default async function TeacherMessagesPage() {
       if (studentIds.length > 0) {
         const { data: profs } = await supabase
           .from("profiles")
-          .select("id, name, username, company_name")
+          .select("id, name, english_name, username, company_name")
           .in("id", studentIds);
-        students = (profs ?? []) as any;
+        // 강사에게는 영문 이름 우선 표시
+        students = ((profs ?? []) as any[]).map((p) => ({
+          ...p,
+          name: p.english_name?.trim() || p.name,
+        }));
 
         // 과정명 조회 후 과정별로 학생 묶기 (과정 미지정 예약은 "Other")
         const courseIds = Array.from(new Set((bookings ?? []).map((b: any) => b.course_id).filter(Boolean)));
