@@ -253,7 +253,7 @@ export default async function TeacherSchedulePage() {
           <h1 className="text-xl font-bold text-slate-800">My Classes</h1>
           <p className="text-sm text-slate-500">
             <b>Class Schedules</b> for upcoming sessions ·{" "}
-            <b>Availability</b> to set times you can teach.
+            <b>Course Information</b> for your assigned courses.
           </p>
         </header>
         <TeacherScheduleTabs
@@ -262,6 +262,7 @@ export default async function TeacherSchedulePage() {
           bookingEvents={bookingEvents}
           classSlots={classSlots}
           courses={courses}
+          availabilityLocked={(myCourseLinks ?? []).length > 0}
         />
       </main>
     </>

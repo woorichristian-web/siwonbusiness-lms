@@ -29,6 +29,23 @@ export async function createSlot(input: SlotInput, teacherId?: string) {
     return { ok: false, error: "종료 시간이 시작 시간보다 앞섭니다." };
   }
 
+  // 센터가 과정을 배정한 강사는 본인이 직접 availability 를 만들 수 없다
+  // (관리자가 대신 만드는 경우는 허용).
+  if (!teacherId || teacherId === user.id) {
+    const { data: me } = await supabase
+      .from("profiles").select("role").eq("id", user.id).single();
+    if (me?.role === "teacher") {
+      const { count } = await supabase
+        .from("course_teachers")
+        .select("course_id", { count: "exact", head: true })
+        .eq("teacher_id", user.id)
+        .is("assigned_until", null);
+      if ((count ?? 0) > 0) {
+        return { ok: false, error: "Your schedule is assigned by the center — availability input is disabled. Please contact the center (b2b@siwonschool.com)." };
+      }
+    }
+  }
+
   const { error } = await supabase.from("time_slots").insert({
     teacher_id: tid,
     start_at: input.start_at,
