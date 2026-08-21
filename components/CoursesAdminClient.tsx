@@ -79,6 +79,19 @@ export default function CoursesAdminClient({
   const [showCreate, setShowCreate] = useState(false);
   const [editFor, setEditFor] = useState<CourseRow | null>(null);
 
+  // 과정명 그룹 단위 페이지네이션 — 페이지당 5개 그룹
+  const PER_PAGE = 5;
+  const [page, setPage] = useState(1);
+  const groups = useMemo(() => {
+    const byName = new Map<string, CourseRow[]>();
+    for (const c of courses)
+      (byName.get(c.name) ?? byName.set(c.name, []).get(c.name)!).push(c);
+    return Array.from(byName.entries());
+  }, [courses]);
+  const totalPages = Math.max(1, Math.ceil(groups.length / PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const visibleGroups = groups.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -97,41 +110,38 @@ export default function CoursesAdminClient({
         </div>
       ) : (
         <div className="space-y-4">
-          {(() => {
-            const byName = new Map<string, CourseRow[]>();
-            for (const c of courses)
-              (byName.get(c.name) ?? byName.set(c.name, []).get(c.name)!).push(c);
-            return Array.from(byName.entries()).map(([name, list]) => {
-              const totalStudents = list.reduce((s, c) => s + (studentCounts[c.id] ?? 0), 0);
-              return (
-                <section key={name} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-                  <header className="border-b border-slate-100 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
-                    <h3 className="flex flex-wrap items-center gap-2 text-lg font-bold text-brand-900">
-                      {name}
-                      <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
-                        기업 {list.length}곳
-                      </span>
-                      <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
-                        총 교육생 {totalStudents}명
-                      </span>
-                      <span className="ml-auto"><CourseNameDownload name={name} /></span>
-                    </h3>
-                  </header>
-                  <div className="divide-y divide-slate-100">
-                    {list.map((c) => (
-                      <CourseCard
-                        key={c.id}
-                        course={c}
-                        teachers={assignments[c.id] ?? []}
-                        studentCount={studentCounts[c.id] ?? 0}
-                        onEdit={() => setEditFor(c)}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            });
-          })()}
+          {visibleGroups.map(([name, list]) => {
+            const totalStudents = list.reduce((s, c) => s + (studentCounts[c.id] ?? 0), 0);
+            return (
+              <section key={name} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                <header className="border-b border-slate-100 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
+                  <h3 className="flex flex-wrap items-center gap-2 text-lg font-bold text-brand-900">
+                    {name}
+                    <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
+                      기업 {list.length}곳
+                    </span>
+                    <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
+                      총 교육생 {totalStudents}명
+                    </span>
+                    <span className="ml-auto"><CourseNameDownload name={name} /></span>
+                  </h3>
+                </header>
+                <div className="divide-y divide-slate-100">
+                  {list.map((c) => (
+                    <CourseCard
+                      key={c.id}
+                      course={c}
+                      teachers={assignments[c.id] ?? []}
+                      studentCount={studentCounts[c.id] ?? 0}
+                      onEdit={() => setEditFor(c)}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+
+          <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
         </div>
       )}
 
@@ -150,6 +160,50 @@ export default function CoursesAdminClient({
 
 
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// 페이지네이션 — 번호 10개 블록(1~10 → 11~20 …) + 맨 앞/맨 뒤 건너뛰기
+// ---------------------------------------------------------------------
+function Pagination({
+  page, totalPages, onChange,
+}: {
+  page: number;
+  totalPages: number;
+  onChange: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  const BLOCK = 10;
+  const blockStart = Math.floor((page - 1) / BLOCK) * BLOCK + 1;
+  const blockEnd = Math.min(blockStart + BLOCK - 1, totalPages);
+  const nums = [];
+  for (let p = blockStart; p <= blockEnd; p++) nums.push(p);
+
+  const btn = "inline-flex h-8 min-w-[32px] items-center justify-center rounded-md border px-2 text-sm transition";
+  const idle = " border-slate-300 bg-white text-slate-600 hover:border-brand-400 hover:text-brand-700";
+  const active = " border-brand-600 bg-brand-600 font-bold text-white";
+  const nav = btn + " border-slate-300 bg-white text-slate-500 hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-35";
+
+  return (
+    <nav className="flex flex-wrap items-center justify-center gap-1.5 pt-2" aria-label="페이지 이동">
+      <button type="button" className={nav} disabled={page === 1}
+        onClick={() => onChange(1)} title="맨 앞으로">«</button>
+      <button type="button" className={nav} disabled={blockStart === 1}
+        onClick={() => onChange(blockStart - 1)} title="이전 10페이지">‹</button>
+      {nums.map((p) => (
+        <button key={p} type="button"
+          className={btn + (p === page ? active : idle)}
+          onClick={() => onChange(p)}>
+          {p}
+        </button>
+      ))}
+      <button type="button" className={nav} disabled={blockEnd === totalPages}
+        onClick={() => onChange(blockEnd + 1)} title="다음 10페이지">›</button>
+      <button type="button" className={nav} disabled={page === totalPages}
+        onClick={() => onChange(totalPages)} title="맨 뒤로">»</button>
+      <span className="ml-2 text-xs text-slate-400">{page} / {totalPages} 페이지</span>
+    </nav>
   );
 }
 
