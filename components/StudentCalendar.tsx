@@ -146,11 +146,12 @@ export default function StudentCalendar({
       {view === "day" ? (
         <>
           {/* 카드 위 헤딩 — 오늘의 수업 / 예정된 수업 / 지난 수업 */}
-          <div className="mb-3 flex items-baseline gap-3">
+          <div className="mb-3 flex flex-wrap items-baseline gap-3">
             <h3 className="text-lg font-bold text-slate-800">
               {dayLabelKo(dayDate, daySlots.length > 0)}
             </h3>
-            <span className="text-xs text-slate-500">
+            {/* 오늘이 아닌 날짜로 점프한 경우가 많으므로 날짜를 크게 강조 */}
+            <span className="text-lg font-bold text-brand-700">
               {dayDate.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
             </span>
           </div>
