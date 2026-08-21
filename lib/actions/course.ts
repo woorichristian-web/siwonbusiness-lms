@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { syncCourseChatRooms } from "@/lib/chatSync";
 
 async function assertAdmin() {
   const supabase = createClient();
@@ -97,6 +98,7 @@ export async function createCourse(input: CourseInput) {
     .select("id")
     .single();
   if (error) return { ok: false as const, error: error.message };
+  await syncCourseChatRooms(data.id as string);
   revalidatePath("/admin/courses");
   return { ok: true as const, courseId: data.id as string };
 }
@@ -111,6 +113,7 @@ export async function updateCourse(courseId: string, input: CourseInput) {
     .update({ ...clean(input), updated_at: new Date().toISOString() })
     .eq("id", courseId);
   if (error) return { ok: false as const, error: error.message };
+  await syncCourseChatRooms(courseId);
   revalidatePath("/admin/courses");
   revalidatePath(`/admin/courses/${courseId}`);
   return { ok: true as const };
@@ -153,6 +156,7 @@ export async function assignCourseTeachers(courseId: string, teacherIds: string[
 
   const { error } = await supabase.from("course_teachers").insert(rows);
   if (error) return { ok: false as const, error: error.message };
+  await syncCourseChatRooms(courseId);
   revalidatePath(`/admin/courses/${courseId}`);
   return { ok: true as const };
 }
@@ -170,6 +174,7 @@ export async function removeCourseTeacher(courseId: string, teacherId: string) {
     .eq("teacher_id", teacherId)
     .is("assigned_until", null);
   if (error) return { ok: false as const, error: error.message };
+  await syncCourseChatRooms(courseId);
   revalidatePath(`/admin/courses/${courseId}`);
   return { ok: true as const };
 }
@@ -215,6 +220,7 @@ export async function replaceCourseTeacher(
     .eq("teacher_id", oldTeacherId)
     .gte("start_at", nowIso);
 
+  await syncCourseChatRooms(courseId);
   revalidatePath(`/admin/courses/${courseId}`);
   return { ok: true as const };
 }

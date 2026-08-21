@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { usernameToEmail } from "@/lib/constants";
+import { syncCourseChatRooms } from "@/lib/chatSync";
 import type { Role, ClassFormat, ClassType } from "@/lib/types";
 
 /** 현재 사용자가 admin 인지 검증. 아니면 throw. */
@@ -249,6 +250,7 @@ export async function adminBulkUploadStudents(
 
   const admin = createAdminClient();
   const result: StudentImportResult = { created: 0, bookings_created: 0, errors: [] };
+  const syncCourseIds = new Set<string>(); // 예약이 생긴 과정 → 대화방 참여자 동기화
 
   // 행 단위로 처리 (한 행 실패해도 다음 행 계속)
   for (let i = 0; i < rows.length; i++) {
@@ -351,7 +353,7 @@ export async function adminBulkUploadStudents(
         // 해당 시각을 포함하는 강사 가능시간 찾기
         const { data: slot } = await admin
           .from("time_slots")
-          .select("id, start_at, end_at, capacity, slot_duration_minutes")
+          .select("id, start_at, end_at, capacity, slot_duration_minutes, course_id")
           .eq("teacher_id", assignedTeacherId)
           .lte("start_at", startAt.toISOString())
           .gte("end_at", startAt.toISOString())
@@ -405,12 +407,14 @@ export async function adminBulkUploadStudents(
           start_at: startAt.toISOString(),
           end_at: endAt.toISOString(),
           status: "confirmed",
+          course_id: (slot as any).course_id ?? null,
         });
         if (bErr) {
           result.errors.push({ row: rowNum, reason: `예약 실패 '${part}': ${bErr.message}` });
           continue;
         }
         result.bookings_created++;
+        if ((slot as any).course_id) syncCourseIds.add((slot as any).course_id as string);
       }
     } else if (r.schedule && !assignedTeacherId) {
       result.errors.push({
@@ -419,6 +423,8 @@ export async function adminBulkUploadStudents(
       });
     }
   }
+
+  for (const cid of syncCourseIds) await syncCourseChatRooms(cid);
 
   revalidatePath("/admin/upload");
   revalidatePath("/admin/companies");
