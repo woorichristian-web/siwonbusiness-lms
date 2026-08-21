@@ -33,12 +33,15 @@ export default async function StudentMessagesPage({
     for (const s of senders ?? []) senderNames.set(s.id, { name: s.name, role: s.role });
   }
 
-  // 2) 보낼 수 있는 대상: 관리자 전체 + 배정 강사 + 본인이 예약한 슬롯들의 강사
+  // 2) 보낼 수 있는 대상: 담당 강사 + 관리자(센터). QA용 계정은 제외.
   const { data: admins } = await supabase
     .from("profiles")
-    .select("id, name")
+    .select("id, name, username")
     .eq("role", "admin")
     .order("name");
+  const visibleAdmins = (admins ?? []).filter(
+    (a: any) => a.username !== "qa.shot" && !String(a.name ?? "").startsWith("QA"),
+  );
 
   // 본인 예약 슬롯의 강사 id 모으기
   const teacherIds = new Set<string>();
@@ -65,23 +68,31 @@ export default async function StudentMessagesPage({
       .from("profiles")
       .select("id, name")
       .in("id", Array.from(teacherIds));
-    teachers = (ts ?? []) as any;
+    // 배정 강사가 맨 앞에 오도록 teacherIds 삽입 순서를 유지
+    const order = Array.from(teacherIds);
+    teachers = ((ts ?? []) as any[]).sort(
+      (a, b) => order.indexOf(a.id) - order.indexOf(b.id),
+    );
   }
 
+  // 강사를 위, 센터(관리자)를 아래로
   const groups: RecipientGroup[] = [
-    {
-      label: "관리자",
-      recipients: (admins ?? []).map((a: any) => ({
-        id: a.id, name: a.name, sublabel: "관리자",
-      })),
-    },
     {
       label: "강사",
       recipients: teachers.map((t) => ({
         id: t.id, name: t.name, sublabel: "강사",
       })),
     },
+    {
+      label: "센터",
+      recipients: visibleAdmins.map((a: any) => ({
+        id: a.id, name: a.name, sublabel: "센터",
+      })),
+    },
   ];
+
+  // 기본 받는 사람 = 담당 강사 (URL로 지정된 경우 그 값 우선)
+  const defaultRecipient = searchParams.to ?? teachers[0]?.id ?? "";
 
   return (
     <>
@@ -101,7 +112,7 @@ export default async function StudentMessagesPage({
           recipientLabel="받는 사람"
           placeholder="예: 이번 주 수업 시간 변경이 가능할까요?"
           groups={groups}
-          initialRecipientId={searchParams.to ?? ""}
+          initialRecipientId={defaultRecipient}
           initialBody={searchParams.body ?? ""}
         />
 
