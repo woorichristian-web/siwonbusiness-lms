@@ -30,7 +30,12 @@ export default async function StudentMessagesPage({
       .from("profiles")
       .select("id, name, role")
       .in("id", senderIds);
-    for (const s of senders ?? []) senderNames.set(s.id, { name: s.name, role: s.role });
+    for (const s of senders ?? [])
+      senderNames.set(s.id, {
+        // 교육생에게 관리자는 개인 이름 대신 "시원스쿨 센터"로 표시
+        name: s.role === "admin" ? "시원스쿨 센터" : s.name,
+        role: s.role,
+      });
   }
 
   // 2) 보낼 수 있는 대상: 담당 강사 + 관리자(센터). QA용 계정은 제외.
@@ -85,8 +90,9 @@ export default async function StudentMessagesPage({
     },
     {
       label: "센터",
-      recipients: visibleAdmins.map((a: any) => ({
-        id: a.id, name: a.name, sublabel: "센터",
+      // 관리자가 여러 명이어도 교육생에게는 "시원스쿨 센터" 하나로 표시 (대표 계정 수신)
+      recipients: visibleAdmins.slice(0, 1).map((a: any) => ({
+        id: a.id, name: "시원스쿨 센터", sublabel: "센터",
       })),
     },
   ];
