@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Message } from "@/lib/types";
-import { markMessageRead, markAllMessagesRead } from "@/lib/actions/message";
+import { markMessageRead, markAllMessagesRead, sendMessage } from "@/lib/actions/message";
 
 export interface SenderInfo {
   name: string;
@@ -48,9 +48,12 @@ function SenderName({ sender }: { sender?: SenderInfo }) {
 export default function StudentMessageList({
   messages,
   senderInfo,
+  english = false,
 }: {
   messages: Message[];
   senderInfo: Record<string, SenderInfo>;
+  /** 강사 화면(영어 UI)이면 true — Reply 등 라벨이 영어로 표시 */
+  english?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -150,6 +153,7 @@ export default function StudentMessageList({
         <MessageDetailModal
           message={selected}
           sender={senderInfo[selected.sender_id]}
+          english={english}
           onClose={() => setSelected(null)}
         />
       )}
@@ -158,12 +162,36 @@ export default function StudentMessageList({
 }
 
 function MessageDetailModal({
-  message, sender, onClose,
+  message, sender, english = false, onClose,
 }: {
   message: Message;
   sender?: SenderInfo;
+  english?: boolean;
   onClose: () => void;
 }) {
+  const router = useRouter();
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyBody, setReplyBody] = useState("");
+  const [replyMsg, setReplyMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [sending, startSending] = useTransition();
+
+  const T = english
+    ? { reply: "Reply", placeholder: "Write your reply...", send: "Send reply", sending: "Sending...", sent: "Reply sent.", empty: "Please enter a message.", cancel: "Cancel", close: "Close" }
+    : { reply: "답장", placeholder: "답장 내용을 입력하세요...", send: "답장 보내기", sending: "전송 중...", sent: "답장을 보냈습니다.", empty: "내용을 입력하세요.", cancel: "취소", close: "닫기" };
+
+  function sendReply() {
+    setReplyMsg(null);
+    if (!replyBody.trim()) { setReplyMsg({ type: "err", text: T.empty }); return; }
+    startSending(async () => {
+      const r = await sendMessage(message.sender_id, replyBody.trim());
+      if (!r.ok) { setReplyMsg({ type: "err", text: r.error ?? "Failed" }); return; }
+      setReplyMsg({ type: "ok", text: T.sent });
+      setReplyBody("");
+      setReplyOpen(false);
+      router.refresh();
+    });
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
          onClick={onClose}>
@@ -200,8 +228,43 @@ function MessageDetailModal({
           </p>
         )}
 
-        <div className="mt-6 flex justify-end">
-          <button className="btn-ghost" onClick={onClose}>닫기</button>
+        {/* 답장 */}
+        {replyMsg && (
+          <p className={"mt-4 rounded-md border p-2 text-sm " +
+            (replyMsg.type === "ok"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-red-200 bg-red-50 text-red-700")}>
+            {replyMsg.text}
+          </p>
+        )}
+        {replyOpen && (
+          <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3">
+            <textarea
+              className="input min-h-[90px] bg-white"
+              maxLength={2000}
+              autoFocus
+              placeholder={T.placeholder}
+              value={replyBody}
+              onChange={(e) => setReplyBody(e.target.value)}
+            />
+            <div className="mt-2 flex justify-end gap-2">
+              <button className="btn-ghost text-sm" onClick={() => setReplyOpen(false)} disabled={sending}>
+                {T.cancel}
+              </button>
+              <button className="btn text-sm" onClick={sendReply} disabled={sending}>
+                {sending ? T.sending : T.send}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-6 flex justify-end gap-2">
+          {!replyOpen && (
+            <button className="btn" onClick={() => { setReplyOpen(true); setReplyMsg(null); }}>
+              {T.reply}
+            </button>
+          )}
+          <button className="btn-ghost" onClick={onClose}>{T.close}</button>
         </div>
       </div>
     </div>

@@ -159,6 +159,7 @@ export default async function TeacherMessagesPage() {
           <StudentMessageList
             messages={(inbox ?? []) as Message[]}
             senderInfo={Object.fromEntries(senderInfo)}
+            english={isTeacher}
           />
         </section>
 

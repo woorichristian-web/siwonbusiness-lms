@@ -14,10 +14,23 @@ export default function AdminUsersTabs({
   teachers: { id: string; name: string }[];
 }) {
   const [tab, setTab] = useState<Tab>("students");
+  const [search, setSearch] = useState("");
 
-  const students = useMemo(() => users.filter((u) => u.role === "student"), [users]);
-  const teacherUsers = useMemo(() => users.filter((u) => u.role === "teacher"), [users]);
-  const adminUsers = useMemo(() => users.filter((u) => u.role === "admin"), [users]);
+  // 이름·영문 이름·아이디·회사명 검색
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u: any) =>
+      (u.name ?? "").toLowerCase().includes(q) ||
+      (u.english_name ?? "").toLowerCase().includes(q) ||
+      (u.username ?? "").toLowerCase().includes(q) ||
+      (u.company_name ?? "").toLowerCase().includes(q),
+    );
+  }, [users, search]);
+
+  const students = useMemo(() => filtered.filter((u) => u.role === "student"), [filtered]);
+  const teacherUsers = useMemo(() => filtered.filter((u) => u.role === "teacher"), [filtered]);
+  const adminUsers = useMemo(() => filtered.filter((u) => u.role === "admin"), [filtered]);
 
   // Group students by company, sort 가나다 순
   const studentGroups = useMemo(() => {
@@ -49,6 +62,22 @@ export default function AdminUsersTabs({
 
   return (
     <div>
+      {/* 이름 검색 */}
+      <div className="mb-4 flex items-center gap-2">
+        <input
+          className="input max-w-md"
+          placeholder="이름 / 영문 이름 / 아이디 / 회사 검색"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        {search && (
+          <>
+            <span className="text-xs text-slate-500">{filtered.length}명 검색됨</span>
+            <button className="btn-ghost text-xs" onClick={() => setSearch("")}>지우기</button>
+          </>
+        )}
+      </div>
+
       {/* 탭 헤더 */}
       <div className="mb-6 flex gap-1 border-b border-slate-200">
         <TabBtn

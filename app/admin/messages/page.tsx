@@ -150,7 +150,7 @@ export default async function AdminMessagesPage() {
   // 모든 사용자 (자기 자신 제외)
   const { data: allUsers } = await supabase
     .from("profiles")
-    .select("id, name, role, username, company_name")
+    .select("id, name, role, username, company_name, assigned_teacher_id")
     .neq("id", profile.id)
     .order("name", { ascending: true });
 
@@ -158,6 +158,57 @@ export default async function AdminMessagesPage() {
   const admins = users.filter((u) => u.role === "admin");
   const teachers = users.filter((u) => u.role === "teacher");
   const students = users.filter((u) => u.role === "student");
+
+  // 교육생별 주 강사 (이 학생의 예약이 가장 많은 강사 · 없으면 배정 강사)
+  const { data: stBks } = await supabase
+    .from("bookings").select("student_id, slot_id").eq("status", "confirmed");
+  const stSlotIds = Array.from(new Set((stBks ?? []).map((b: any) => b.slot_id)));
+  const slotTeacher = new Map<string, string>();
+  for (let i = 0; i < stSlotIds.length; i += 500) {
+    const { data: sl } = await supabase
+      .from("time_slots").select("id, teacher_id").in("id", stSlotIds.slice(i, i + 500));
+    for (const s of sl ?? []) slotTeacher.set(s.id, s.teacher_id);
+  }
+  const bkCnt = new Map<string, Map<string, number>>();
+  for (const b of stBks ?? []) {
+    const t = slotTeacher.get(b.slot_id);
+    if (!t) continue;
+    if (!bkCnt.has(b.student_id)) bkCnt.set(b.student_id, new Map());
+    const m = bkCnt.get(b.student_id)!;
+    m.set(t, (m.get(t) ?? 0) + 1);
+  }
+  const teacherNameById = new Map(teachers.map((t) => [t.id, t.name]));
+
+  // 교육생: 기업별 → 그 하위 강사별 그룹 (기업 · 강사 라벨)
+  const byCompany = new Map<string, Map<string, any[]>>();
+  for (const s of students) {
+    const comp = s.company_name || "(기업 미지정)";
+    const m = bkCnt.get(s.id);
+    const tid = m
+      ? Array.from(m.entries()).sort((a, b) => b[1] - a[1])[0][0]
+      : (s.assigned_teacher_id ?? null);
+    const tKey = tid && teacherNameById.has(tid) ? tid : "__none__";
+    if (!byCompany.has(comp)) byCompany.set(comp, new Map());
+    const tMap = byCompany.get(comp)!;
+    (tMap.get(tKey) ?? tMap.set(tKey, []).get(tKey)!).push(s);
+  }
+  const studentGroups: RecipientGroup[] = [];
+  for (const [comp, tMap] of Array.from(byCompany.entries()).sort((a, b) => a[0].localeCompare(b[0], "ko"))) {
+    const entries = Array.from(tMap.entries()).sort((a, b) => {
+      if (a[0] === "__none__") return 1;
+      if (b[0] === "__none__") return -1;
+      return (teacherNameById.get(a[0]) ?? "").localeCompare(teacherNameById.get(b[0]) ?? "");
+    });
+    for (const [tKey, list] of entries) {
+      const tLabel = tKey === "__none__" ? "강사 미배정" : `${teacherNameById.get(tKey)} 강사`;
+      studentGroups.push({
+        label: `${comp} · ${tLabel}`,
+        recipients: list.map((s: any) => ({
+          id: s.id, name: s.name, sublabel: s.username,
+        })),
+      });
+    }
+  }
 
   const groups: RecipientGroup[] = [
     {
@@ -172,13 +223,7 @@ export default async function AdminMessagesPage() {
         id: t.id, name: t.name, sublabel: t.username,
       })),
     },
-    {
-      label: "교육생",
-      recipients: students.map((s) => ({
-        id: s.id, name: s.name,
-        sublabel: s.company_name ? `${s.username} · ${s.company_name}` : s.username,
-      })),
-    },
+    ...studentGroups,
   ];
 
   // 단체 발송 옵션
