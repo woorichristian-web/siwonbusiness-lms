@@ -775,7 +775,7 @@ function CourseNameDownload({ name }: { name: string }) {
   return (
     <span className="inline-flex items-center gap-2">
       <button type="button" className="btn text-xs" disabled={pending} onClick={run}>
-        {pending ? "생성 중..." : "과정 데이터"}
+        {pending ? "생성 중..." : "데이터 내려받기"}
       </button>
       {err && <span className="text-xs font-normal text-red-600">{err}</span>}
     </span>
