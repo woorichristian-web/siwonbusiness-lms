@@ -7,6 +7,8 @@ import AppHeader from "@/components/AppHeader";
 import StudentTeacherFeedbackForm from "@/components/StudentTeacherFeedbackForm";
 import HelpTooltip from "@/components/HelpTooltip";
 import CurriculumManager, { type CurriculumItem } from "@/components/CurriculumManager";
+import { SurveyButton, type PendingSurvey } from "@/components/SurveyPopup";
+import { openRounds } from "@/lib/survey";
 
 const ATTENDANCE_HELP =
   "• 업무를 위한 결석인 경우는 출석율에 영향을 미치지 않으나 자료제출이 필수입니다.\n" +
@@ -131,6 +133,25 @@ export default async function StudentStatusPage() {
     .eq("student_id", profile.id);
   const myCourseIds = Array.from(new Set((myCs ?? []).map((r: any) => r.course_id)))
     .filter((id) => !testIds.has(id)); // 테스트 과정 숨김
+
+  // 응답 기간 중인 만족도 설문 — [수업후기 쓰기] 버튼용 (팝업과 동일한 예외로 테스트 과정 포함)
+  const surveyCourseIds = Array.from(new Set((myCs ?? []).map((r: any) => r.course_id)));
+  const pendingSurveys: PendingSurvey[] = [];
+  if (surveyCourseIds.length > 0) {
+    const [{ data: svCs }, { data: svResp }] = await Promise.all([
+      supabase.from("courses").select("id, name, start_date, end_date").in("id", surveyCourseIds),
+      supabase.from("survey_responses").select("course_id, round")
+        .eq("student_id", profile.id).in("course_id", surveyCourseIds),
+    ]);
+    const done = new Set((svResp ?? []).map((r: any) => `${r.course_id}|${r.round}`));
+    for (const c of svCs ?? [])
+      for (const r of openRounds(c.start_date, c.end_date))
+        if (!done.has(`${c.id}|${r.round}`))
+          pendingSurveys.push({
+            courseId: c.id, courseName: c.name,
+            round: r.round, label: r.label, closeDate: r.close.toISOString(),
+          });
+  }
   let curricula: {
     id: string; name: string; curriculum_updated_at: string | null; items: CurriculumItem[];
   }[] = [];
@@ -245,7 +266,10 @@ export default async function StudentStatusPage() {
 
         {/* 다가오는 수업 */}
         <section className="card mb-6">
-          <h2 className="mb-3 font-semibold">다가오는 수업 ({upcoming.length})</h2>
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <h2 className="font-semibold">다가오는 수업 ({upcoming.length})</h2>
+            <SurveyButton surveys={pendingSurveys} />
+          </div>
           {upcoming.length === 0 ? (
             <p className="text-sm text-slate-400">
               예약된 수업이 없습니다.{" "}

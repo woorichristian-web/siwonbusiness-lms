@@ -4,6 +4,8 @@ import AppHeader from "@/components/AppHeader";
 import StudentCalendar from "@/components/StudentCalendar";
 import type { BookableSlot } from "@/lib/types";
 import { getTestCourseIds } from "@/lib/testCourses";
+import { openRounds } from "@/lib/survey";
+import type { PendingSurvey } from "@/components/SurveyPopup";
 
 export const dynamic = "force-dynamic";
 
@@ -118,6 +120,27 @@ export default async function StudentCalendarPage() {
   const futureCount = mine.filter((s) => !s.is_past).length;
   const pastCount = mine.length - futureCount;
 
+  // 응답 기간 중인 만족도 설문 — 지난 수업 섹션의 [수업후기 쓰기] 버튼용
+  const surveyCourseIds = Array.from(new Set(
+    Array.from(slotMeta.values()).map((s: any) => s.course_id).filter(Boolean),
+  )) as string[];
+  const pendingSurveys: PendingSurvey[] = [];
+  if (surveyCourseIds.length > 0) {
+    const [{ data: cs }, { data: resp }] = await Promise.all([
+      supabase.from("courses").select("id, name, start_date, end_date").in("id", surveyCourseIds),
+      supabase.from("survey_responses").select("course_id, round")
+        .eq("student_id", profile.id).in("course_id", surveyCourseIds),
+    ]);
+    const done = new Set((resp ?? []).map((r: any) => `${r.course_id}|${r.round}`));
+    for (const c of cs ?? [])
+      for (const r of openRounds(c.start_date, c.end_date))
+        if (!done.has(`${c.id}|${r.round}`))
+          pendingSurveys.push({
+            courseId: c.id, courseName: c.name,
+            round: r.round, label: r.label, closeDate: r.close.toISOString(),
+          });
+  }
+
   return (
     <>
       <AppHeader profile={profile} />
@@ -136,7 +159,7 @@ export default async function StudentCalendarPage() {
             </p>
           )}
         </header>
-        <StudentCalendar slots={mine} centerManaged={centerManaged} />
+        <StudentCalendar slots={mine} centerManaged={centerManaged} pendingSurveys={pendingSurveys} />
       </main>
     </>
   );

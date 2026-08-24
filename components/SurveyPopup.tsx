@@ -19,12 +19,7 @@ const ROUND_KO: Record<string, string> = { "10%": "초기(10% 시점)", "50%": "
  * 제출하면 사라지고, [나중에]는 이번 세션에서만 숨긴다(다음 방문 시 다시 표시).
  */
 export default function SurveyPopup({ surveys }: { surveys: PendingSurvey[] }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
   const [queue, setQueue] = useState<PendingSurvey[]>([]);
-  const [rating, setRating] = useState<number | null>(null);
-  const [comment, setComment] = useState("");
-  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -34,13 +29,81 @@ export default function SurveyPopup({ surveys }: { surveys: PendingSurvey[] }) {
     setQueue(q);
   }, [surveys]);
 
+  if (queue.length === 0) return null;
+  return <SurveyModal queue={queue} setQueue={setQueue} rememberLater />;
+}
+
+/**
+ * "수업후기 쓰기" 버튼 — 응답 기간 중에만 렌더링되고,
+ * 누르면 설문 폼이 열린다. ([나중에]로 팝업을 닫았더라도 다시 열 수 있음)
+ */
+export function SurveyButton({
+  surveys,
+  label = "수업후기 쓰기",
+  className,
+}: {
+  surveys: PendingSurvey[];
+  label?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [queue, setQueue] = useState<PendingSurvey[]>([]);
+  if (surveys.length === 0) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => { setQueue(surveys); setOpen(true); }}
+        className={
+          className ??
+          "inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-amber-600"
+        }
+      >
+        {label}
+        <span className="rounded-full bg-white/25 px-1.5 text-[10px] font-bold">{surveys.length}</span>
+      </button>
+      {open && queue.length > 0 && (
+        <SurveyModal queue={queue} setQueue={setQueue} onClose={() => setOpen(false)} />
+      )}
+    </>
+  );
+}
+
+function SurveyModal({
+  queue,
+  setQueue,
+  rememberLater = false,
+  onClose,
+}: {
+  queue: PendingSurvey[];
+  setQueue: React.Dispatch<React.SetStateAction<PendingSurvey[]>>;
+  /** true 면 [나중에]가 세션 동안 자동 팝업을 숨긴다 (자동 팝업용) */
+  rememberLater?: boolean;
+  onClose?: () => void;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [rating, setRating] = useState<number | null>(null);
+  const [comment, setComment] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
   const cur = queue[0];
   if (!cur) return null;
 
-  function later() {
-    sessionStorage.setItem(`survey_later_${cur.courseId}_${cur.round}`, "1");
-    setQueue((q) => q.slice(1));
+  function advance() {
+    setQueue((q) => {
+      const next = q.slice(1);
+      if (next.length === 0) onClose?.();
+      return next;
+    });
     setRating(null); setComment(""); setErr(null);
+  }
+
+  function later() {
+    if (rememberLater)
+      sessionStorage.setItem(`survey_later_${cur.courseId}_${cur.round}`, "1");
+    advance();
   }
 
   function submit() {
@@ -51,8 +114,7 @@ export default function SurveyPopup({ surveys }: { surveys: PendingSurvey[] }) {
         courseId: cur.courseId, round: cur.round, rating, comment: comment.trim() || null,
       });
       if (!r.ok) { setErr(r.error); return; }
-      setQueue((q) => q.slice(1));
-      setRating(null); setComment("");
+      advance();
       router.refresh();
     });
   }

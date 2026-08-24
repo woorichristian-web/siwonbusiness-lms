@@ -13,13 +13,17 @@ import type { BookableSlot } from "@/lib/types";
 import { classTypeKo } from "@/lib/types";
 import { bookSlot, cancelBooking } from "@/lib/actions/booking";
 import ClassReviewModal from "@/components/ClassReviewModal";
+import { SurveyButton, type PendingSurvey } from "@/components/SurveyPopup";
 
 export default function StudentCalendar({
   slots,
   centerManaged = false,
+  pendingSurveys = [],
 }: {
   slots: BookableSlot[];
   centerManaged?: boolean;
+  /** 응답 기간 중인 만족도 설문 — 지난 수업 섹션의 [수업후기 쓰기] 버튼 */
+  pendingSurveys?: PendingSurvey[];
 }) {
   const [selected, setSelected] = useState<BookableSlot | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -156,6 +160,13 @@ export default function StudentCalendar({
             </span>
           </div>
           <SlotCardListStudent slots={daySlots} onSelect={(s) => { setSelected(s); setMessage(null); }} />
+
+          {/* 지난 수업 — 회색 비활성 카드. 설문 응답 기간에는 [수업후기 쓰기] 버튼 표시 */}
+          <PastClassList
+            slots={slots}
+            pendingSurveys={pendingSurveys}
+            onSelect={(s) => { setSelected(s); setMessage(null); }}
+          />
         </>
       ) : (
         <div className="overflow-x-auto">
@@ -219,6 +230,85 @@ export default function StudentCalendar({
           onBook={onBook}
           onCancel={onCancel}
         />
+      )}
+    </div>
+  );
+}
+
+/** 지난 수업 리스트 — 회색 비활성 스타일. 설문 주차에는 수업후기 쓰기 버튼. */
+function PastClassList({
+  slots,
+  pendingSurveys,
+  onSelect,
+}: {
+  slots: BookableSlot[];
+  pendingSurveys: PendingSurvey[];
+  onSelect: (s: BookableSlot) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const past = useMemo(
+    () =>
+      slots
+        .filter((s) => s.is_past)
+        .sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime()),
+    [slots],
+  );
+  if (past.length === 0 && pendingSurveys.length === 0) return null;
+  const visible = showAll ? past : past.slice(0, 5);
+
+  return (
+    <div className="mt-8">
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <h3 className="text-lg font-bold text-slate-400">지난 수업 ({past.length})</h3>
+        <SurveyButton surveys={pendingSurveys} />
+      </div>
+      <div className="space-y-2">
+        {visible.map((s) => {
+          const st = new Date(s.start_at), en = new Date(s.end_at);
+          return (
+            <button
+              key={`${s.availability_id}|${s.start_at}`}
+              type="button"
+              onClick={() => onSelect(s)}
+              className="block w-full rounded-lg border border-slate-200 bg-slate-50/70 p-3 text-left opacity-80 transition hover:opacity-100"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-24 flex-shrink-0 text-center">
+                  <div className="text-sm font-bold text-slate-500">
+                    {st.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" })}
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {st.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                    {" ~ "}
+                    {en.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1 border-l border-slate-200 pl-3">
+                  <div className="text-sm font-semibold text-slate-500">{s.teacher_name} 강사</div>
+                  <div className="mt-0.5 flex flex-wrap gap-1">
+                    <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] text-slate-500">
+                      {classTypeKo(s.class_type)}
+                    </span>
+                    <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] text-slate-500">
+                      {s.format === "online" ? "온라인" : "오프라인"}
+                    </span>
+                    <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] text-slate-500">완료</span>
+                  </div>
+                </div>
+                <span className="shrink-0 text-xs text-slate-300">›</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {past.length > 5 && (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          className="mt-2 w-full rounded-md border border-slate-200 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
+        >
+          {showAll ? "접기 ▲" : `지난 수업 ${past.length - 5}개 더 보기 ▼`}
+        </button>
       )}
     </div>
   );
