@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import { getCourseProgressMap, progressLabel } from "@/lib/courseProgress";
+import { getTeacherEvalAdmin } from "@/lib/actions/teacher-eval";
 
 export const dynamic = "force-dynamic";
 
@@ -131,6 +132,10 @@ export default async function AdminTeacherDetailPage({
       };
     });
 
+  // 교육생 → 강사 평가 (실명, 과정 표시)
+  const evalRes = await getTeacherEvalAdmin(params.id);
+  const evalData = evalRes.ok ? evalRes : { avg: null, count: 0, items: [] as any[] };
+
   return (
     <>
       <AppHeader profile={profile} />
@@ -199,6 +204,51 @@ export default async function AdminTeacherDetailPage({
               </table>
             </div>
           )}
+        </section>
+
+        {/* 강사가 받은 평가 (교육생 → 강사, 실명 · 센터 전용) */}
+        <section className="card">
+          <details>
+            <summary className="cursor-pointer select-none text-base font-semibold text-slate-800">
+              강사가 받은 평가
+              <span className="ml-2 text-sm font-normal text-slate-500">
+                {evalData.count}건{evalData.avg != null && <> · 평균 <b className="text-amber-700">{evalData.avg}</b>/10</>}
+              </span>
+              <span className="ml-2 text-xs font-normal text-slate-400">(눌러서 펼치기)</span>
+            </summary>
+            {evalData.items.length === 0 ? (
+              <p className="mt-3 py-3 text-center text-sm text-slate-400">아직 받은 평가가 없습니다.</p>
+            ) : (
+              <div className="mt-3 overflow-x-auto rounded-md border border-slate-200">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2">과정</th>
+                      <th className="px-3 py-2">교육생</th>
+                      <th className="px-3 py-2 text-right">점수</th>
+                      <th className="px-3 py-2">코멘트</th>
+                      <th className="px-3 py-2 text-right">수정일</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {evalData.items.map((x, i) => (
+                      <tr key={i} className="align-top">
+                        <td className="px-3 py-2 text-slate-600">
+                          {x.courses.length ? x.courses.join(", ") : <span className="text-slate-300">—</span>}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-800">{x.student_name}</td>
+                        <td className="px-3 py-2 text-right font-bold text-amber-700">{x.rating ?? "—"}</td>
+                        <td className="px-3 py-2 text-slate-600">{x.comment || <span className="text-slate-300">—</span>}</td>
+                        <td className="whitespace-nowrap px-3 py-2 text-right text-xs text-slate-400">
+                          {new Date(x.date).toLocaleDateString("ko-KR")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </details>
         </section>
 
         <section className="card">

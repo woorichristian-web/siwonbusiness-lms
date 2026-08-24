@@ -551,16 +551,27 @@ function DayCardList({
       </div>
     );
   }
-  // 예약(학생) 카드 + 배정 수업(슬롯) 카드를 시작시간순으로 병합
+  // 같은 슬롯·같은 시작시각의 그룹 수업 예약은 카드 1장으로 묶는다.
+  const GROUP_TYPES = new Set(["group", "group_coaching", "small_group"]);
+  const bySession = new Map<string, BookingEvent[]>();
+  for (const e of events) {
+    const key = `${e.slot_id}|${e.start_at}`;
+    (bySession.get(key) ?? bySession.set(key, []).get(key)!).push(e);
+  }
+
+  // 예약(개인/그룹) 카드 + 배정 수업(슬롯) 카드를 시작시간순으로 병합
   type Item =
     | { kind: "booking"; start: number; data: BookingEvent }
+    | { kind: "group"; start: number; list: BookingEvent[] }
     | { kind: "slot"; start: number; data: ClassSlotEvent };
   const items: Item[] = [
-    ...events.map((e) => ({
-      kind: "booking" as const,
-      start: new Date(e.start_at).getTime(),
-      data: e,
-    })),
+    ...Array.from(bySession.values()).map((list) => {
+      const first = list[0];
+      const isGroup = GROUP_TYPES.has(first.class_type) || list.length > 1;
+      return isGroup
+        ? { kind: "group" as const, start: new Date(first.start_at).getTime(), list }
+        : { kind: "booking" as const, start: new Date(first.start_at).getTime(), data: first };
+    }),
     ...classSlots.map((s) => ({
       kind: "slot" as const,
       start: new Date(s.start_at).getTime(),
@@ -577,9 +588,91 @@ function DayCardList({
             event={it.data}
             onClick={() => onSelect(it.data)}
           />
+        ) : it.kind === "group" ? (
+          <GroupClassCard
+            key={"grp-" + it.list[0].slot_id + it.list[0].start_at}
+            list={it.list}
+            onSelect={onSelect}
+          />
         ) : (
           <ClassSlotCard key={"slot-" + it.data.id} slot={it.data} />
         ),
+      )}
+    </div>
+  );
+}
+
+/** 그룹 수업 카드 — 수업(과정) 이름 1장 + 학생 수. 펼치면 학생별 상세로 이동. */
+function GroupClassCard({
+  list,
+  onSelect,
+}: {
+  list: BookingEvent[];
+  onSelect: (e: BookingEvent) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const first = list[0];
+  const start = new Date(first.start_at);
+  const end = new Date(first.end_at);
+  const now = Date.now();
+  const isPast = end.getTime() <= now;
+  const isOngoing = start.getTime() <= now && end.getTime() > now;
+  const timeFmt = (d: Date) =>
+    d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+
+  return (
+    <div
+      className={
+        "block w-full rounded-lg border bg-white p-4 text-left shadow-sm " +
+        (isOngoing ? "border-blue-400 ring-2 ring-blue-100" : "border-slate-200")
+      }
+    >
+      <button type="button" className="flex w-full items-start gap-3 text-left" onClick={() => setOpen((v) => !v)}>
+        <div className="w-20 flex-shrink-0 text-center sm:w-24">
+          <div className="text-base font-bold text-brand-700 sm:text-lg">{timeFmt(start)}</div>
+          <div className="text-xs text-slate-400">{timeFmt(end)}</div>
+        </div>
+        <div className="min-w-0 flex-1 border-l border-slate-100 pl-3">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            <span className="truncate text-base font-bold text-slate-800">
+              {first.course_name ?? classTypeEn(first.class_type)}
+            </span>
+            {isOngoing && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">● LIVE</span>
+            )}
+            {isPast && !isOngoing && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">Done</span>
+            )}
+          </div>
+          {first.student_company && (
+            <div className="text-xs italic text-slate-400">{first.student_company}</div>
+          )}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <Pill>{classTypeEn(first.class_type)}</Pill>
+            <Pill>{first.format === "online" ? "Online" : "Offline"}</Pill>
+            <Pill color="blue">{list.length} student{list.length === 1 ? "" : "s"}</Pill>
+          </div>
+        </div>
+        <span className="shrink-0 self-center text-xs text-slate-400">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <p className="mb-1.5 text-[11px] text-slate-400">Click a student for attendance & feedback:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {list.map((e) => (
+              <button
+                key={e.id}
+                type="button"
+                onClick={() => onSelect(e)}
+                className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700"
+              >
+                {e.student_name}
+                {e.attendance_status && <span className="ml-1 text-emerald-600">✓</span>}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

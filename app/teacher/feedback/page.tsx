@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import { closedRounds, surveyRounds } from "@/lib/survey";
+import { getMyTeachingEval } from "@/lib/actions/teacher-eval";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,9 @@ export default async function TeacherFeedbackListPage() {
     courses = cs ?? [];
   }
 
+  // Feedback on My Teaching — 교육생 강사평가(1~10) 익명 취합: 반별 평균 + 코멘트 전체
+  const myEval = await getMyTeachingEval(profile.id);
+
   return (
     <>
       <AppHeader profile={profile} />
@@ -40,6 +44,43 @@ export default async function TeacherFeedbackListPage() {
           </p>
         </header>
 
+        {/* Feedback on My Teaching — 익명 강사평가 (반별 평균 + 코멘트) */}
+        <section className="card mb-6">
+          <h2 className="text-base font-semibold text-slate-800">Feedback on My Teaching</h2>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Anonymous ratings (1–10) your students left about your teaching — average per class, with all comments shown.
+          </p>
+          {myEval.length === 0 || myEval.every((g) => g.count === 0 && g.comments.length === 0) ? (
+            <p className="mt-3 py-3 text-center text-sm text-slate-400">No ratings yet.</p>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {myEval.map((g, i) => (
+                <div key={i} className="rounded-md border border-slate-200">
+                  <header className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/60 px-3 py-2">
+                    <span className="text-sm font-semibold text-slate-800">{g.course}</span>
+                    <span className="text-xs text-slate-500">
+                      {g.count} rating{g.count === 1 ? "" : "s"}
+                      {g.avg != null && <> · avg <b className="text-amber-700">{g.avg}</b>/10</>}
+                    </span>
+                  </header>
+                  {g.comments.length > 0 ? (
+                    <ul className="space-y-1.5 p-3">
+                      {g.comments.map((cm, j) => (
+                        <li key={j} className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                          {cm}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="p-3 text-center text-xs text-slate-400">No comments.</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <h2 className="mb-2 text-base font-semibold text-slate-800">Survey Results by Course</h2>
         {courses.length === 0 ? (
           <div className="card text-center text-sm text-slate-400">No assigned courses yet.</div>
         ) : (
