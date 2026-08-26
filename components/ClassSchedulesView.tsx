@@ -254,6 +254,7 @@ export default function ClassSchedulesView({
             eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
             slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
             dayHeaderFormat={{ month: "2-digit", day: "2-digit", weekday: "short" }}
+            views={{ dayGridMonth: { dayHeaderFormat: { weekday: "short" } } }}
             slotDuration="00:30:00"
             eventContent={(arg) => {
               const ext = arg.event.extendedProps as
