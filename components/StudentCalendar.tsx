@@ -178,7 +178,7 @@ export default function StudentCalendar({
               view === "week" ? "timeGridWeek" :
               view === "month" ? "dayGridMonth" : "multiMonthYear"
             }
-            headerToolbar={{ left: "", center: "title", right: "" }}
+            headerToolbar={{ left: "prev", center: "title", right: "next" }}
             buttonText={{ today: "오늘", week: "Week", month: "Month", year: "Year" }}
             views={{
               multiMonthYear: {
