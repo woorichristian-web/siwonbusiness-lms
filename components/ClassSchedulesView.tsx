@@ -241,7 +241,7 @@ export default function ClassSchedulesView({
             key={view}
             plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
             initialView={view === "week" ? "timeGridWeek" : "dayGridMonth"}
-            headerToolbar={{ left: "", center: "title", right: "" }}
+            headerToolbar={{ left: "prev", center: "title", right: "next" }}
             locale="en"
             slotMinTime="06:00:00"
             slotMaxTime="23:00:00"
