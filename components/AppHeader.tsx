@@ -122,7 +122,7 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
             { href: "/admin/users", label: "회원 관리" },
           ];
 
-  const brandSubtitle = profile.role === "teacher" ? "Teacher Portal" : "LMS";
+  const brandSubtitle = profile.role === "teacher" ? "Trainer Portal" : "LMS";
   const signOutLabel =
     profile.role === "teacher" ? (lang === "ko" ? "로그아웃" : "Sign out") : "로그아웃";
 
