@@ -372,7 +372,7 @@ export default function ClassSchedulesView({
   );
 }
 
-/** 달력에서 그룹 수업 클릭 시 — 수업 정보 + 학생별 출석 현황 리스트 모달 */
+/** 달력에서 그룹 수업 클릭 시 — 학생별 출석을 한 화면에서 바로 저장하는 모달 */
 function GroupSessionModal({
   list,
   onSelectStudent,
@@ -385,16 +385,42 @@ function GroupSessionModal({
   lang?: Lang;
 }) {
   const L = LX(lang);
+  const router = useRouter();
   const first = list[0];
   const start = new Date(first.start_at);
   const end = new Date(first.end_at);
-  const marked = list.filter((e) => e.attendance_status).length;
+  // 드롭다운 변경 즉시 저장 — booking id별 로컬 상태(낙관적)와 저장 진행 표시
+  const [statusById, setStatusById] = useState<Record<string, AttendanceStatus | "">>(
+    () => Object.fromEntries(list.map((e) => [e.id, e.attendance_status ?? ""])),
+  );
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const marked = list.filter((e) => (statusById[e.id] ?? e.attendance_status)).length;
+
+  async function saveStatus(e: BookingEvent, status: AttendanceStatus | "") {
+    setStatusById((m) => ({ ...m, [e.id]: status }));
+    setSavingId(e.id);
+    setSavedId(null);
+    setErr(null);
+    const r = status === ""
+      ? await clearAttendance(e.id)
+      : await markAttendance(e.id, status, e.attendance_notes ?? undefined);
+    setSavingId(null);
+    if (!r.ok) {
+      setErr(r.error ?? (L.ko ? "저장 실패" : "Failed to save"));
+      setStatusById((m) => ({ ...m, [e.id]: e.attendance_status ?? "" }));
+      return;
+    }
+    setSavedId(e.id);
+    router.refresh();
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
       >
         <h3 className="mb-1 text-lg font-bold text-slate-800">
           {first.course_name ?? L.ct(first.class_type)}
@@ -415,30 +441,53 @@ function GroupSessionModal({
         </div>
 
         <p className="mb-2 text-[11px] text-slate-400">
-          {L.ko ? "학생을 누르면 출석·피드백을 입력할 수 있습니다:" : "Click a student for attendance & feedback:"}
+          {L.ko
+            ? "출석 상태를 고르면 바로 저장됩니다. 메모·피드백은 [상세]에서:"
+            : "Pick a status to save instantly. Memo & feedback in [Detail]:"}
         </p>
+        {err && (
+          <div className="mb-2 rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">{err}</div>
+        )}
         <div className="divide-y divide-slate-100 rounded-md border border-slate-200">
-          {list.map((e) => (
-            <button
-              key={e.id}
-              type="button"
-              onClick={() => onSelectStudent(e)}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-brand-50"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-slate-800">{e.student_name}</span>
-                {e.student_company && (
-                  <span className="block truncate text-[11px] italic text-slate-400">{e.student_company}</span>
-                )}
-              </span>
-              {e.attendance_status ? (
-                <Pill color="emerald">✓ {L.AL(e.attendance_status)}</Pill>
-              ) : (
-                <Pill>{L.ko ? "미지정" : "Not marked"}</Pill>
-              )}
-              <span className="text-lg text-slate-300">›</span>
-            </button>
-          ))}
+          {list.map((e) => {
+            const cur = statusById[e.id] ?? "";
+            return (
+              <div key={e.id} className="flex items-center gap-2 px-3 py-2.5">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-slate-800">
+                    {e.student_name}
+                    {cur && <span className="ml-1 text-emerald-600">✓</span>}
+                  </span>
+                  {e.student_company && (
+                    <span className="block truncate text-[11px] italic text-slate-400">{e.student_company}</span>
+                  )}
+                </span>
+                {savingId === e.id ? (
+                  <span className="text-[11px] text-slate-400">{L.ko ? "저장 중..." : "Saving..."}</span>
+                ) : savedId === e.id ? (
+                  <span className="text-[11px] font-semibold text-emerald-600">{L.ko ? "저장됨" : "Saved"}</span>
+                ) : null}
+                <select
+                  className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700"
+                  value={cur}
+                  disabled={savingId !== null}
+                  onChange={(ev) => saveStatus(e, ev.target.value as AttendanceStatus | "")}
+                >
+                  <option value="">{L.ko ? "미지정" : "Not marked"}</option>
+                  {ATTENDANCE_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{L.AL(s)}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => onSelectStudent(e)}
+                  className="rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-500 transition hover:border-brand-400 hover:text-brand-700"
+                >
+                  {L.ko ? "상세" : "Detail"}
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         <div className="mt-6 flex justify-end">
