@@ -32,6 +32,27 @@ export function surveyRounds(startDate: string | null, endDate: string | null): 
   ];
 }
 
+/**
+ * 강사 평가 라운드 — 4주차(시작+28일) / 기간 50% 경과 / 마지막 수업일.
+ * 만족도 설문과 동일하게 각 라운드는 열린 날부터 7일간 응답 가능.
+ */
+export function teacherEvalRounds(startDate: string | null, endDate: string | null): SurveyRound[] {
+  if (!startDate || !endDate) return [];
+  const start = atMidnight(new Date(startDate + "T00:00:00"));
+  const end = atMidnight(new Date(endDate + "T00:00:00"));
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) return [];
+  const dur = end.getTime() - start.getTime();
+  const mk = (round: 1 | 2 | 3, label: string, openMs: number): SurveyRound => {
+    const open = atMidnight(new Date(openMs));
+    return { round, label, open, close: new Date(open.getTime() + 7 * 86400000) };
+  };
+  return [
+    mk(1, "4주차", start.getTime() + 28 * 86400000),
+    mk(2, "50%", start.getTime() + dur * 0.5),
+    mk(3, "Final", end.getTime()),
+  ];
+}
+
 /** 지금 응답 가능한(배포됨 + 7일 이내) 라운드들 */
 export function openRounds(startDate: string | null, endDate: string | null, now = new Date()): SurveyRound[] {
   return surveyRounds(startDate, endDate).filter((r) => now >= r.open && now < r.close);

@@ -8,7 +8,7 @@ import StudentTeacherFeedbackForm from "@/components/StudentTeacherFeedbackForm"
 import HelpTooltip from "@/components/HelpTooltip";
 import CurriculumManager, { type CurriculumItem } from "@/components/CurriculumManager";
 import { SurveyButton, type PendingSurvey } from "@/components/SurveyPopup";
-import { openRounds } from "@/lib/survey";
+import { openRounds, teacherEvalRounds } from "@/lib/survey";
 
 const ATTENDANCE_HELP =
   "• 업무를 위한 결석인 경우는 출석율에 영향을 미치지 않으나 자료제출이 필수입니다.\n" +
@@ -140,6 +140,15 @@ export default async function StudentStatusPage() {
 
   const hasEnrollment = !!profile.course_name;
 
+  // 강사 평가 활성화 기간 — 4주차 / 50% 경과 / 마지막 수업일 (각 7일)
+  const evalRounds = teacherEvalRounds(
+    profile.course_start_date ?? null,
+    profile.course_end_date ?? null,
+  );
+  const evalNow = new Date();
+  const evalRoundOpen = evalRounds.some((r) => evalNow >= r.open && evalNow < r.close);
+  const nextEvalRound = evalRounds.find((r) => evalNow < r.open) ?? null;
+
   // 수강 과정 커리큘럼 (읽기 전용)
   const { data: myCs } = await supabase
     .from("course_students")
@@ -246,16 +255,28 @@ export default async function StudentStatusPage() {
           )}
         </section>
 
-        {/* 강사 평가 — 배정 강사가 있을 때만 */}
-        {profile.assigned_teacher_id && assignedTeacherName && (
-          <section className="card mb-6">
-            <StudentTeacherFeedbackForm
-              teacherId={profile.assigned_teacher_id}
-              teacherName={assignedTeacherName}
-              initialRating={existingTeacherFeedback?.rating ?? null}
-              initialComment={existingTeacherFeedback?.comment ?? null}
-            />
-          </section>
+        {/* 강사 평가 — 4주차 / 과정 50% 경과 / 마지막 수업일에만 7일간 활성화 */}
+        {profile.assigned_teacher_id && assignedTeacherName && evalRounds.length > 0 && (
+          evalRoundOpen ? (
+            <section className="card mb-6">
+              <StudentTeacherFeedbackForm
+                teacherId={profile.assigned_teacher_id}
+                teacherName={assignedTeacherName}
+                initialRating={existingTeacherFeedback?.rating ?? null}
+                initialComment={existingTeacherFeedback?.comment ?? null}
+              />
+            </section>
+          ) : (
+            <section className="card mb-6">
+              <h2 className="text-sm font-semibold text-slate-700">강사 평가</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                강사 평가는 <b>4주차</b>, <b>과정 50% 경과 시점</b>, <b>마지막 수업일</b>에 각 7일간 열립니다.
+                {nextEvalRound
+                  ? ` 다음 평가 기간: ${nextEvalRound.open.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" })}부터 7일간`
+                  : " 이번 과정의 평가 기간이 모두 종료되었습니다."}
+              </p>
+            </section>
+          )
         )}
 
         {/* 진행률 바 */}
