@@ -200,7 +200,7 @@ export default function StudentCalendar({
             eventDisplay="block"
             eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
             slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-            dayHeaderFormat={{ month: "2-digit", day: "2-digit", weekday: "short" }}
+            dayHeaderFormat={view === "week" ? { month: "2-digit", day: "2-digit", weekday: "short" } : { weekday: "short" }}
             eventContent={(arg) => {
               const slot = arg.event.extendedProps as BookableSlot;
               return (

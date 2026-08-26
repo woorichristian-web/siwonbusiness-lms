@@ -210,8 +210,7 @@ export default function TeacherScheduleEditor({
             eventDisplay="block"
             eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
             slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-            dayHeaderFormat={{ month: "2-digit", day: "2-digit", weekday: "short" }}
-            views={{ dayGridMonth: { dayHeaderFormat: { weekday: "short" } } }}
+            dayHeaderFormat={view === "month" ? { weekday: "short" } : { month: "2-digit", day: "2-digit", weekday: "short" }}
             slotDuration="00:30:00"
             eventContent={(arg) => {
               const { slot, booked } = arg.event.extendedProps as { slot: TimeSlot; booked: number };
