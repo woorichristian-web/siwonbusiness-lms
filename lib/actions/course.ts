@@ -33,6 +33,8 @@ export interface CourseInput {
   end_date?: string | null;
   weekdays?: string[];
   class_time?: string | null;
+  /** 요일별 시작 시각 — 예: {"mon":"10:00","tue":"09:00"} */
+  day_times?: Record<string, string> | null;
   duration_min?: number | null;
   total_sessions?: number | null;
   /** 테스트 과정 — 센터에서만 보이고 강사·교육생에게는 숨김 */
@@ -54,6 +56,7 @@ function clean(input: CourseInput) {
     end_date: input.end_date || null,
     weekdays: input.weekdays ?? [],
     class_time: input.class_time?.trim() || null,
+    day_times: input.day_times && Object.keys(input.day_times).length > 0 ? input.day_times : null,
     duration_min: input.duration_min ?? null,
     total_sessions: input.total_sessions ?? null,
     is_test: input.is_test ?? false,

@@ -191,7 +191,8 @@ export default async function TeacherSchedulePage() {
         patterns: ((c.weekdays ?? []) as string[])
           .map((d) => ({
             weekday: WD_INDEX[d] ?? 0,
-            time: c.class_time ?? "—",
+            // 요일별 시각(day_times) 우선, 없으면 단일 class_time
+            time: (c.day_times?.[d] ?? c.class_time ?? "—") as string,
             duration_min: c.duration_min ?? 60,
             count: 1,
           }))

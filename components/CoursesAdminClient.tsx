@@ -30,6 +30,8 @@ export interface CourseRow {
   end_date: string | null;
   weekdays: string[];
   class_time: string | null;
+  /** 요일별 시작 시각 — 예: {"mon":"10:00","tue":"09:00"}. 없으면 class_time 단일 적용 */
+  day_times?: Record<string, string> | null;
   duration_min: number | null;
   total_sessions: number | null;
   is_test?: boolean | null;
@@ -241,6 +243,13 @@ function CreateForm({
     total_sessions: initial?.total_sessions != null ? String(initial.total_sessions) : "",
   });
   const [weekdays, setWeekdays] = useState<string[]>(initial?.weekdays ?? []);
+  // 요일별 시작 시각 — 기존 값 > 단일 class_time 순으로 채움
+  const [dayTimes, setDayTimes] = useState<Record<string, string>>(() => {
+    const base: Record<string, string> = {};
+    for (const d of initial?.weekdays ?? [])
+      base[d] = initial?.day_times?.[d] ?? initial?.class_time ?? "09:00";
+    return base;
+  });
   // 새 과정은 기본 테스트(센터 전용)로 생성 — [과정 오픈]을 눌러야 공개된다
   const [isTest, setIsTest] = useState<boolean>(initial ? !!initial.is_test : true);
   const [customBook, setCustomBook] = useState(
@@ -252,8 +261,15 @@ function CreateForm({
     !!(initial?.language && !LANGUAGES.includes(initial.language)),
   );
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
-  const toggleDay = (d: string) =>
+  const toggleDay = (d: string) => {
     setWeekdays((w) => (w.includes(d) ? w.filter((x) => x !== d) : [...w, d]));
+    setDayTimes((t) => {
+      const next = { ...t };
+      if (next[d] !== undefined) delete next[d];
+      else next[d] = Object.values(t)[0] ?? initial?.class_time ?? "09:00";
+      return next;
+    });
+  };
 
   function submit() {
     setErr(null);
@@ -265,7 +281,10 @@ function CreateForm({
         capacity: f.capacity ? Number(f.capacity) : null,
         class_count: f.class_count ? Number(f.class_count) : null,
         start_date: f.start_date || null, end_date: f.end_date || null,
-        weekdays, class_time: f.class_time || null,
+        weekdays,
+        // 요일별 시각 — class_time 은 첫 요일 시각(하위 호환용)
+        day_times: Object.fromEntries(weekdays.map((d) => [d, dayTimes[d] || "09:00"])),
+        class_time: weekdays.length > 0 ? (dayTimes[weekdays[0]] || null) : null,
         duration_min: f.duration_min ? Number(f.duration_min) : null,
         total_sessions: f.total_sessions ? Number(f.total_sessions) : null,
         is_test: isTest,
@@ -353,7 +372,6 @@ function CreateForm({
         <Field label="총 차시"><input type="number" className="input" value={f.total_sessions} onChange={(e) => set("total_sessions", e.target.value)} /></Field>
         <Field label="시작일"><input type="date" className="input" value={f.start_date} onChange={(e) => set("start_date", e.target.value)} /></Field>
         <Field label="종료일"><input type="date" className="input" value={f.end_date} onChange={(e) => set("end_date", e.target.value)} /></Field>
-        <Field label="시작 시각 (HH:mm)"><input type="time" className="input" value={f.class_time} onChange={(e) => set("class_time", e.target.value)} /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="수업 길이(분)"><input type="number" className="input" value={f.duration_min} onChange={(e) => set("duration_min", e.target.value)} /></Field>
           <Field label="클래스 수"><input type="number" min={1} className="input" value={f.class_count} onChange={(e) => set("class_count", e.target.value)} placeholder="예: 3" /></Field>
@@ -418,7 +436,7 @@ function CreateForm({
           </span>
         </span>
       </label>
-      <Field label="수업 요일">
+      <Field label="수업 요일 · 요일별 시작 시각">
         <div className="flex flex-wrap gap-1.5">
           {WEEKDAYS.map(([d, ko]) => (
             <button key={d} type="button" onClick={() => toggleDay(d)}
@@ -428,6 +446,22 @@ function CreateForm({
             </button>
           ))}
         </div>
+        {/* 선택된 요일마다 시작 시각 입력 — 요일별로 다르게 지정 가능 */}
+        {weekdays.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {WEEKDAYS.filter(([d]) => weekdays.includes(d)).map(([d, ko]) => (
+              <div key={d} className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5">
+                <span className="text-sm font-semibold text-brand-700">{ko}</span>
+                <input
+                  type="time"
+                  className="rounded-md border border-slate-300 bg-white px-1.5 py-0.5 text-sm"
+                  value={dayTimes[d] ?? "09:00"}
+                  onChange={(e) => setDayTimes((t) => ({ ...t, [d]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </Field>
       <button className="btn w-full" disabled={pending} onClick={submit}>
         {pending ? "저장 중..." : initial ? "수정 저장" : "과정 생성"}
@@ -500,8 +534,23 @@ function CourseCard({
             {course.format && <span>{FMT[course.format] ?? course.format}</span>}
             {course.capacity != null && <span>정원 {course.capacity}</span>}
             <span>기간 {period}</span>
-            <span>요일 {days}</span>
-            {course.class_time && <span>{course.class_time}{course.duration_min ? ` · ${course.duration_min}분` : ""}</span>}
+            {(() => {
+              // 요일별 시각이 있으면 "화 09:00 · 금 10:00" 형식으로 표시
+              const dt = course.day_times;
+              const sched = (course.weekdays ?? [])
+                .map((d) => {
+                  const ko = WEEKDAYS.find(([k]) => k === d)?.[1] ?? d;
+                  const t = dt?.[d] ?? course.class_time;
+                  return t ? `${ko} ${String(t).slice(0, 5)}` : ko;
+                })
+                .join(" · ");
+              return (
+                <span>
+                  {sched || `요일 ${days}`}
+                  {course.duration_min ? ` · ${course.duration_min}분` : ""}
+                </span>
+              );
+            })()}
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -542,7 +591,7 @@ function CourseCard({
               className="inline-flex cursor-default items-center rounded-md bg-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-500"
               title="이 과정은 오픈되어 강사·교육생에게 공개 중입니다."
             >
-              과정 오픈 중
+              과정 운영 중
             </span>
           )}
         </div>

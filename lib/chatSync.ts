@@ -11,8 +11,19 @@ const DAY_KO: Record<string, string> = {
   mon: "월", tue: "화", wed: "수", thu: "목", fri: "금", sat: "토", sun: "일",
 };
 
-function scheduleLabel(weekdays: string[] | null, classTime: string | null): string {
-  const days = (weekdays ?? []).map((d) => DAY_KO[d] ?? d).join("·");
+function scheduleLabel(
+  weekdays: string[] | null,
+  classTime: string | null,
+  dayTimes?: Record<string, string> | null,
+): string {
+  const ds = weekdays ?? [];
+  // 요일별 시각이 서로 다르면 "화 09:00·금 10:00", 같으면 "화·금 09:00"
+  if (dayTimes && ds.some((d) => dayTimes[d])) {
+    const uniq = new Set(ds.map((d) => dayTimes[d] ?? classTime ?? ""));
+    if (uniq.size > 1)
+      return ds.map((d) => `${DAY_KO[d] ?? d} ${String(dayTimes[d] ?? classTime ?? "").slice(0, 5)}`).join("·");
+  }
+  const days = ds.map((d) => DAY_KO[d] ?? d).join("·");
   const time = classTime ? String(classTime).slice(0, 5) : "";
   return [days, time].filter(Boolean).join(" ");
 }
@@ -23,7 +34,7 @@ export async function syncCourseChatRooms(courseId: string) {
 
     const { data: course } = await admin
       .from("courses")
-      .select("id, name, weekdays, class_time, is_test")
+      .select("id, name, weekdays, class_time, day_times, is_test")
       .eq("id", courseId)
       .maybeSingle();
     if (!course) return;
@@ -73,7 +84,7 @@ export async function syncCourseChatRooms(courseId: string) {
       for (const r of enr ?? []) studentsByTeacher.get(teacherIds[0])!.add(r.student_id);
     }
 
-    const sched = scheduleLabel(course.weekdays as any, course.class_time as any);
+    const sched = scheduleLabel(course.weekdays as any, course.class_time as any, (course as any).day_times ?? null);
 
     for (const tid of teacherIds) {
       const title =
