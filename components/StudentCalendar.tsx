@@ -186,6 +186,8 @@ export default function StudentCalendar({
                 duration: { years: 1 },
                 multiMonthMaxColumns: 3,
               },
+              // Month 뷰 상단은 요일만 표시 (날짜 없음)
+              dayGridMonth: { dayHeaderFormat: { weekday: "short" } },
             }}
             locale={koLocale}
             slotMinTime="06:00:00"
