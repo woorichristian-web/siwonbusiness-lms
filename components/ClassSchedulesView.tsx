@@ -8,7 +8,25 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventClickArg, EventInput } from "@fullcalendar/core";
 import type { AttendanceStatus, Feedback } from "@/lib/types";
-import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS, FEEDBACK_KEYS, feedbackTotal10, classTypeEn } from "@/lib/types";
+import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS, FEEDBACK_KEYS, feedbackTotal10, classTypeEn, classTypeKo } from "@/lib/types";
+
+type Lang = "en" | "ko";
+const ATTENDANCE_LABELS_KO: Record<string, string> = {
+  present: "정시 출석", late: "지각", absent: "결석", reschedule: "리스케줄", other: "기타",
+};
+/** 언어별 헬퍼 묶음 */
+function LX(lang: Lang) {
+  const ko = lang === "ko";
+  return {
+    ko,
+    loc: ko ? "ko-KR" : "en-US",
+    ct: ko ? classTypeKo : classTypeEn,
+    AL: (k: string) => (ko ? ATTENDANCE_LABELS_KO[k] : (ATTENDANCE_LABELS_EN as any)[k]) ?? k,
+    online: ko ? "온라인" : "Online",
+    offline: ko ? "오프라인" : "Offline",
+    done: ko ? "완료" : "Done",
+  };
+}
 import { markAttendance, clearAttendance } from "@/lib/actions/attendance";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -52,10 +70,13 @@ export interface ClassSlotEvent {
 export default function ClassSchedulesView({
   events,
   classSlots = [],
+  lang = "en",
 }: {
   events: BookingEvent[];
   classSlots?: ClassSlotEvent[];
+  lang?: Lang;
 }) {
+  const L = LX(lang);
   const [selected, setSelected] = useState<BookingEvent | null>(null);
   const [view, setView] = useState<"day" | "week" | "month">("day");
   // 초기 Day 날짜: 오늘 수업이 있으면 오늘, 없으면 다음 예정 수업 날짜로 자동 점프
@@ -129,7 +150,7 @@ export default function ClassSchedulesView({
       // Assigned classes with no bookings yet — outlined amber block
       ...classSlots.map((s) => ({
         id: "slot-" + s.id,
-        title: classTypeEn(s.class_type),
+        title: L.ct(s.class_type),
         start: s.start_at,
         end: s.end_at,
         backgroundColor: "#fffbeb",
@@ -138,7 +159,7 @@ export default function ClassSchedulesView({
         extendedProps: { kind: "slot", data: s },
       })),
     ],
-    [events, classSlots]
+    [events, classSlots, lang]
   );
 
   function onEventClick(arg: EventClickArg) {
@@ -153,7 +174,7 @@ export default function ClassSchedulesView({
     <div>
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-700">
-          Students booked into your classes ({events.length} bookings)
+          {L.ko ? `내 수업에 예약된 교육생 (${events.length}건)` : `Students booked into your classes (${events.length} bookings)`}
         </h2>
       </div>
 
@@ -163,12 +184,12 @@ export default function ClassSchedulesView({
           <button type="button" onClick={() => navigate("prev")} aria-label="Previous"
             className="rounded px-2 py-1 text-sm text-slate-600 hover:bg-slate-50">◀</button>
           <button type="button" onClick={() => navigate("today")}
-            className="rounded px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50">Today</button>
+            className="rounded px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50">{L.ko ? "오늘" : "Today"}</button>
           <button type="button" onClick={() => navigate("next")} aria-label="Next"
             className="rounded px-2 py-1 text-sm text-slate-600 hover:bg-slate-50">▶</button>
           {view === "day" && (
             <span className="ml-2 hidden text-sm font-semibold text-slate-700 sm:inline">
-              {dayDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+              {dayDate.toLocaleDateString(L.loc, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </span>
           )}
         </div>
@@ -177,7 +198,7 @@ export default function ClassSchedulesView({
             <button key={v} type="button" onClick={() => setView(v)}
               className={"px-3 py-1.5 text-sm font-medium transition " +
                 (view === v ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-50")}>
-              {v === "day" ? "Day" : v === "week" ? "Week" : "Month"}
+              {L.ko ? (v === "day" ? "일" : v === "week" ? "주" : "월") : (v === "day" ? "Day" : v === "week" ? "Week" : "Month")}
             </button>
           ))}
         </div>
@@ -188,16 +209,17 @@ export default function ClassSchedulesView({
           {/* 카드 위 헤딩 — Today's Class / Upcoming Class / Past Class */}
           <div className="mb-3 flex items-baseline gap-3">
             <h3 className="text-lg font-bold text-slate-800">
-              {dayLabelEn(dayDate, dayEvents.length + dayClassSlots.length > 0)}
+              {dayLabel(dayDate, dayEvents.length + dayClassSlots.length > 0, lang)}
             </h3>
             <span className="text-xs text-slate-500">
-              {dayDate.toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "long", day: "numeric" })}
+              {dayDate.toLocaleDateString(L.loc, { weekday: "short", year: "numeric", month: "long", day: "numeric" })}
             </span>
           </div>
           <DayCardList
             events={dayEvents}
             classSlots={dayClassSlots}
             onSelect={setSelected}
+            lang={lang}
           />
         </>
       ) : (
@@ -243,10 +265,10 @@ export default function ClassSchedulesView({
                   <div style={{ padding: "4px 6px", lineHeight: 1.3, height: "100%", display: "flex", flexDirection: "column", gap: 1, overflow: "hidden" }}>
                     <div style={{ fontSize: "0.72rem", opacity: 0.95, fontWeight: 500 }}>{arg.timeText}</div>
                     <div style={{ fontSize: "0.82rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {classTypeEn(s.class_type)}
+                      {L.ct(s.class_type)}
                     </div>
                     <div style={{ fontSize: "0.68rem", opacity: 0.9 }}>
-                      {s.format === "online" ? "Online" : "Offline"} · {s.booked_count}/{s.capacity} booked
+                      {s.format === "online" ? L.online : L.offline} · {s.booked_count}/{s.capacity}{L.ko ? " 예약" : " booked"}
                     </div>
                   </div>
                 );
@@ -264,7 +286,7 @@ export default function ClassSchedulesView({
                     </div>
                   )}
                   <div style={{ fontSize: "0.68rem", opacity: 0.9 }}>
-                    {classTypeEn(e.class_type)} · {e.format === "online" ? "Online" : "Offline"}
+                    {L.ct(e.class_type)} · {e.format === "online" ? L.online : L.offline}
                   </div>
                 </div>
               );
@@ -281,18 +303,20 @@ export default function ClassSchedulesView({
       )}
 
       {selected && (
-        <StudentDetailModal event={selected} onClose={() => setSelected(null)} />
+        <StudentDetailModal event={selected} onClose={() => setSelected(null)} lang={lang} />
       )}
     </div>
   );
 }
 
 function StudentDetailModal({
-  event, onClose,
+  event, onClose, lang = "en",
 }: {
   event: BookingEvent;
   onClose: () => void;
+  lang?: Lang;
 }) {
+  const L = LX(lang);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState<AttendanceStatus | "">(event.attendance_status ?? "");
@@ -327,7 +351,7 @@ function StudentDetailModal({
         const r = await markAttendance(event.id, status, notes.trim() || undefined);
         if (!r.ok) { setMsg({ type: "err", text: r.error ?? "Failed to save" }); return; }
       }
-      setMsg({ type: "ok", text: "Saved." });
+      setMsg({ type: "ok", text: lang === "ko" ? "저장되었습니다." : "Saved." });
       router.refresh();
       setTimeout(onClose, 600);
     });
@@ -339,24 +363,24 @@ function StudentDetailModal({
         className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
         <h3 className="mb-1 text-lg font-bold text-slate-800">{event.student_name}</h3>
         <p className="mb-4 text-sm text-slate-500">
-          {start.toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", hour12: false })}
+          {start.toLocaleString(L.loc, { dateStyle: "full", timeStyle: "short", hour12: false })}
           {" – "}
-          {end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+          {end.toLocaleTimeString(L.loc, { hour: "2-digit", minute: "2-digit", hour12: false })}
         </p>
 
         <dl className="mb-4 space-y-2 text-sm">
-          <Row k="Username" v={event.student_username} />
-          <Row k="Company" v={event.student_company ?? "—"} />
-          <Row k="Course" v={event.course_name ?? "—"} />
-          <Row k="Phone" v={event.student_phone ?? "—"} />
-          <Row k="Class type" v={classTypeEn(event.class_type)} />
-          <Row k="Format" v={event.format === "online" ? "Online" : "Offline"} />
+          <Row k={L.ko ? "아이디" : "Username"} v={event.student_username} />
+          <Row k={L.ko ? "회사" : "Company"} v={event.student_company ?? "—"} />
+          <Row k={L.ko ? "과정" : "Course"} v={event.course_name ?? "—"} />
+          <Row k={L.ko ? "연락처" : "Phone"} v={event.student_phone ?? "—"} />
+          <Row k={L.ko ? "수업 형태" : "Class type"} v={L.ct(event.class_type)} />
+          <Row k={L.ko ? "진행 방식" : "Format"} v={event.format === "online" ? L.online : L.offline} />
         </dl>
 
         {/* 온라인 회의실 바로가기 — Zoom / Teams */}
         {event.format === "online" && (event.zoom_url || event.teams_url) && (
           <div className="mb-4 flex flex-wrap gap-2 rounded-md border border-blue-200 bg-blue-50/40 p-3">
-            <span className="self-center text-xs font-semibold text-slate-600">Join class:</span>
+            <span className="self-center text-xs font-semibold text-slate-600">{L.ko ? "수업 입장:" : "Join class:"}</span>
             {event.zoom_url && (
               <a
                 href={event.zoom_url}
@@ -364,7 +388,7 @@ function StudentDetailModal({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
               >
-                Open in Zoom ↗
+                {L.ko ? "Zoom 열기 ↗" : "Open in Zoom ↗"}
               </a>
             )}
             {event.teams_url && (
@@ -374,45 +398,45 @@ function StudentDetailModal({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-purple-700"
               >
-                Open in Teams ↗
+                {L.ko ? "Teams 열기 ↗" : "Open in Teams ↗"}
               </a>
             )}
           </div>
         )}
         {event.format === "online" && !event.zoom_url && !event.teams_url && (
           <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/40 p-3 text-xs text-amber-700">
-            Set your Zoom / Teams URL in <a href="/teacher/profile" className="font-semibold underline">My Page</a> to enable one-click join.
+            {L.ko ? <>원클릭 입장을 쓰려면 <a href="/teacher/profile" className="font-semibold underline">마이페이지</a>에서 Zoom / Teams URL을 등록하세요.</> : <>Set your Zoom / Teams URL in <a href="/teacher/profile" className="font-semibold underline">My Page</a> to enable one-click join.</>}
           </div>
         )}
 
         {/* Attendance check */}
         <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-          <h4 className="mb-2 text-sm font-semibold text-slate-700">Attendance</h4>
+          <h4 className="mb-2 text-sm font-semibold text-slate-700">{L.ko ? "출석 체크" : "Attendance"}</h4>
 
-          <label className="label">Status</label>
+          <label className="label">{L.ko ? "상태" : "Status"}</label>
           <select
             className="input"
             value={status}
             disabled={pending}
             onChange={(e) => setStatus(e.target.value as AttendanceStatus | "")}
           >
-            <option value="">Not marked</option>
+            <option value="">{L.ko ? "미지정" : "Not marked"}</option>
             {ATTENDANCE_OPTIONS.map((s) => (
-              <option key={s} value={s}>{ATTENDANCE_LABELS_EN[s]}</option>
+              <option key={s} value={s}>{L.AL(s)}</option>
             ))}
           </select>
 
-          <label className="label mt-3">Memo (optional)</label>
+          <label className="label mt-3">{L.ko ? "메모 (선택)" : "Memo (optional)"}</label>
           <textarea
             className="input min-h-[80px]"
-            placeholder="Notes about this class — e.g., topics covered, student progress, follow-up items."
+            placeholder={L.ko ? "이 수업에 대한 메모 — 진도, 학생 상태, 후속 조치 등." : "Notes about this class — e.g., topics covered, student progress, follow-up items."}
             value={notes}
             disabled={pending}
             onChange={(e) => setNotes(e.target.value)}
           />
           <p className="mt-2 text-xs text-slate-400">
-            Memos are visible to you and the center only — never to students.
-            {!isPast && " You can pre-set a status (e.g., Reschedule) and memo before the class."}
+            {L.ko ? "메모는 강사와 센터만 볼 수 있으며 학생에게는 표시되지 않습니다." : "Memos are visible to you and the center only — never to students."}
+            {!isPast && (L.ko ? " 수업 전에 상태(예: 리스케줄)와 메모를 미리 저장할 수 있습니다." : " You can pre-set a status (e.g., Reschedule) and memo before the class.")}
           </p>
         </div>
 
@@ -421,11 +445,11 @@ function StudentDetailModal({
           <div className="mt-3 rounded-md border border-amber-200 bg-amber-50/50 p-3">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-semibold text-slate-700">Feedback</h4>
+                <h4 className="text-sm font-semibold text-slate-700">{L.ko ? "피드백" : "Feedback"}</h4>
                 <p className="text-xs text-slate-500">
                   {fbAvg != null
-                    ? `Average: ${fbAvg.toFixed(2)}/10 · ${fbValues.length}/11 items rated`
-                    : "Not evaluated yet."}
+                    ? (L.ko ? `평균 ${fbAvg.toFixed(2)}/10 · ${fbValues.length}/11개 항목 평가됨` : `Average: ${fbAvg.toFixed(2)}/10 · ${fbValues.length}/11 items rated`)
+                    : (L.ko ? "아직 평가 전입니다." : "Not evaluated yet.")}
                 </p>
               </div>
               <button
@@ -433,7 +457,7 @@ function StudentDetailModal({
                 onClick={() => setFeedbackOpen(true)}
                 className="btn !bg-amber-600 hover:!bg-amber-700"
               >
-                {fbAvg != null ? "Edit feedback" : "Open feedback"}
+                {fbAvg != null ? (L.ko ? "피드백 수정" : "Edit feedback") : (L.ko ? "피드백 작성" : "Open feedback")}
               </button>
             </div>
           </div>
@@ -449,9 +473,9 @@ function StudentDetailModal({
         )}
 
         <div className="mt-6 flex justify-end gap-2">
-          <button className="btn-ghost" onClick={onClose}>Close</button>
+          <button className="btn-ghost" onClick={onClose}>{L.ko ? "닫기" : "Close"}</button>
           <button className="btn" disabled={pending} onClick={save}>
-            {pending ? "Saving..." : "Save attendance"}
+            {pending ? (L.ko ? "저장 중..." : "Saving...") : (L.ko ? "출석 저장" : "Save attendance")}
           </button>
         </div>
       </div>
@@ -521,12 +545,17 @@ function pickInitialDayDate(
 /* ──────────────────────────────────────────────────────────────────────
    Day 헤딩 (영문) — Today's Class / Upcoming Class / Past Class
    ────────────────────────────────────────────────────────────────────── */
-function dayLabelEn(dayDate: Date, hasClasses: boolean): string {
+function dayLabel(dayDate: Date, hasClasses: boolean, lang: Lang = "en"): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const d = new Date(dayDate);
   d.setHours(0, 0, 0, 0);
   const diff = d.getTime() - today.getTime();
+  if (lang === "ko") {
+    if (diff === 0) return hasClasses ? "오늘의 수업" : "오늘은 수업이 없습니다";
+    if (diff > 0) return hasClasses ? "예정된 수업" : "이 날은 수업이 없습니다";
+    return hasClasses ? "지난 수업" : "이 날은 수업이 없습니다";
+  }
   if (diff === 0) return hasClasses ? "Today's Class" : "No Class Today";
   if (diff > 0) return hasClasses ? "Upcoming Class" : "No Class on This Day";
   return hasClasses ? "Past Class" : "No Class on This Day";
@@ -539,15 +568,18 @@ function DayCardList({
   events,
   classSlots,
   onSelect,
+  lang = "en",
 }: {
   events: BookingEvent[];
   classSlots: ClassSlotEvent[];
   onSelect: (e: BookingEvent) => void;
+  lang?: Lang;
 }) {
+  const L = LX(lang);
   if (events.length === 0 && classSlots.length === 0) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-12 text-center text-sm text-slate-400">
-        No classes on this day.
+        {L.ko ? "이 날은 수업이 없습니다." : "No classes on this day."}
       </div>
     );
   }
@@ -587,15 +619,17 @@ function DayCardList({
             key={it.data.id}
             event={it.data}
             onClick={() => onSelect(it.data)}
+            lang={lang}
           />
         ) : it.kind === "group" ? (
           <GroupClassCard
             key={"grp-" + it.list[0].slot_id + it.list[0].start_at}
             list={it.list}
             onSelect={onSelect}
+            lang={lang}
           />
         ) : (
-          <ClassSlotCard key={"slot-" + it.data.id} slot={it.data} />
+          <ClassSlotCard key={"slot-" + it.data.id} slot={it.data} lang={lang} />
         ),
       )}
     </div>
@@ -606,10 +640,13 @@ function DayCardList({
 function GroupClassCard({
   list,
   onSelect,
+  lang = "en",
 }: {
   list: BookingEvent[];
   onSelect: (e: BookingEvent) => void;
+  lang?: Lang;
 }) {
+  const L = LX(lang);
   const [open, setOpen] = useState(false);
   const first = list[0];
   const start = new Date(first.start_at);
@@ -635,22 +672,22 @@ function GroupClassCard({
         <div className="min-w-0 flex-1 border-l border-slate-100 pl-3">
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
             <span className="truncate text-base font-bold text-slate-800">
-              {first.course_name ?? classTypeEn(first.class_type)}
+              {first.course_name ?? L.ct(first.class_type)}
             </span>
             {isOngoing && (
               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">● LIVE</span>
             )}
             {isPast && !isOngoing && (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">Done</span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{L.done}</span>
             )}
           </div>
           {first.student_company && (
             <div className="text-xs italic text-slate-400">{first.student_company}</div>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <Pill>{classTypeEn(first.class_type)}</Pill>
-            <Pill>{first.format === "online" ? "Online" : "Offline"}</Pill>
-            <Pill color="blue">{list.length} student{list.length === 1 ? "" : "s"}</Pill>
+            <Pill>{L.ct(first.class_type)}</Pill>
+            <Pill>{first.format === "online" ? L.online : L.offline}</Pill>
+            <Pill color="blue">{L.ko ? `학생 ${list.length}명` : `${list.length} student${list.length === 1 ? "" : "s"}`}</Pill>
           </div>
         </div>
         <span className="shrink-0 self-center text-xs text-slate-400">{open ? "▲" : "▼"}</span>
@@ -658,7 +695,7 @@ function GroupClassCard({
 
       {open && (
         <div className="mt-3 border-t border-slate-100 pt-3">
-          <p className="mb-1.5 text-[11px] text-slate-400">Click a student for attendance & feedback:</p>
+          <p className="mb-1.5 text-[11px] text-slate-400">{L.ko ? "학생을 누르면 출석·피드백을 입력할 수 있습니다:" : "Click a student for attendance & feedback:"}</p>
           <div className="flex flex-wrap gap-1.5">
             {list.map((e) => (
               <button
@@ -679,7 +716,8 @@ function GroupClassCard({
 }
 
 /** 예약이 아직 없는 배정 수업 카드 (학생 없음 → 클릭 상세 없음). */
-function ClassSlotCard({ slot }: { slot: ClassSlotEvent }) {
+function ClassSlotCard({ slot, lang = "en" }: { slot: ClassSlotEvent; lang?: Lang }) {
+  const L = LX(lang);
   const start = new Date(slot.start_at);
   const end = new Date(slot.end_at);
   const now = Date.now();
@@ -705,10 +743,10 @@ function ClassSlotCard({ slot }: { slot: ClassSlotEvent }) {
         <div className="min-w-0 flex-1 border-l border-amber-200 pl-3">
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
             <span className="text-base font-bold text-slate-800">
-              {classTypeEn(slot.class_type)}
+              {L.ct(slot.class_type)}
             </span>
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-              Assigned
+              {L.ko ? "배정 수업" : "Assigned"}
             </span>
             {isOngoing && (
               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
@@ -717,14 +755,14 @@ function ClassSlotCard({ slot }: { slot: ClassSlotEvent }) {
             )}
             {isPast && !isOngoing && (
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
-                Done
+                {L.done}
               </span>
             )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <Pill>{slot.format === "online" ? "Online" : "Offline"}</Pill>
+            <Pill>{slot.format === "online" ? L.online : L.offline}</Pill>
             <Pill>
-              {slot.booked_count}/{slot.capacity} booked
+              {slot.booked_count}/{slot.capacity}{L.ko ? " 예약" : " booked"}
             </Pill>
           </div>
         </div>
@@ -736,10 +774,13 @@ function ClassSlotCard({ slot }: { slot: ClassSlotEvent }) {
 function ClassCard({
   event,
   onClick,
+  lang = "en",
 }: {
   event: BookingEvent;
   onClick: () => void;
+  lang?: Lang;
 }) {
+  const L = LX(lang);
   const start = new Date(event.start_at);
   const end = new Date(event.end_at);
   const now = Date.now();
@@ -789,7 +830,7 @@ function ClassCard({
             )}
             {isPast && !isOngoing && (
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
-                Done
+                {L.done}
               </span>
             )}
           </div>
@@ -804,11 +845,11 @@ function ClassCard({
             </div>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <Pill>{classTypeEn(event.class_type)}</Pill>
-            <Pill>{event.format === "online" ? "Online" : "Offline"}</Pill>
+            <Pill>{L.ct(event.class_type)}</Pill>
+            <Pill>{event.format === "online" ? L.online : L.offline}</Pill>
             {event.attendance_status && (
               <Pill color="emerald">
-                ✓ {ATTENDANCE_LABELS_EN[event.attendance_status]}
+                ✓ {L.AL(event.attendance_status)}
               </Pill>
             )}
             {fbAvg != null && (

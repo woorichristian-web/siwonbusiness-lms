@@ -5,7 +5,22 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markAttendance, clearAttendance } from "@/lib/actions/attendance";
 import type { AttendanceStatus, ClassFormat, ClassType, Feedback } from "@/lib/types";
-import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS, FEEDBACK_KEYS, feedbackTotal10, classTypeEn } from "@/lib/types";
+import { ATTENDANCE_LABELS_EN, ATTENDANCE_OPTIONS, FEEDBACK_KEYS, feedbackTotal10, classTypeEn, classTypeKo } from "@/lib/types";
+
+type Lang = "en" | "ko";
+const ATT_KO: Record<string, string> = {
+  present: "정시 출석", late: "지각", absent: "결석", reschedule: "리스케줄", other: "기타",
+};
+function LX(lang: Lang) {
+  const ko = lang === "ko";
+  return {
+    ko,
+    loc: ko ? "ko-KR" : "en-US",
+    ct: ko ? classTypeKo : classTypeEn,
+    AL: (k: string) => (ko ? ATT_KO[k] : (ATTENDANCE_LABELS_EN as any)[k]) ?? k,
+    notMarked: ko ? "미지정" : "Not marked",
+  };
+}
 import FeedbackModal, { type SessionEntry } from "@/components/FeedbackModal";
 
 export interface ClassRow {
@@ -42,7 +57,8 @@ interface StudentRate {
  * - Top: "Unevaluated" — past sessions missing attendance or submitted feedback
  * - Below: All sessions grouped by course
  */
-export default function ClassManageView({ rows }: { rows: ClassRow[] }) {
+export default function ClassManageView({ rows, lang = "en" }: { rows: ClassRow[]; lang?: Lang }) {
+  const L = LX(lang);
   // Cumulative attendance stats per student (across all rows)
   const studentRates = useMemo(() => {
     const map = new Map<string, StudentRate>();
@@ -125,29 +141,29 @@ export default function ClassManageView({ rows }: { rows: ClassRow[] }) {
           (unevaluated.length > 0 ? "border-red-100 bg-red-50/40" : "border-emerald-100 bg-emerald-50/40")
         }>
           <h2 className="font-semibold text-slate-800">
-            {unevaluated.length > 0 ? "Unevaluated" : "✓ All caught up"}
+            {unevaluated.length > 0 ? (L.ko ? "미평가 수업" : "Unevaluated") : (L.ko ? "✓ 모두 완료" : "✓ All caught up")}
             <span className="ml-2 text-sm font-normal text-slate-500">
-              ({unevaluated.length} pending)
+              {L.ko ? `(대기 ${unevaluated.length}건)` : `(${unevaluated.length} pending)`}
             </span>
           </h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            Sessions with missing attendance or unsubmitted feedback. Please handle these first.
+            {L.ko ? "출석 미체크 또는 피드백 미제출 수업입니다. 먼저 처리해 주세요." : "Sessions with missing attendance or unsubmitted feedback. Please handle these first."}
           </p>
         </header>
 
         {unevaluated.length === 0 ? (
           <p className="p-4 text-center text-sm text-slate-500">
-            All past sessions are checked and evaluated.
+            {L.ko ? "지난 수업이 모두 체크·평가되었습니다." : "All past sessions are checked and evaluated."}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="px-4 py-2">Date</th>
-                  <th className="px-4 py-2">Student</th>
-                  <th className="px-4 py-2">Attendance</th>
-                  <th className="px-4 py-2">Feedback</th>
+                  <th className="px-4 py-2">{L.ko ? "날짜" : "Date"}</th>
+                  <th className="px-4 py-2">{L.ko ? "교육생" : "Student"}</th>
+                  <th className="px-4 py-2">{L.ko ? "출석" : "Attendance"}</th>
+                  <th className="px-4 py-2">{L.ko ? "피드백" : "Feedback"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -156,6 +172,7 @@ export default function ClassManageView({ rows }: { rows: ClassRow[] }) {
                     key={r.booking_id}
                     row={r}
                     sessions={sessionsByStudent.get(r.student_id) ?? []}
+                    lang={lang}
                   />
                 ))}
               </tbody>
@@ -168,13 +185,13 @@ export default function ClassManageView({ rows }: { rows: ClassRow[] }) {
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-700">
-            All courses ({courses.length})
+            {L.ko ? `전체 과정 (${courses.length})` : `All courses (${courses.length})`}
           </h2>
         </div>
 
         {courses.length === 0 ? (
           <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
-            No bookings yet.
+            {L.ko ? "아직 예약이 없습니다." : "No bookings yet."}
           </div>
         ) : (
           <ul className="space-y-3">
@@ -185,6 +202,7 @@ export default function ClassManageView({ rows }: { rows: ClassRow[] }) {
                 items={items}
                 studentRates={studentRates}
                 sessionsByStudent={sessionsByStudent}
+                lang={lang}
               />
             ))}
           </ul>
@@ -198,11 +216,13 @@ export default function ClassManageView({ rows }: { rows: ClassRow[] }) {
 // Unevaluated row
 // ===================================================================
 function UnevaluatedRow({
-  row, sessions,
+  row, sessions, lang = "en",
 }: {
   row: ClassRow;
   sessions: SessionEntry[];
+  lang?: Lang;
 }) {
+  const L = LX(lang);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [fbOpen, setFbOpen] = useState(false);
@@ -225,9 +245,9 @@ function UnevaluatedRow({
     <>
       <tr>
         <td className="px-4 py-2.5 text-slate-700">
-          {d.toLocaleDateString("en-US", { weekday: "short", month: "2-digit", day: "2-digit" })}
+          {d.toLocaleDateString(L.loc, { weekday: "short", month: "2-digit", day: "2-digit" })}
           {" · "}
-          {d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+          {d.toLocaleTimeString(L.loc, { hour: "2-digit", minute: "2-digit", hour12: false })}
         </td>
         <td className="px-4 py-2.5 font-medium text-slate-800">
           {row.student_name}
@@ -247,9 +267,9 @@ function UnevaluatedRow({
             value={row.attendance ?? ""}
             onChange={onAttChange}
           >
-            <option value="">Not marked</option>
+            <option value="">{L.notMarked}</option>
             {ATTENDANCE_OPTIONS.map((s) => (
-              <option key={s} value={s}>{ATTENDANCE_LABELS_EN[s]}</option>
+              <option key={s} value={s}>{L.AL(s)}</option>
             ))}
           </select>
         </td>
@@ -266,9 +286,9 @@ function UnevaluatedRow({
           >
             <span className="inline-block h-2 w-2 rounded-full"
               style={{ backgroundColor: fbMissing ? "#ef4444" : "#10b981" }} />
-            {fbIsDraft ? "Draft · continue"
-              : fbMissing ? "Write feedback"
-              : "Submitted · view"}
+            {fbIsDraft ? (L.ko ? "임시저장 · 이어쓰기" : "Draft · continue")
+              : fbMissing ? (L.ko ? "피드백 작성" : "Write feedback")
+              : (L.ko ? "제출됨 · 보기" : "Submitted · view")}
           </button>
         </td>
       </tr>
@@ -292,13 +312,15 @@ function UnevaluatedRow({
 // Course card (expandable, contains sessions)
 // ===================================================================
 function CourseCard({
-  courseName, items, studentRates, sessionsByStudent,
+  courseName, items, studentRates, sessionsByStudent, lang = "en",
 }: {
   courseName: string;
   items: ClassRow[];
   studentRates: Map<string, StudentRate>;
   sessionsByStudent: Map<string, SessionEntry[]>;
+  lang?: Lang;
 }) {
+  const L = LX(lang);
   const uniqueStudents = useMemo(() => {
     const set = new Set<string>();
     for (const r of items) set.add(r.student_id);
@@ -355,15 +377,15 @@ function CourseCard({
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
             <span className="rounded-full bg-slate-100 px-2 py-0.5">
-              {classTypeEn(first.class_type)}
+              {L.ct(first.class_type)}
             </span>
             <span className="rounded-full bg-slate-100 px-2 py-0.5">
-              {first.format === "online" ? "Online" : "Offline"}
+              {first.format === "online" ? (L.ko ? "온라인" : "Online") : (L.ko ? "오프라인" : "Offline")}
             </span>
             <span>·</span>
-            <span><b>{uniqueStudents.size}</b> student{uniqueStudents.size === 1 ? "" : "s"}</span>
+            <span><b>{uniqueStudents.size}</b>{L.ko ? "명" : ` student${uniqueStudents.size === 1 ? "" : "s"}`}</span>
             <span>·</span>
-            <span><b>{sessions.length}</b> session{sessions.length === 1 ? "" : "s"}</span>
+            <span><b>{sessions.length}</b>{L.ko ? "회" : ` session${sessions.length === 1 ? "" : "s"}`}</span>
             {pattern.length > 0 && (
               <>
                 <span>·</span>
@@ -383,6 +405,7 @@ function CourseCard({
               rows={sessionRows}
               studentRates={studentRates}
               sessionsByStudent={sessionsByStudent}
+              lang={lang}
             />
           ))}
         </div>
@@ -392,12 +415,14 @@ function CourseCard({
 }
 
 function SessionBlock({
-  rows, studentRates, sessionsByStudent,
+  rows, studentRates, sessionsByStudent, lang = "en",
 }: {
   rows: ClassRow[];
   studentRates: Map<string, StudentRate>;
   sessionsByStudent: Map<string, SessionEntry[]>;
+  lang?: Lang;
 }) {
+  const L = LX(lang);
   const first = rows[0];
   const start = new Date(first.start_at);
   const end = new Date(first.end_at);
@@ -409,34 +434,34 @@ function SessionBlock({
       <div className="mb-2 flex items-center justify-between text-sm">
         <div>
           <span className="font-semibold text-slate-800">
-            {start.toLocaleDateString("en-US", { weekday: "short", month: "2-digit", day: "2-digit" })}
+            {start.toLocaleDateString(L.loc, { weekday: "short", month: "2-digit", day: "2-digit" })}
             {" · "}
-            {start.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+            {start.toLocaleTimeString(L.loc, { hour: "2-digit", minute: "2-digit", hour12: false })}
             {" - "}
-            {end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+            {end.toLocaleTimeString(L.loc, { hour: "2-digit", minute: "2-digit", hour12: false })}
           </span>
           {isPast ? (
             <span className={"ml-2 text-xs " + (markedCount === rows.length ? "text-emerald-600" : "text-amber-600")}>
-              · Attendance {markedCount}/{rows.length}
+              {L.ko ? `· 출석 체크 ${markedCount}/${rows.length}` : `· Attendance ${markedCount}/${rows.length}`}
             </span>
           ) : (
-            <span className="ml-2 text-xs text-blue-600">· Upcoming</span>
+            <span className="ml-2 text-xs text-blue-600">{L.ko ? "· 예정" : "· Upcoming"}</span>
           )}
         </div>
         <span className="text-xs text-slate-400">
-          {rows.length} student{rows.length === 1 ? "" : "s"}
+          {L.ko ? `학생 ${rows.length}명` : `${rows.length} student${rows.length === 1 ? "" : "s"}`}
         </span>
       </div>
 
       <table className="w-full text-sm">
         <thead className="text-left text-xs uppercase text-slate-500">
           <tr>
-            <th className="pb-1 font-medium">Student</th>
-            <th className="pb-1 font-medium">Company</th>
-            <th className="pb-1 font-medium">Attendance</th>
-            <th className="pb-1 font-medium">Feedback</th>
-            <th className="pb-1 font-medium">Progress</th>
-            <th className="pb-1 font-medium">Overall rate</th>
+            <th className="pb-1 font-medium">{L.ko ? "교육생" : "Student"}</th>
+            <th className="pb-1 font-medium">{L.ko ? "회사" : "Company"}</th>
+            <th className="pb-1 font-medium">{L.ko ? "출석" : "Attendance"}</th>
+            <th className="pb-1 font-medium">{L.ko ? "피드백" : "Feedback"}</th>
+            <th className="pb-1 font-medium">{L.ko ? "진행 리포트" : "Progress"}</th>
+            <th className="pb-1 font-medium">{L.ko ? "누적 출석율" : "Overall rate"}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-50">
@@ -447,6 +472,7 @@ function SessionBlock({
               rate={studentRates.get(r.student_id)}
               isPast={isPast}
               sessions={sessionsByStudent.get(r.student_id) ?? []}
+              lang={lang}
             />
           ))}
         </tbody>
@@ -456,13 +482,15 @@ function SessionBlock({
 }
 
 function StudentRow({
-  row, rate, isPast, sessions,
+  row, rate, isPast, sessions, lang = "en",
 }: {
   row: ClassRow;
   rate: StudentRate | undefined;
   isPast: boolean;
   sessions: SessionEntry[];
+  lang?: Lang;
 }) {
+  const L = LX(lang);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -494,18 +522,18 @@ function StudentRow({
               value={row.attendance ?? ""}
               onChange={onChange}
             >
-              <option value="">Not marked</option>
+              <option value="">{L.notMarked}</option>
               {ATTENDANCE_OPTIONS.map((s) => (
-                <option key={s} value={s}>{ATTENDANCE_LABELS_EN[s]}</option>
+                <option key={s} value={s}>{L.AL(s)}</option>
               ))}
             </select>
           ) : (
-            <span className="text-xs text-slate-400">— (upcoming)</span>
+            <span className="text-xs text-slate-400">{L.ko ? "— (예정)" : "— (upcoming)"}</span>
           )}
           {/* 수업 메모 — 있을 때만 출석 하단에 표시 (강사·센터 전용) */}
           {row.attendance_notes && (
             <p className="mt-1 max-w-[240px] whitespace-pre-wrap rounded bg-amber-50 px-1.5 py-1 text-[11px] leading-snug text-slate-600">
-              Memo: {row.attendance_notes}
+              {L.ko ? "메모: " : "Memo: "}{row.attendance_notes}
             </p>
           )}
         </td>
@@ -526,9 +554,9 @@ function StudentRow({
             }
           >
             {fbStatus === "submitted" && <>✓ {fbAvg!.toFixed(1)} ({fbValues.length}/10)</>}
-            {fbStatus === "draft" && <>Draft ({fbValues.length}/10)</>}
-            {!fbStatus && isPast && <>Feedback</>}
-            {!isPast && <>Feedback</>}
+            {fbStatus === "draft" && <>{L.ko ? "임시저장" : "Draft"} ({fbValues.length}/10)</>}
+            {!fbStatus && isPast && <>{L.ko ? "피드백" : "Feedback"}</>}
+            {!isPast && <>{L.ko ? "피드백" : "Feedback"}</>}
           </button>
         </td>
         <td className="py-1.5">
@@ -536,7 +564,7 @@ function StudentRow({
             href={`/teacher/progress/${row.student_id}`}
             className="inline-flex items-center gap-1 rounded-md border border-brand-300 bg-brand-50 px-2 py-1 text-xs text-brand-700 hover:bg-brand-100"
           >
-            Progress
+            {L.ko ? "리포트" : "Progress"}
           </Link>
         </td>
         <td className="py-1.5">

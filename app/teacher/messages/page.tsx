@@ -5,6 +5,7 @@ import TeacherMessageCompose from "@/components/TeacherMessageCompose";
 import StudentMessageList from "@/components/StudentMessageList";
 import type { Message } from "@/lib/types";
 import { getTestCourseIds } from "@/lib/testCourses";
+import { getTeacherLang } from "@/lib/teacherLang";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,8 @@ export default async function TeacherMessagesPage() {
   const profile = await requireRole(["teacher", "admin"]);
   const supabase = createClient();
   const isTeacher = profile.role === "teacher";
+  const lang = getTeacherLang();
+  const en = isTeacher && lang === "en";
 
   // ====================================================================
   // 1) 받은 메시지함 (Inbox)
@@ -122,7 +125,7 @@ export default async function TeacherMessagesPage() {
       .select("id, name, role")
       .in("id", recipientIds);
     for (const r of rs ?? [])
-      recipientNames.set(r.id, r.role === "admin" ? "Siwonschool Center" : r.name);
+      recipientNames.set(r.id, r.role === "admin" ? (en ? "Siwonschool Center" : "시원스쿨 센터") : r.name);
   }
 
   // 센터(관리자) 대표 계정 — 드롭다운 최상단 + 기본 선택. QA 계정 제외.
@@ -142,31 +145,33 @@ export default async function TeacherMessagesPage() {
       <main className="mx-auto max-w-3xl px-4 py-6 space-y-6">
         <header>
           <h1 className="text-xl font-bold text-slate-800">
-            {isTeacher ? "Messages" : "메시지"}
+            {en ? "Messages" : "메시지"}
           </h1>
           <p className="text-sm text-slate-500">
-            {isTeacher
+            {en
               ? "View received messages and send messages to your students."
-              : "받은 메시지를 확인하고, 강사·교육생에게 메시지를 보내세요."}
+              : isTeacher
+                ? "받은 메시지를 확인하고, 센터·교육생에게 메시지를 보내세요."
+                : "받은 메시지를 확인하고, 강사·교육생에게 메시지를 보내세요."}
           </p>
         </header>
 
         {/* Inbox — 받은 메시지 */}
         <section>
           <h2 className="mb-2 text-base font-semibold text-slate-700">
-            {isTeacher ? "Inbox" : "받은 메시지함"}
+            {en ? "Inbox" : "받은 메시지함"}
           </h2>
           <StudentMessageList
             messages={(inbox ?? []) as Message[]}
             senderInfo={Object.fromEntries(senderInfo)}
-            english={isTeacher}
+            english={en}
           />
         </section>
 
         {/* Compose + sent history */}
         <section>
           <h2 className="mb-2 text-base font-semibold text-slate-700">
-            {isTeacher ? "Send a message" : "메시지 보내기"}
+            {en ? "Send a message" : "메시지 보내기"}
           </h2>
           <TeacherMessageCompose
             students={students}
@@ -176,7 +181,7 @@ export default async function TeacherMessagesPage() {
               ...m,
               recipient_name: recipientNames.get(m.recipient_id) ?? "—",
             }))}
-            english={isTeacher}
+            english={en}
           />
         </section>
       </main>

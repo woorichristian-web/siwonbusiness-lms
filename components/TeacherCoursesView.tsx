@@ -31,6 +31,11 @@ export interface TeacherCourse {
 const WEEKDAYS = [
   "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
 ];
+const WEEKDAYS_KO = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+const CLASS_TYPE_LABEL_KO: Record<string, string> = {
+  "1on1": "1:1 수업", "1on1_coaching": "1:1 Coaching", group: "Group 수업", group_coaching: "Group Coaching", small_group: "Group 수업",
+};
+const FORMAT_LABEL_KO: Record<string, string> = { online: "온라인", offline: "오프라인" };
 const CLASS_TYPE_LABEL: Record<string, string> = {
   "1on1": "1:1 Class",
   "1on1_coaching": "1:1 Coaching",
@@ -60,9 +65,12 @@ function fmtDate(iso: string | null): string {
  */
 export default function TeacherCoursesView({
   courses,
+  lang = "en",
 }: {
   courses: TeacherCourse[];
+  lang?: "en" | "ko";
 }) {
+  const ko = lang === "ko";
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
 
   function toggle(id: string) {
@@ -77,8 +85,9 @@ export default function TeacherCoursesView({
   if (courses.length === 0) {
     return (
       <div className="card text-sm text-slate-500">
-        No courses assigned yet. Courses will appear here once students are
-        booked into your classes (or once the center assigns you to a course).
+        {ko
+          ? "아직 배정된 과정이 없습니다. 교육생 예약이 생기거나 센터가 과정을 배정하면 여기에 표시됩니다."
+          : "No courses assigned yet. Courses will appear here once students are booked into your classes (or once the center assigns you to a course)."}
       </div>
     );
   }
@@ -86,8 +95,9 @@ export default function TeacherCoursesView({
   return (
     <div className="space-y-2">
       <p className="text-sm text-slate-500">
-        {courses.length} course{courses.length > 1 ? "s" : ""} — click a course
-        to expand. Multiple can stay open; click again to close.
+        {ko
+          ? courses.length + "개 과정 — 과정을 누르면 펼쳐집니다. 여러 개를 열어둘 수 있고, 다시 누르면 닫힙니다."
+          : courses.length + " course" + (courses.length > 1 ? "s" : "") + " — click a course to expand. Multiple can stay open; click again to close."}
       </p>
 
       {courses.map((c) => {
@@ -116,12 +126,12 @@ export default function TeacherCoursesView({
                 )}
                 {c.students.length > 0 && (
                   <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                    {c.students.length} students
+                    {ko ? "학생 " + c.students.length + "명" : c.students.length + " students"}
                   </span>
                 )}
               </div>
               <span className="shrink-0 text-xs text-slate-400">
-                {open ? "▲ Close" : "▼ Open"}
+                {open ? (ko ? "▲ 닫기" : "▲ Close") : (ko ? "▼ 열기" : "▼ Open")}
               </span>
             </button>
 
@@ -129,21 +139,21 @@ export default function TeacherCoursesView({
               <div className="border-t border-slate-100 px-4 py-4 text-sm">
                 <div className="mb-3 flex flex-wrap gap-2">
                   {(c.class_types.length ? c.class_types : ["—"]).map((t) => (
-                    <Badge key={t}>{CLASS_TYPE_LABEL[t] ?? t}</Badge>
+                    <Badge key={t}>{(ko ? CLASS_TYPE_LABEL_KO[t] : CLASS_TYPE_LABEL[t]) ?? t}</Badge>
                   ))}
                   {c.formats.map((f) => (
                     <Badge key={f} tone="blue">
-                      {FORMAT_LABEL[f] ?? f}
+                      {(ko ? FORMAT_LABEL_KO[f] : FORMAT_LABEL[f]) ?? f}
                     </Badge>
                   ))}
                 </div>
 
                 <dl className="grid grid-cols-1 gap-y-2 sm:grid-cols-[150px_1fr]">
-                  <Row label="Course Code" value={c.course_code ?? "—"} />
-                  <Row label="Course Name" value={c.title} />
-                  <Row label="Company" value={c.company ?? "—"} />
+                  <Row label={ko ? "과정 코드" : "Course Code"} value={c.course_code ?? "—"} />
+                  <Row label={ko ? "과정명" : "Course Name"} value={c.title} />
+                  <Row label={ko ? "회사" : "Company"} value={c.company ?? "—"} />
                   <Row
-                    label={`Students (${c.students.length})`}
+                    label={ko ? `교육생 (${c.students.length})` : `Students (${c.students.length})`}
                     value={
                       c.students.length ? (
                         <div className="flex flex-wrap gap-1.5">
@@ -161,34 +171,34 @@ export default function TeacherCoursesView({
                       )
                     }
                   />
-                  <Row label="Language" value={c.language ?? "—"} />
-                  <Row label="Textbook" value={c.textbook ?? "—"} />
+                  <Row label={ko ? "언어" : "Language"} value={c.language ?? "—"} />
+                  <Row label={ko ? "교재" : "Textbook"} value={c.textbook ?? "—"} />
                   <Row
-                    label="Class Type"
+                    label={ko ? "수업 형태" : "Class Type"}
                     value={
-                      c.class_types.map((t) => CLASS_TYPE_LABEL[t] ?? t).join(", ") ||
+                      c.class_types.map((t) => (ko ? CLASS_TYPE_LABEL_KO[t] : CLASS_TYPE_LABEL[t]) ?? t).join(", ") ||
                       "—"
                     }
                   />
                   <Row
-                    label="Format"
+                    label={ko ? "진행 방식" : "Format"}
                     value={
-                      c.formats.map((f) => FORMAT_LABEL[f] ?? f).join(", ") || "—"
+                      c.formats.map((f) => (ko ? FORMAT_LABEL_KO[f] : FORMAT_LABEL[f]) ?? f).join(", ") || "—"
                     }
                   />
                   <Row
-                    label="Class Period"
+                    label={ko ? "수강 기간" : "Class Period"}
                     value={`${fmtDate(c.period_start)} – ${fmtDate(c.period_end)}`}
                   />
-                  <Row label="Total Sessions" value={c.sessions_count != null ? String(c.sessions_count) : "—"} />
+                  <Row label={ko ? "총 차시" : "Total Sessions"} value={c.sessions_count != null ? String(c.sessions_count) : "—"} />
                   <Row
-                    label="Days & Time"
+                    label={ko ? "요일·시간" : "Days & Time"}
                     value={
                       c.patterns.length ? (
                         <ul className="space-y-0.5">
                           {c.patterns.map((p, i) => (
                             <li key={i}>
-                              {WEEKDAYS[p.weekday]} · {p.time} · {p.duration_min} min
+                              {ko ? WEEKDAYS_KO[p.weekday] : WEEKDAYS[p.weekday]} · {p.time} · {p.duration_min}{ko ? "분" : " min"}
                               {p.count > 1 ? ` (×${p.count})` : ""}
                             </li>
                           ))}

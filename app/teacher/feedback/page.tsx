@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import { closedRounds, surveyRounds } from "@/lib/survey";
 import { getMyTeachingEval } from "@/lib/actions/teacher-eval";
+import { getTeacherLang } from "@/lib/teacherLang";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ export const dynamic = "force-dynamic";
 export default async function TeacherFeedbackListPage() {
   const profile = await requireRole(["teacher", "admin"]);
   const supabase = createClient();
+  const lang = getTeacherLang();
+  const ko = lang === "ko";
 
   const { data: cts } = await supabase
     .from("course_teachers")
@@ -37,21 +40,24 @@ export default async function TeacherFeedbackListPage() {
       <AppHeader profile={profile} />
       <main className="mx-auto max-w-3xl px-4 py-6">
         <header className="mb-6">
-          <h1 className="text-xl font-bold text-slate-800">Teaching Feedback</h1>
+          <h1 className="text-xl font-bold text-slate-800">{ko ? "티칭 피드백" : "Teaching Feedback"}</h1>
           <p className="text-sm text-slate-500">
-            Anonymous student satisfaction survey results, delivered after each survey window closes
-            (10% · 50% · Final, each open for 7 days).
+            {ko
+              ? "익명 교육생 만족도 설문 결과 — 각 설문(10% · 50% · 최종, 각 7일간) 마감 후 전달됩니다."
+              : "Anonymous student satisfaction survey results, delivered after each survey window closes (10% · 50% · Final, each open for 7 days)."}
           </p>
         </header>
 
         {/* Feedback on My Teaching — 익명 강사평가 (반별 평균 + 코멘트) */}
         <section className="card mb-6">
-          <h2 className="text-base font-semibold text-slate-800">Feedback on My Teaching</h2>
+          <h2 className="text-base font-semibold text-slate-800">{ko ? "내 수업에 대한 피드백" : "Feedback on My Teaching"}</h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            Anonymous ratings (1–10) your students left about your teaching — average per class, with all comments shown.
+            {ko
+              ? "교육생이 남긴 익명 강사 평가(1~10점) — 반별 평균과 코멘트 전체가 표시됩니다."
+              : "Anonymous ratings (1–10) your students left about your teaching — average per class, with all comments shown."}
           </p>
           {myEval.length === 0 || myEval.every((g) => g.count === 0 && g.comments.length === 0) ? (
-            <p className="mt-3 py-3 text-center text-sm text-slate-400">No ratings yet.</p>
+            <p className="mt-3 py-3 text-center text-sm text-slate-400">{ko ? "아직 평가가 없습니다." : "No ratings yet."}</p>
           ) : (
             <div className="mt-3 space-y-3">
               {myEval.map((g, i) => (
@@ -59,8 +65,8 @@ export default async function TeacherFeedbackListPage() {
                   <header className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/60 px-3 py-2">
                     <span className="text-sm font-semibold text-slate-800">{g.course}</span>
                     <span className="text-xs text-slate-500">
-                      {g.count} rating{g.count === 1 ? "" : "s"}
-                      {g.avg != null && <> · avg <b className="text-amber-700">{g.avg}</b>/10</>}
+                      {ko ? `평가 ${g.count}건` : `${g.count} rating${g.count === 1 ? "" : "s"}`}
+                      {g.avg != null && <> · {ko ? "평균" : "avg"} <b className="text-amber-700">{g.avg}</b>/10</>}
                     </span>
                   </header>
                   {g.comments.length > 0 ? (
@@ -72,7 +78,7 @@ export default async function TeacherFeedbackListPage() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="p-3 text-center text-xs text-slate-400">No comments.</p>
+                    <p className="p-3 text-center text-xs text-slate-400">{ko ? "코멘트 없음" : "No comments."}</p>
                   )}
                 </div>
               ))}
@@ -80,9 +86,9 @@ export default async function TeacherFeedbackListPage() {
           )}
         </section>
 
-        <h2 className="mb-2 text-base font-semibold text-slate-800">Survey Results by Course</h2>
+        <h2 className="mb-2 text-base font-semibold text-slate-800">{ko ? "과정별 설문 결과" : "Survey Results by Course"}</h2>
         {courses.length === 0 ? (
-          <div className="card text-center text-sm text-slate-400">No assigned courses yet.</div>
+          <div className="card text-center text-sm text-slate-400">{ko ? "아직 배정된 과정이 없습니다." : "No assigned courses yet."}</div>
         ) : (
           <ul className="space-y-2">
             {courses.map((c) => {
@@ -101,7 +107,7 @@ export default async function TeacherFeedbackListPage() {
                       </div>
                     </div>
                     <span className="shrink-0 text-xs text-slate-500">
-                      {delivered}/{total || 3} delivered · Open ›
+                      {ko ? `${delivered}/${total || 3}회 전달됨 · 열기 ›` : `${delivered}/${total || 3} delivered · Open ›`}
                     </span>
                   </Link>
                 </li>

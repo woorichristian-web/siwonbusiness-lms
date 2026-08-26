@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import TeacherProfileTabs from "@/components/TeacherProfileTabs";
+import { getTeacherLang } from "@/lib/teacherLang";
 import type { Teacher } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ export default async function TeacherProfilePage({
 }) {
   const profile = await requireRole(["teacher", "admin"]);
   const supabase = createClient();
+  const lang = getTeacherLang();
   const tab: "info" | "payroll" = searchParams.tab === "payroll" ? "payroll" : "info";
 
   // Teachers row
@@ -112,13 +114,14 @@ export default async function TeacherProfilePage({
       <AppHeader profile={profile} />
       <main className="mx-auto max-w-3xl px-4 py-6">
         <header className="mb-6">
-          <h1 className="text-xl font-bold text-slate-800">My Page</h1>
+          <h1 className="text-xl font-bold text-slate-800">{lang === "ko" ? "마이페이지" : "My Page"}</h1>
           <p className="text-sm text-slate-500">
-            Manage your personal info and view your payroll details.
+            {lang === "ko" ? "기본 정보를 관리하고 정산 내역을 확인하세요." : "Manage your personal info and view your payroll details."}
           </p>
         </header>
 
         <TeacherProfileTabs
+          lang={lang}
           profile={profile}
           teacher={(teacher as Teacher) ?? null}
           tab={tab}

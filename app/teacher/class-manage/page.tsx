@@ -4,12 +4,14 @@ import AppHeader from "@/components/AppHeader";
 import ClassManageView, { type ClassRow } from "@/components/ClassManageView";
 import CurriculumManager, { type CurriculumItem } from "@/components/CurriculumManager";
 import { getTestCourseIds } from "@/lib/testCourses";
+import { getTeacherLang } from "@/lib/teacherLang";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeacherClassManagePage() {
   const profile = await requireRole(["teacher", "admin"]);
   const supabase = createClient();
+  const lang = getTeacherLang();
 
   // Teacher's slots — 테스트 과정 소속 슬롯은 숨김
   const [{ data: slotsAll }, testIds] = await Promise.all([
@@ -134,12 +136,14 @@ export default async function TeacherClassManagePage() {
       <AppHeader profile={profile} />
       <main className="mx-auto max-w-5xl px-4 py-6">
         <header className="mb-6">
-          <h1 className="text-xl font-bold text-slate-800">Management</h1>
+          <h1 className="text-xl font-bold text-slate-800">{lang === "ko" ? "수업 관리" : "Management"}</h1>
           <p className="text-sm text-slate-500">
-            Handle pending evaluations first, then mark attendance and feedback for each course.
+            {lang === "ko"
+              ? "미평가 수업을 먼저 처리하고, 과정별로 출석과 피드백을 입력하세요."
+              : "Handle pending evaluations first, then mark attendance and feedback for each course."}
           </p>
         </header>
-        <ClassManageView rows={classRows} />
+        <ClassManageView rows={classRows} lang={lang} />
 
         {myCourses.length > 0 && (
           <div className="mt-8 space-y-4">

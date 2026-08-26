@@ -9,8 +9,12 @@ import NavLink from "@/components/NavLink";
 import NavMyPageDropdown from "@/components/NavMyPageDropdown";
 import SurveyPopup, { type PendingSurvey } from "@/components/SurveyPopup";
 import { openRounds } from "@/lib/survey";
+import { getTeacherLang } from "@/lib/teacherLang";
+import LanguageToggle from "@/components/LanguageToggle";
 
 export default async function AppHeader({ profile }: { profile: Profile }) {
+  // 강사 화면 언어 (English / 한국어) — 헤더 토글로 전환
+  const lang = profile.role === "teacher" ? getTeacherLang() : "en";
   // 안 읽은 메시지 (개수 + 최근 5건은 팝업에 사용)
   const supabase = createClient();
   const { data: unreadMessages, count: unreadCount } = await supabase
@@ -88,14 +92,23 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
           { href: "/student/profile", label: "마이페이지" },
         ]
       : profile.role === "teacher"
-        ? [
-            { href: "/teacher/schedule", label: "My Classes" },
-            { href: "/teacher/class-manage", label: "Management" },
-            { href: "/teacher/feedback", label: "Teaching Feedback" },
-            { href: "/teacher/messages", label: "Messages", badge: unread },
-            { href: "/chat", label: "Class Chat" },
-            { href: "/teacher/profile", label: "My Page" },
-          ]
+        ? (lang === "ko"
+            ? [
+                { href: "/teacher/schedule", label: "내 수업" },
+                { href: "/teacher/class-manage", label: "수업 관리" },
+                { href: "/teacher/feedback", label: "티칭 피드백" },
+                { href: "/teacher/messages", label: "메시지", badge: unread },
+                { href: "/chat", label: "수업 대화방" },
+                { href: "/teacher/profile", label: "마이페이지" },
+              ]
+            : [
+                { href: "/teacher/schedule", label: "My Classes" },
+                { href: "/teacher/class-manage", label: "Management" },
+                { href: "/teacher/feedback", label: "Teaching Feedback" },
+                { href: "/teacher/messages", label: "Messages", badge: unread },
+                { href: "/chat", label: "Class Chat" },
+                { href: "/teacher/profile", label: "My Page" },
+              ])
         : [
             { href: "/admin", label: "관리자 홈" },
             { href: "/admin/courses", label: "과정 관리" },
@@ -110,7 +123,8 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
           ];
 
   const brandSubtitle = profile.role === "teacher" ? "Teacher Portal" : "LMS";
-  const signOutLabel = profile.role === "teacher" ? "Sign out" : "로그아웃";
+  const signOutLabel =
+    profile.role === "teacher" ? (lang === "ko" ? "로그아웃" : "Sign out") : "로그아웃";
 
   // 관리자: 마이페이지·DB 관리·회원 관리는 데스크탑 드롭다운과 동일하게
   // 모바일 드로어에서도 '마이페이지' 하위 섹션으로 분리
@@ -168,7 +182,8 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
           </nav>
         </div>
 
-        {/* 우측: 사용자 + 로그아웃 — 데스크탑 전용 (모바일은 햄버거 안에 포함) */}
+        {/* 우측: (강사) 언어 토글 + 사용자 + 로그아웃 */}
+        {profile.role === "teacher" && <LanguageToggle lang={lang} />}
         <div className="hidden items-center gap-3 sm:flex">
           <div className="text-right text-sm">
             <div className="font-medium text-white">{profile.name}</div>

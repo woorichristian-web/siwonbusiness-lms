@@ -6,12 +6,14 @@ import type { TimeSlot } from "@/lib/types";
 import type { BookingEvent, ClassSlotEvent } from "@/components/ClassSchedulesView";
 import type { TeacherCourse, CoursePattern } from "@/components/TeacherCoursesView";
 import { getTestCourseIds } from "@/lib/testCourses";
+import { getTeacherLang } from "@/lib/teacherLang";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeacherSchedulePage() {
   const profile = await requireRole(["teacher", "admin"]);
   const supabase = createClient();
+  const lang = getTeacherLang();
 
   // 0) Teacher's meeting room URLs (Zoom/Teams)
   const { data: teacherRow } = await supabase
@@ -259,10 +261,14 @@ export default async function TeacherSchedulePage() {
       <AppHeader profile={profile} />
       <main className="mx-auto max-w-5xl px-4 py-6">
         <header className="mb-6">
-          <h1 className="text-xl font-bold text-slate-800">My Classes</h1>
+          <h1 className="text-xl font-bold text-slate-800">{lang === "ko" ? "내 수업" : "My Classes"}</h1>
           <p className="text-sm text-slate-500">
-            <b>Class Schedules</b> for upcoming sessions ·{" "}
-            <b>Course Information</b> for your assigned courses.
+            {lang === "ko" ? (
+              <><b>수업 일정</b>에서 예정 수업을, <b>과정 정보</b>에서 배정된 과정을 확인하세요.</>
+            ) : (
+              <><b>Class Schedules</b> for upcoming sessions ·{" "}
+              <b>Course Information</b> for your assigned courses.</>
+            )}
           </p>
         </header>
         <TeacherScheduleTabs
@@ -272,6 +278,7 @@ export default async function TeacherSchedulePage() {
           classSlots={classSlots}
           courses={courses}
           availabilityLocked={myCourseIds.length > 0}
+          lang={lang}
         />
       </main>
     </>
