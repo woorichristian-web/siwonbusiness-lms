@@ -1,17 +1,29 @@
 import Link from "next/link";
 import type { Profile } from "@/lib/types";
 
+/** 과정 관리(courses 테이블)에서 넘어오는 최신 과정 요약 */
+export type ManagedCourseSummary = {
+  name: string;
+  start_date: string | null;
+  end_date: string | null;
+  total_sessions: number | null;
+  studentCount: number;
+};
+
 /**
  * Lists contracted courses for a company, grouped by year (most recent first).
- * A "course" = unique combination of (company_name, course_name) among students.
+ * 과정 관리에 등록된 과정(managedCourses)이 우선 — 항상 최신 정보로 표시.
+ * 과정 관리에 없는 옛 강좌만 회원별 legacy 계약 필드에서 파생한다.
  */
 export default function CompanyCoursesList({
   companyName,
   members,
+  managedCourses = [],
 }: {
   companyName: string;
   members: Profile[];
   teachers: Profile[];
+  managedCourses?: ManagedCourseSummary[];
 }) {
   // Group students by course_name
   const byCourse = new Map<string, Profile[]>();
@@ -31,22 +43,37 @@ export default function CompanyCoursesList({
     endDate: string | null;
   };
 
-  const courses: CourseInfo[] = Array.from(byCourse.entries()).map(([name, list]) => {
-    // Derive year from earliest course_start_date in the group
-    const starts = list.map((s) => s.course_start_date).filter(Boolean) as string[];
-    const ends = list.map((s) => s.course_end_date).filter(Boolean) as string[];
-    const totals = list.map((s) => s.course_total_sessions).filter((v): v is number => typeof v === "number");
-    const minStart = starts.length > 0 ? starts.sort()[0] : null;
-    const maxEnd = ends.length > 0 ? ends.sort().slice(-1)[0] : null;
-    return {
-      name,
-      year: minStart ? minStart.slice(0, 4) : "—",
-      studentCount: list.length,
-      totalSessions: totals.length > 0 ? Math.max(...totals) : null,
-      startDate: minStart,
-      endDate: maxEnd,
-    };
-  });
+  // 1) 과정 관리에 등록된 과정 — courses 테이블의 최신 값 그대로
+  const managedNames = new Set(managedCourses.map((c) => c.name));
+  const fromManaged: CourseInfo[] = managedCourses.map((c) => ({
+    name: c.name,
+    year: c.start_date ? c.start_date.slice(0, 4) : "—",
+    studentCount: c.studentCount,
+    totalSessions: c.total_sessions,
+    startDate: c.start_date,
+    endDate: c.end_date,
+  }));
+
+  // 2) 과정 관리에 없는 옛 강좌 — 회원 legacy 계약 필드에서 파생
+  const fromLegacy: CourseInfo[] = Array.from(byCourse.entries())
+    .filter(([name]) => !managedNames.has(name))
+    .map(([name, list]) => {
+      const starts = list.map((s) => s.course_start_date).filter(Boolean) as string[];
+      const ends = list.map((s) => s.course_end_date).filter(Boolean) as string[];
+      const totals = list.map((s) => s.course_total_sessions).filter((v): v is number => typeof v === "number");
+      const minStart = starts.length > 0 ? starts.sort()[0] : null;
+      const maxEnd = ends.length > 0 ? ends.sort().slice(-1)[0] : null;
+      return {
+        name,
+        year: minStart ? minStart.slice(0, 4) : "—",
+        studentCount: list.length,
+        totalSessions: totals.length > 0 ? Math.max(...totals) : null,
+        startDate: minStart,
+        endDate: maxEnd,
+      };
+    });
+
+  const courses: CourseInfo[] = [...fromManaged, ...fromLegacy];
 
   // Group by year, sort years descending (most recent first)
   const yearGroups = new Map<string, CourseInfo[]>();

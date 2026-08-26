@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import CompanyAdminClient from "@/components/CompanyAdminClient";
 import CompanyCoursesList from "@/components/CompanyCoursesList";
+import CompanyDeleteButton from "@/components/CompanyDeleteButton";
 import CompanyDetailTabs from "@/components/CompanyDetailTabs";
 import CompanyPerformanceView from "@/components/CompanyPerformanceView";
 import { getCompanyPerformance, type CompanyPerformanceData } from "@/lib/company-performance";
@@ -179,6 +180,13 @@ export default async function CompanyDetailPage({
                 companyName={selectedCompany}
                 members={members}
                 teachers={teachers}
+                managedCourses={(companyCourses ?? []).map((c: any) => ({
+                  name: c.name,
+                  start_date: c.start_date ?? null,
+                  end_date: c.end_date ?? null,
+                  total_sessions: c.total_sessions ?? null,
+                  studentCount: ccStudents.get(c.id) ?? 0,
+                }))}
               />
             </div>
             <CompanyAdminClient
@@ -189,6 +197,11 @@ export default async function CompanyDetailPage({
               settings={settings}
               holidays={holidays}
               bookingsByMember={bookingsByMember}
+            />
+            <CompanyDeleteButton
+              companyName={selectedCompany}
+              memberCount={members.length}
+              courseCount={(companyCourses ?? []).length}
             />
           </>
         )}

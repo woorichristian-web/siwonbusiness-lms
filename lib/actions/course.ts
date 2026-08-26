@@ -2,7 +2,37 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { syncCourseChatRooms } from "@/lib/chatSync";
+
+/**
+ * 오픈된 과정 정보를 등록 교육생 profiles의 계약 필드(course_name·기간·총 차시)에 반영.
+ * 수강현황·기업관리(계약 강좌)·리포트가 이 필드를 읽으므로 과정 저장/오픈 시 함께 갱신한다.
+ * 테스트 과정은 실제 계약 정보를 덮어쓰지 않도록 건너뛴다.
+ */
+async function syncStudentContractFields(courseId: string) {
+  try {
+    const admin = createAdminClient();
+    const { data: c } = await admin
+      .from("courses")
+      .select("name, start_date, end_date, total_sessions, is_test")
+      .eq("id", courseId)
+      .maybeSingle();
+    if (!c || (c as any).is_test) return;
+    const { data: cs } = await admin
+      .from("course_students").select("student_id").eq("course_id", courseId);
+    const ids = Array.from(new Set((cs ?? []).map((r: any) => r.student_id)));
+    if (ids.length === 0) return;
+    await admin.from("profiles").update({
+      course_name: c.name,
+      course_start_date: c.start_date,
+      course_end_date: c.end_date,
+      course_total_sessions: c.total_sessions,
+    }).in("id", ids);
+  } catch {
+    // 동기화 실패가 본 작업(과정 저장/오픈)을 막지 않도록 조용히 무시
+  }
+}
 
 async function assertAdmin() {
   const supabase = createClient();
@@ -200,7 +230,9 @@ export async function openCourse(courseId: string) {
     .eq("id", courseId);
 
   await syncCourseChatRooms(courseId);
+  await syncStudentContractFields(courseId);
   revalidatePath("/admin/courses");
+  revalidatePath("/admin/companies");
   return { ok: true as const };
 }
 
@@ -215,7 +247,9 @@ export async function updateCourse(courseId: string, input: CourseInput) {
     .eq("id", courseId);
   if (error) return { ok: false as const, error: error.message };
   await syncCourseChatRooms(courseId);
+  await syncStudentContractFields(courseId);
   revalidatePath("/admin/courses");
+  revalidatePath("/admin/companies");
   revalidatePath(`/admin/courses/${courseId}`);
   return { ok: true as const };
 }
