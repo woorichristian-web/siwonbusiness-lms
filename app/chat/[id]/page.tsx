@@ -18,7 +18,7 @@ export default async function ChatRoomPage({
   // RLS: 참여자가 아니면 conv 이 null 로 온다
   const { data: conv } = await supabase
     .from("conversations")
-    .select("id, title, course_name")
+    .select("id, title, course_name, course_id")
     .eq("id", params.id)
     .maybeSingle();
 
@@ -38,7 +38,7 @@ export default async function ChatRoomPage({
     );
   }
 
-  const [{ data: parts }, { data: msgs }] = await Promise.all([
+  const [{ data: parts }, { data: msgsAll }] = await Promise.all([
     supabase
       .from("conversation_participants")
       .select("profile_id")
@@ -50,6 +50,23 @@ export default async function ChatRoomPage({
       .order("created_at", { ascending: true }),
   ]);
   const partIds = (parts ?? []).map((p) => p.profile_id);
+
+  // 테스트 기간 대화 숨김 — 과정이 [과정 오픈]된 경우, 강사·교육생에게는
+  // 오픈 시각 이후의 메시지만 보여준다 (테스트 중 주고받은 기록 비노출).
+  // 센터(관리자)는 전체 열람 가능. opened_at 컬럼 미적용(0034 전)이면 필터 없음.
+  let msgs = msgsAll ?? [];
+  if (profile.role !== "admin" && (conv as any).course_id) {
+    const { data: courseRow } = await supabase
+      .from("courses")
+      .select("opened_at")
+      .eq("id", (conv as any).course_id)
+      .maybeSingle();
+    const openedAt = (courseRow as any)?.opened_at as string | null | undefined;
+    if (openedAt) {
+      const t = new Date(openedAt).getTime();
+      msgs = msgs.filter((m: any) => new Date(m.created_at).getTime() >= t);
+    }
+  }
 
   // 발신자에는 참여자가 아닌 센터(관리자)도 있을 수 있고, profiles RLS 는
   // 역할에 따라 일부 행을 숨기므로(예: 교육생↔같은 반 교육생) 이름이

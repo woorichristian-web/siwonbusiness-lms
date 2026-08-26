@@ -6,6 +6,8 @@ import {
   createCourse,
   updateCourse,
   deleteCourse,
+  duplicateCourse,
+  openCourse,
   assignCourseTeachers,
   removeCourseTeacher,
   getCourseNameReport,
@@ -123,7 +125,10 @@ export default function CoursesAdminClient({
                     <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
                       총 교육생 {totalStudents}명
                     </span>
-                    <span className="ml-auto"><CourseNameDownload name={name} /></span>
+                    <span className="ml-auto inline-flex items-center gap-2">
+                      <SurveyResultsButton courses={list} />
+                      <CourseNameDownload name={name} />
+                    </span>
                   </h3>
                 </header>
                 <div className="divide-y divide-slate-100">
@@ -236,7 +241,8 @@ function CreateForm({
     total_sessions: initial?.total_sessions != null ? String(initial.total_sessions) : "",
   });
   const [weekdays, setWeekdays] = useState<string[]>(initial?.weekdays ?? []);
-  const [isTest, setIsTest] = useState<boolean>(!!initial?.is_test);
+  // 새 과정은 기본 테스트(센터 전용)로 생성 — [과정 오픈]을 눌러야 공개된다
+  const [isTest, setIsTest] = useState<boolean>(initial ? !!initial.is_test : true);
   const [customBook, setCustomBook] = useState(
     !!(initial?.textbook && !TEXTBOOKS.includes(initial.textbook)),
   );
@@ -461,6 +467,8 @@ function CourseCard({
   studentCount: number;
   onEdit: () => void;
 }) {
+  const router = useRouter();
+  const [actionPending, startAction] = useTransition();
   const period =
     course.start_date || course.end_date
       ? `${course.start_date ?? "?"} ~ ${course.end_date ?? "?"}`
@@ -496,11 +504,40 @@ function CourseCard({
             {course.class_time && <span>{course.class_time}{course.duration_min ? ` · ${course.duration_min}분` : ""}</span>}
           </div>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <SurveyResultsButton course={course} />
+        <div className="flex shrink-0 flex-wrap gap-2">
           <button className="btn-ghost !border !border-slate-300 text-sm" onClick={onEdit}>
             수정
           </button>
+          <button
+            className="btn-ghost !border !border-slate-300 text-sm"
+            disabled={actionPending}
+            onClick={() => {
+              if (!confirm(`"${course.name}" 과정을 복사할까요?\n교육생·강사·커리큘럼이 그대로 복제되고, 테스트 과정으로 만들어집니다.`)) return;
+              startAction(async () => {
+                const r = await duplicateCourse(course.id);
+                if (!r.ok) { alert(r.error); return; }
+                router.refresh();
+              });
+            }}
+          >
+            {actionPending ? "..." : "과정 복사"}
+          </button>
+          {course.is_test && (
+            <button
+              className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+              disabled={actionPending}
+              onClick={() => {
+                if (!confirm(`"${course.name}" 과정을 오픈할까요?\n오픈하면 배정된 강사·교육생에게 공개되고 실제 사용이 시작됩니다.`)) return;
+                startAction(async () => {
+                  const r = await openCourse(course.id);
+                  if (!r.ok) { alert(r.error); return; }
+                  router.refresh();
+                });
+              }}
+            >
+              과정 오픈
+            </button>
+          )}
         </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -524,30 +561,33 @@ function CourseCard({
 // ---------------------------------------------------------------------
 type SurveyRoundData = SurveyXlsxData["rounds"][number];
 
-function SurveyResultsButton({ course }: { course: CourseRow }) {
+function SurveyResultsButton({ courses }: { courses: CourseRow[] }) {
   const [pending, startTransition] = useTransition();
-  const [data, setData] = useState<SurveyXlsxData | null>(null);
+  const [dataList, setDataList] = useState<SurveyXlsxData[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   function open() {
     setErr(null);
     startTransition(async () => {
-      const r = await getCourseSurveyAdmin(course.id);
-      if (!r.ok) { setErr(r.error); return; }
-      setData({
-        courseName: r.courseName, courseCode: r.courseCode, companyName: r.companyName,
-        author: r.author, generatedAt: r.generatedAt, rounds: r.rounds,
-      });
+      const results = await Promise.all(courses.map((c) => getCourseSurveyAdmin(c.id)));
+      const bad = results.find((r) => !r.ok);
+      if (bad && !bad.ok) { setErr(bad.error); return; }
+      setDataList(
+        results.filter((r): r is Extract<typeof r, { ok: true }> => r.ok).map((r) => ({
+          courseName: r.courseName, courseCode: r.courseCode, companyName: r.companyName,
+          author: r.author, generatedAt: r.generatedAt, rounds: r.rounds,
+        })),
+      );
     });
   }
 
   return (
     <>
-      <button className="btn-ghost !border !border-slate-300 text-sm" disabled={pending} onClick={open}>
+      <button type="button" className="btn-ghost !border !border-slate-300 text-sm font-semibold" disabled={pending} onClick={open}>
         {pending ? "불러오는 중..." : "설문 결과"}
       </button>
-      {err && <span className="self-center text-xs text-red-600">{err}</span>}
-      {data && <SurveyResultsModal data={data} onClose={() => setData(null)} />}
+      {err && <span className="self-center text-xs font-normal text-red-600">{err}</span>}
+      {dataList && <SurveyResultsModal dataList={dataList} onClose={() => setDataList(null)} />}
     </>
   );
 }
@@ -557,11 +597,13 @@ function fmtD(iso: string) {
 }
 
 function SurveyResultsModal({
-  data, onClose,
+  dataList, onClose,
 }: {
-  data: SurveyXlsxData;
+  dataList: SurveyXlsxData[];
   onClose: () => void;
 }) {
+  const [idx, setIdx] = useState(0);
+  const data = dataList[Math.min(idx, dataList.length - 1)];
   const now = Date.now();
   // 라운드 안에서 강사별 그룹 (여러 강사가 가르치는 과정 대비)
   function groupByTeacher(responses: SurveyRoundData["responses"]) {
@@ -584,6 +626,17 @@ function SurveyResultsModal({
           <p className="mt-0.5 text-xs text-slate-500">
             센터 전용 화면입니다. 강사에게는 익명 취합본만 전달되지만, 여기서는 응답자 실명과 개별 점수·코멘트를 모두 확인할 수 있습니다.
           </p>
+          {dataList.length > 1 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {dataList.map((d, i) => (
+                <button key={i} type="button" onClick={() => setIdx(i)}
+                  className={"rounded-full px-2.5 py-1 text-xs font-medium transition " +
+                    (i === idx ? "bg-brand-600 text-white" : "border border-slate-300 text-slate-600 hover:bg-slate-50")}>
+                  {d.companyName ?? d.courseName}
+                </button>
+              ))}
+            </div>
+          )}
         </header>
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
           {data.rounds.length === 0 && (

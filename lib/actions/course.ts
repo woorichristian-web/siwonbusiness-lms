@@ -60,6 +60,37 @@ function clean(input: CourseInput) {
   };
 }
 
+// 코드 자동 생성: 기업약자(2)-언어약자(2)-과정명약자-YY+생성순번(01~)
+// (예: Afinit / English / Business Expressions & Conversations → AF-EN-BEC-2601)
+async function genCourseCode(
+  supabase: any,
+  p: { name: string; company_name: string | null; language: string | null },
+): Promise<string> {
+  const abbr = (s: string | null, fb: string) =>
+    (s ?? "").trim().replace(/[^A-Za-z가-힣]/g, "").slice(0, 2).toUpperCase() || fb;
+  const comp = abbr(p.company_name, "XX");
+  const lang = abbr(p.language, "EN");
+  const yy = String(new Date(Date.now() + 9 * 3600 * 1000).getUTCFullYear()).slice(2);
+  // 과정명 약자: 3자 이상 단어의 첫 글자 최대 3개
+  const nameAbbr = (p.name.match(/[A-Za-z가-힣]+/g) ?? [])
+    .filter((w: string) => w.length >= 3)
+    .slice(0, 3)
+    .map((w: string) => w[0].toUpperCase())
+    .join("");
+  const prefix = `${comp}-${lang}${nameAbbr ? "-" + nameAbbr : ""}-${yy}`;
+  const { data: existing } = await supabase
+    .from("courses")
+    .select("code")
+    .like("code", `${comp}-${lang}-%`);
+  let maxSeq = 0;
+  const seqRe = new RegExp("-" + yy + "(\\d{2})$");
+  for (const r of existing ?? []) {
+    const m = String(r.code ?? "").match(seqRe);
+    if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+  }
+  return `${prefix}${String(maxSeq + 1).padStart(2, "0")}`;
+}
+
 export async function createCourse(input: CourseInput) {
   let supabase;
   try { supabase = await assertAdmin(); }
@@ -67,33 +98,9 @@ export async function createCourse(input: CourseInput) {
   if (!input.name?.trim()) return { ok: false as const, error: "강좌명은 필수입니다." };
 
   const payload = clean(input);
-  // 코드 자동 생성: 기업약자(2)-언어약자(2)-과정명약자-YY+생성순번(01~)
-  // (예: Afinit / English / Business Expressions & Conversations → AF-EN-BEC-2601)
-  if (!payload.code) {
-    const abbr = (s: string | null, fb: string) =>
-      (s ?? "").trim().replace(/[^A-Za-z가-힣]/g, "").slice(0, 2).toUpperCase() || fb;
-    const comp = abbr(payload.company_name, "XX");
-    const lang = abbr(payload.language, "EN");
-    const yy = String(new Date(Date.now() + 9 * 3600 * 1000).getUTCFullYear()).slice(2);
-    // 과정명 약자: 3자 이상 단어의 첫 글자 최대 3개
-    const nameAbbr = (payload.name.match(/[A-Za-z가-힣]+/g) ?? [])
-      .filter((w: string) => w.length >= 3)
-      .slice(0, 3)
-      .map((w: string) => w[0].toUpperCase())
-      .join("");
-    const prefix = `${comp}-${lang}${nameAbbr ? "-" + nameAbbr : ""}-${yy}`;
-    const { data: existing } = await supabase
-      .from("courses")
-      .select("code")
-      .like("code", `${comp}-${lang}-%`);
-    let maxSeq = 0;
-    const seqRe = new RegExp("-" + yy + "(\\d{2})$");
-    for (const r of existing ?? []) {
-      const m = String(r.code ?? "").match(seqRe);
-      if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
-    }
-    payload.code = `${prefix}${String(maxSeq + 1).padStart(2, "0")}`;
-  }
+  // 새로 생성되는 과정은 기본 테스트(센터 전용) — [과정 오픈]을 눌러야 공개된다.
+  if (input.is_test === undefined) payload.is_test = true;
+  if (!payload.code) payload.code = await genCourseCode(supabase, payload);
 
   const { data, error } = await supabase
     .from("courses")
@@ -104,6 +111,94 @@ export async function createCourse(input: CourseInput) {
   await syncCourseChatRooms(data.id as string);
   revalidatePath("/admin/courses");
   return { ok: true as const, courseId: data.id as string };
+}
+
+/**
+ * 과정 복사 — 과정 정보·배정 강사·교육생(수강 등록)·커리큘럼을 그대로 복제.
+ * 제목에 " (복사)"가 붙고, 항상 테스트 과정(센터 전용)으로 만들어진다.
+ * (수업 시간표·예약은 실제 일정 중복을 막기 위해 복사하지 않음)
+ */
+export async function duplicateCourse(courseId: string) {
+  let supabase;
+  try { supabase = await assertAdmin(); }
+  catch (e: any) { return { ok: false as const, error: e.message }; }
+
+  const { data: src, error: srcErr } = await supabase
+    .from("courses").select("*").eq("id", courseId).maybeSingle();
+  if (srcErr || !src) return { ok: false as const, error: "과정을 찾을 수 없습니다." };
+
+  const copy: any = { ...src };
+  delete copy.id;
+  delete copy.created_at;
+  delete copy.updated_at;
+  copy.name = `${src.name} (복사)`;
+  copy.is_test = true; // 복사본은 항상 테스트로 시작
+  copy.code = await genCourseCode(supabase, copy);
+
+  const { data: created, error: insErr } = await supabase
+    .from("courses").insert(copy).select("id").single();
+  if (insErr) return { ok: false as const, error: insErr.message };
+  const newId = created.id as string;
+
+  // 배정 강사 복사 (활성 배정만)
+  const { data: cts } = await supabase
+    .from("course_teachers").select("teacher_id")
+    .eq("course_id", courseId).is("assigned_until", null);
+  if ((cts ?? []).length > 0) {
+    await supabase.from("course_teachers").insert(
+      (cts ?? []).map((r: any) => ({ course_id: newId, teacher_id: r.teacher_id })),
+    );
+  }
+
+  // 수강 교육생 복사
+  const { data: css } = await supabase
+    .from("course_students").select("student_id").eq("course_id", courseId);
+  if ((css ?? []).length > 0) {
+    await supabase.from("course_students").insert(
+      (css ?? []).map((r: any) => ({ course_id: newId, student_id: r.student_id })),
+    );
+  }
+
+  // 커리큘럼 복사
+  const { data: cur } = await supabase
+    .from("course_curriculum")
+    .select("session_no, session_date, topic, details, materials, sort_order")
+    .eq("course_id", courseId);
+  if ((cur ?? []).length > 0) {
+    await supabase.from("course_curriculum").insert(
+      (cur ?? []).map((r: any) => ({ ...r, course_id: newId })),
+    );
+  }
+
+  revalidatePath("/admin/courses");
+  return { ok: true as const, courseId: newId };
+}
+
+/**
+ * 과정 오픈 — 테스트(센터 전용) 상태를 해제해 강사·교육생에게 공개하고
+ * 반별 대화방을 생성/동기화한다.
+ */
+export async function openCourse(courseId: string) {
+  let supabase;
+  try { supabase = await assertAdmin(); }
+  catch (e: any) { return { ok: false as const, error: e.message }; }
+
+  const { error } = await supabase
+    .from("courses")
+    .update({ is_test: false, updated_at: new Date().toISOString() })
+    .eq("id", courseId);
+  if (error) return { ok: false as const, error: error.message };
+
+  // 오픈 시각 기록 — 강사·교육생은 대화방에서 이 시각 이후 메시지만 보게 됨.
+  // (0034 미적용 시 컬럼이 없어 실패하지만 오픈 자체는 유효하므로 무시)
+  await supabase
+    .from("courses")
+    .update({ opened_at: new Date().toISOString() })
+    .eq("id", courseId);
+
+  await syncCourseChatRooms(courseId);
+  revalidatePath("/admin/courses");
+  return { ok: true as const };
 }
 
 export async function updateCourse(courseId: string, input: CourseInput) {
