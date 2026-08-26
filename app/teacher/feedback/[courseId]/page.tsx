@@ -75,7 +75,7 @@ export default async function TeacherFeedbackCoursePage({
           <section key={it.round} className="card">
             <header className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-slate-800">
-                {it.label === "10%" ? "Survey 1 — Early (10%)" : it.label === "50%" ? "Survey 2 — Midpoint (50%)" : "Survey 3 — Final"}
+                {it.label === "4주차" || it.label === "10%" ? "Survey 1 — Early (Week 4)" : it.label === "50%" ? "Survey 2 — Midpoint (50%)" : "Survey 3 — Final"}
               </h2>
               {it.closed && it.agg ? (
                 <span className="text-xs text-slate-400">Delivered {fmt(it.close)}</span>

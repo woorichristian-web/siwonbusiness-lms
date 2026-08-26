@@ -522,7 +522,7 @@ export async function getCourseNameReport(courseName: string):
   const list = courseRows ?? [];
   if (list.length === 0) return { ok: false, error: "과정을 찾을 수 없습니다." };
 
-  const ROUND_LABEL: Record<number, string> = { 1: "10%", 2: "50%", 3: "최종" };
+  const ROUND_LABEL: Record<number, string> = { 1: "4주차", 2: "50%", 3: "최종" };
   const progressMap = await getCourseProgressMap(supabase, list.map((c: any) => c.id));
   const companies: CNCompany[] = [];
 

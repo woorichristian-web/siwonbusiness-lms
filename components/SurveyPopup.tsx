@@ -12,7 +12,7 @@ export interface PendingSurvey {
   closeDate: string;  // ISO
 }
 
-const ROUND_KO: Record<string, string> = { "10%": "초기(10% 시점)", "50%": "중간(50% 시점)", Final: "최종(종료일)" };
+const ROUND_KO: Record<string, string> = { "4주차": "초기(4주차)", "10%": "초기(10% 시점)", "50%": "중간(50% 시점)", Final: "최종(마지막 수업일)" };
 
 /**
  * 만족도 설문 팝업 — 응답 기간(배포 후 7일) 동안 로그인/페이지 방문 시 자동 표시.

@@ -1,5 +1,5 @@
-// 만족도 설문 라운드 계산 — 과정 기간의 10% / 50% 경과 시점 + 종료 당일.
-// 각 라운드는 배포일부터 7일간 응답 가능.
+// 만족도 설문 라운드 계산 — 4주차(시작+28일) / 기간 50% 경과 / 마지막 수업일.
+// 각 라운드는 배포일부터 7일간 응답 가능. 강사 평가도 동일한 라운드를 쓴다.
 
 export interface SurveyRound {
   round: 1 | 2 | 3;
@@ -26,31 +26,15 @@ export function surveyRounds(startDate: string | null, endDate: string | null): 
     return { round, label, open, close: new Date(open.getTime() + 7 * 86400000) };
   };
   return [
-    mk(1, "10%", start.getTime() + dur * 0.1),
+    mk(1, "4주차", start.getTime() + 28 * 86400000),
     mk(2, "50%", start.getTime() + dur * 0.5),
     mk(3, "Final", end.getTime()),
   ];
 }
 
-/**
- * 강사 평가 라운드 — 4주차(시작+28일) / 기간 50% 경과 / 마지막 수업일.
- * 만족도 설문과 동일하게 각 라운드는 열린 날부터 7일간 응답 가능.
- */
+/** 강사 평가 라운드 — 만족도 설문과 동일한 3개 시점(4주차 / 50% / 마지막 수업일)을 그대로 쓴다. */
 export function teacherEvalRounds(startDate: string | null, endDate: string | null): SurveyRound[] {
-  if (!startDate || !endDate) return [];
-  const start = atMidnight(new Date(startDate + "T00:00:00"));
-  const end = atMidnight(new Date(endDate + "T00:00:00"));
-  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) return [];
-  const dur = end.getTime() - start.getTime();
-  const mk = (round: 1 | 2 | 3, label: string, openMs: number): SurveyRound => {
-    const open = atMidnight(new Date(openMs));
-    return { round, label, open, close: new Date(open.getTime() + 7 * 86400000) };
-  };
-  return [
-    mk(1, "4주차", start.getTime() + 28 * 86400000),
-    mk(2, "50%", start.getTime() + dur * 0.5),
-    mk(3, "Final", end.getTime()),
-  ];
+  return surveyRounds(startDate, endDate);
 }
 
 /** 지금 응답 가능한(배포됨 + 7일 이내) 라운드들 */
