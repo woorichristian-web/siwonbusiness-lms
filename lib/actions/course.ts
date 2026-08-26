@@ -19,16 +19,22 @@ async function syncStudentContractFields(courseId: string) {
       .eq("id", courseId)
       .maybeSingle();
     if (!c || (c as any).is_test) return;
-    const { data: cs } = await admin
-      .from("course_students").select("student_id").eq("course_id", courseId);
+    const [{ data: cs }, { data: cts }] = await Promise.all([
+      admin.from("course_students").select("student_id").eq("course_id", courseId),
+      admin.from("course_teachers").select("teacher_id").eq("course_id", courseId).is("assigned_until", null),
+    ]);
     const ids = Array.from(new Set((cs ?? []).map((r: any) => r.student_id)));
     if (ids.length === 0) return;
-    await admin.from("profiles").update({
+    const teacherIds = Array.from(new Set((cts ?? []).map((r: any) => r.teacher_id)));
+    const patch: Record<string, unknown> = {
       course_name: c.name,
       course_start_date: c.start_date,
       course_end_date: c.end_date,
       course_total_sessions: c.total_sessions,
-    }).in("id", ids);
+    };
+    // 강사가 1명인 과정이면 담당 강사도 함께 반영 (여러 명이면 반 배정이 달라 건드리지 않음)
+    if (teacherIds.length === 1) patch.assigned_teacher_id = teacherIds[0];
+    await admin.from("profiles").update(patch).in("id", ids);
   } catch {
     // 동기화 실패가 본 작업(과정 저장/오픈)을 막지 않도록 조용히 무시
   }

@@ -41,10 +41,11 @@ export default async function StudentStatusPage() {
   const past = confirmed.filter((b: any) => new Date(b.end_at) <= now);
 
   // 강좌(enrollment) 정보 (profiles 컬럼에서 직접)
+  // 남은 강좌수·진행률은 이미 지난 수업만 차감 — 예약만 되어 있고 아직 안 한 수업은 남은 것으로 센다.
   const totalSessions = profile.course_total_sessions ?? null;
   const remaining = totalSessions == null
     ? null
-    : Math.max(0, totalSessions - confirmed.length);
+    : Math.max(0, totalSessions - past.length);
 
   // 실제 출석 기록 조회 (5가지 상태)
   type AttStatus = "present" | "late" | "absent" | "reschedule" | "other";
@@ -60,20 +61,22 @@ export default async function StudentStatusPage() {
     }
   }
 
-  // 출석률 = 출석(present+late) / (present + late + absent) * 100
-  // reschedule, other 는 분자/분모 모두에서 제외
-  let presentCount = 0, lateCount = 0, absentCount = 0;
+  // 출석률 = 실제 참여한 수업(정시+지각) / 지금까지 한 수업 × 100
+  // 리스케줄·기타(업무 결석)는 진행된 수업으로 치지 않아 분모에서 제외.
+  // 아직 강사가 체크하지 않은 지난 수업은 분모에 포함 — 강사가 체크하면 출석률이 올라간다.
+  let presentCount = 0, lateCount = 0, rescheduleCount = 0, otherCount = 0;
   for (const b of past) {
     const status = attendanceByBooking.get(b.id);
     if (status === "present") presentCount++;
     else if (status === "late") lateCount++;
-    else if (status === "absent") absentCount++;
+    else if (status === "reschedule") rescheduleCount++;
+    else if (status === "other") otherCount++;
   }
   const attendedCount = presentCount + lateCount;
-  const markedTotal = presentCount + lateCount + absentCount;
-  const attendanceRate = markedTotal === 0
+  const heldTotal = past.length - rescheduleCount - otherCount;
+  const attendanceRate = heldTotal <= 0
     ? null
-    : Math.round((attendedCount / markedTotal) * 100);
+    : Math.round((attendedCount / heldTotal) * 100);
 
   // 배정 강사
   let assignedTeacherName: string | null = null;
@@ -122,6 +125,17 @@ export default async function StudentStatusPage() {
         class_type: s.class_type,
       });
     }
+  }
+
+  // 배정 강사 미지정 시 — 확정 예약에서 가장 많이 만나는 강사를 담당 강사로 표시
+  if (!assignedTeacherName && confirmed.length > 0) {
+    const counts = new Map<string, number>();
+    for (const b of confirmed) {
+      const t = slotInfo.get(b.slot_id)?.teacher;
+      if (t) counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    assignedTeacherName =
+      Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
   }
 
   const hasEnrollment = !!profile.course_name;
@@ -223,10 +237,8 @@ export default async function StudentStatusPage() {
                 }
                 value={
                   attendanceRate != null
-                    ? `${attendanceRate}% (출석 ${attendedCount}/${markedTotal})`
-                    : markedTotal === 0 && past.length > 0
-                      ? "강사 체크 대기 중"
-                      : "—"
+                    ? `${attendanceRate}% (참여 ${attendedCount}/${heldTotal})`
+                    : "—"
                 }
                 accent="text-emerald-700"
               />
@@ -252,13 +264,13 @@ export default async function StudentStatusPage() {
             <div className="mb-2 flex items-center justify-between text-sm">
               <span className="font-medium text-slate-700">진행률</span>
               <span className="text-slate-500">
-                {confirmed.length} / {totalSessions} ({Math.round((confirmed.length / totalSessions) * 100)}%)
+                {past.length} / {totalSessions} ({Math.round((past.length / totalSessions) * 100)}%)
               </span>
             </div>
             <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200">
               <div
                 className="h-full bg-emerald-500 transition-all"
-                style={{ width: `${Math.min(100, (confirmed.length / totalSessions) * 100)}%` }}
+                style={{ width: `${Math.min(100, (past.length / totalSessions) * 100)}%` }}
               />
             </div>
           </section>
@@ -361,9 +373,10 @@ function BookingList({
                 {start.toLocaleString("ko-KR", {
                   year: "numeric", month: "2-digit", day: "2-digit",
                   weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
+                  timeZone: "Asia/Seoul",
                 })}
                 {" ~ "}
-                {end.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                {end.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" })}
               </div>
               <div className="text-xs text-slate-500">
                 {info?.teacher ?? "—"} 강사
@@ -399,5 +412,5 @@ function BookingList({
 
 function formatDate(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" });
+  return d.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" });
 }
