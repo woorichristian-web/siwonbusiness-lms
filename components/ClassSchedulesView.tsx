@@ -78,6 +78,8 @@ export default function ClassSchedulesView({
 }) {
   const L = LX(lang);
   const [selected, setSelected] = useState<BookingEvent | null>(null);
+  // 달력에서 그룹 수업(이벤트 1개) 클릭 시 학생 목록 모달 — slot_id|start_at 키
+  const [groupKey, setGroupKey] = useState<string | null>(null);
   const [view, setView] = useState<"day" | "week" | "month">("day");
   // 초기 Day 날짜: 오늘 수업이 있으면 오늘, 없으면 다음 예정 수업 날짜로 자동 점프
   const [dayDate, setDayDate] = useState<Date>(() =>
@@ -135,18 +137,44 @@ export default function ClassSchedulesView({
     }
   }
 
-  const fcEvents: EventInput[] = useMemo(
-    () => [
-      ...events.map((e) => ({
-        id: e.id,
-        title: e.student_name,
-        start: e.start_at,
-        end: e.end_at,
-        backgroundColor: "#1d4ed8",
-        borderColor: "#1d4ed8",
-        textColor: "#ffffff",
-        extendedProps: { kind: "booking", data: e },
-      })),
+  const fcEvents: EventInput[] = useMemo(() => {
+    // 같은 슬롯·같은 시작시각의 그룹 수업 예약은 달력에서도 이벤트 1개로 합친다.
+    const GROUP_TYPES = new Set(["group", "group_coaching", "small_group"]);
+    const bySession = new Map<string, BookingEvent[]>();
+    for (const e of events) {
+      const key = `${e.slot_id}|${e.start_at}`;
+      (bySession.get(key) ?? bySession.set(key, []).get(key)!).push(e);
+    }
+    const bookingEvents: EventInput[] = [];
+    for (const [key, list] of bySession) {
+      const first = list[0];
+      const isGroup = GROUP_TYPES.has(first.class_type) || list.length > 1;
+      if (isGroup) {
+        bookingEvents.push({
+          id: "grp-" + key,
+          title: first.course_name ?? L.ct(first.class_type),
+          start: first.start_at,
+          end: first.end_at,
+          backgroundColor: "#1d4ed8",
+          borderColor: "#1d4ed8",
+          textColor: "#ffffff",
+          extendedProps: { kind: "group", key, count: list.length, data: first },
+        });
+      } else {
+        bookingEvents.push({
+          id: first.id,
+          title: first.student_name,
+          start: first.start_at,
+          end: first.end_at,
+          backgroundColor: "#1d4ed8",
+          borderColor: "#1d4ed8",
+          textColor: "#ffffff",
+          extendedProps: { kind: "booking", data: first },
+        });
+      }
+    }
+    return [
+      ...bookingEvents,
       // Assigned classes with no bookings yet — outlined amber block
       ...classSlots.map((s) => ({
         id: "slot-" + s.id,
@@ -158,15 +186,25 @@ export default function ClassSchedulesView({
         textColor: "#92400e",
         extendedProps: { kind: "slot", data: s },
       })),
-    ],
-    [events, classSlots, lang]
-  );
+    ];
+  }, [events, classSlots, lang]);
+
+  // 그룹 모달의 학생 목록은 항상 최신 events에서 파생 — 출석 저장 후 refresh 시 ✓ 갱신
+  const groupList = useMemo(() => {
+    if (!groupKey) return null;
+    const list = events
+      .filter((e) => `${e.slot_id}|${e.start_at}` === groupKey)
+      .sort((a, b) => a.student_name.localeCompare(b.student_name));
+    return list.length > 0 ? list : null;
+  }, [events, groupKey]);
 
   function onEventClick(arg: EventClickArg) {
     const ext = arg.event.extendedProps as
       | { kind: "booking"; data: BookingEvent }
+      | { kind: "group"; key: string; count: number; data: BookingEvent }
       | { kind: "slot"; data: ClassSlotEvent };
     if (ext.kind === "booking") setSelected(ext.data);
+    else if (ext.kind === "group") setGroupKey(ext.key);
     // slot(예약 없는 배정 수업)은 상세 모달 없음 — 학생이 없으므로 클릭 무시
   }
 
@@ -258,7 +296,22 @@ export default function ClassSchedulesView({
             eventContent={(arg) => {
               const ext = arg.event.extendedProps as
                 | { kind: "booking"; data: BookingEvent }
+                | { kind: "group"; key: string; count: number; data: BookingEvent }
                 | { kind: "slot"; data: ClassSlotEvent };
+              if (ext.kind === "group") {
+                const e = ext.data;
+                return (
+                  <div style={{ padding: "4px 6px", lineHeight: 1.3, height: "100%", display: "flex", flexDirection: "column", gap: 1, overflow: "hidden" }}>
+                    <div style={{ fontSize: "0.72rem", opacity: 0.95, fontWeight: 500 }}>{arg.timeText}</div>
+                    <div style={{ fontSize: "0.82rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {e.course_name ?? L.ct(e.class_type)}
+                    </div>
+                    <div style={{ fontSize: "0.68rem", opacity: 0.9 }}>
+                      {L.ko ? `학생 ${ext.count}명` : `${ext.count} student${ext.count === 1 ? "" : "s"}`} · {e.format === "online" ? L.online : L.offline}
+                    </div>
+                  </div>
+                );
+              }
               if (ext.kind === "slot") {
                 const s = ext.data;
                 return (
@@ -302,9 +355,96 @@ export default function ClassSchedulesView({
         </p>
       )}
 
+      {/* 그룹 수업 학생 목록 모달 — 학생을 누르면 위에 출석체크 모달이 뜬다 */}
+      {groupList && (
+        <GroupSessionModal
+          list={groupList}
+          lang={lang}
+          onSelectStudent={setSelected}
+          onClose={() => setGroupKey(null)}
+        />
+      )}
+
       {selected && (
         <StudentDetailModal event={selected} onClose={() => setSelected(null)} lang={lang} />
       )}
+    </div>
+  );
+}
+
+/** 달력에서 그룹 수업 클릭 시 — 수업 정보 + 학생별 출석 현황 리스트 모달 */
+function GroupSessionModal({
+  list,
+  onSelectStudent,
+  onClose,
+  lang = "en",
+}: {
+  list: BookingEvent[];
+  onSelectStudent: (e: BookingEvent) => void;
+  onClose: () => void;
+  lang?: Lang;
+}) {
+  const L = LX(lang);
+  const first = list[0];
+  const start = new Date(first.start_at);
+  const end = new Date(first.end_at);
+  const marked = list.filter((e) => e.attendance_status).length;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
+      >
+        <h3 className="mb-1 text-lg font-bold text-slate-800">
+          {first.course_name ?? L.ct(first.class_type)}
+        </h3>
+        <p className="mb-3 text-sm text-slate-500">
+          {start.toLocaleString(L.loc, { dateStyle: "full", timeStyle: "short", hour12: false })}
+          {" – "}
+          {end.toLocaleTimeString(L.loc, { hour: "2-digit", minute: "2-digit", hour12: false })}
+        </p>
+
+        <div className="mb-4 flex flex-wrap items-center gap-1.5">
+          <Pill>{L.ct(first.class_type)}</Pill>
+          <Pill>{first.format === "online" ? L.online : L.offline}</Pill>
+          <Pill color="blue">{L.ko ? `학생 ${list.length}명` : `${list.length} student${list.length === 1 ? "" : "s"}`}</Pill>
+          <Pill color={marked === list.length ? "emerald" : "amber"}>
+            {L.ko ? `출석 ${marked}/${list.length}` : `Attendance ${marked}/${list.length}`}
+          </Pill>
+        </div>
+
+        <p className="mb-2 text-[11px] text-slate-400">
+          {L.ko ? "학생을 누르면 출석·피드백을 입력할 수 있습니다:" : "Click a student for attendance & feedback:"}
+        </p>
+        <div className="divide-y divide-slate-100 rounded-md border border-slate-200">
+          {list.map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              onClick={() => onSelectStudent(e)}
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-brand-50"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-slate-800">{e.student_name}</span>
+                {e.student_company && (
+                  <span className="block truncate text-[11px] italic text-slate-400">{e.student_company}</span>
+                )}
+              </span>
+              {e.attendance_status ? (
+                <Pill color="emerald">✓ {L.AL(e.attendance_status)}</Pill>
+              ) : (
+                <Pill>{L.ko ? "미지정" : "Not marked"}</Pill>
+              )}
+              <span className="text-lg text-slate-300">›</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <button className="btn-ghost" onClick={onClose}>{L.ko ? "닫기" : "Close"}</button>
+        </div>
+      </div>
     </div>
   );
 }
