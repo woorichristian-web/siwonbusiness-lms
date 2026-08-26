@@ -522,7 +522,7 @@ function CourseCard({
           >
             {actionPending ? "..." : "과정 복사"}
           </button>
-          {course.is_test && (
+          {course.is_test ? (
             <button
               className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
               disabled={actionPending}
@@ -537,6 +537,13 @@ function CourseCard({
             >
               과정 오픈
             </button>
+          ) : (
+            <span
+              className="inline-flex cursor-default items-center rounded-md bg-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-500"
+              title="이 과정은 오픈되어 강사·교육생에게 공개 중입니다."
+            >
+              과정 오픈 중
+            </span>
           )}
         </div>
       </div>
