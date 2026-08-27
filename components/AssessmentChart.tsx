@@ -24,8 +24,9 @@ export default function AssessmentChart({
   const H = height;
   const padL = 28;
   const padR = 8;
-  const padT = title ? 26 : 10;
-  const padB = 58;
+  // 레전드는 상단(제목 라인 우측)에 배치 — X축 라벨과 겹치지 않게
+  const padT = title ? 26 : 22;
+  const padB = 46;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
   const n = ASSESSMENT_ITEMS.length;
@@ -44,10 +45,17 @@ export default function AssessmentChart({
         aria-label={title ?? "Initial vs Final scores"}
       >
         {title && (
-          <text x={W / 2} y={16} textAnchor="middle" fontSize={13} fontWeight={700} fill="#334155">
+          <text x={padL} y={16} textAnchor="start" fontSize={13} fontWeight={700} fill="#334155">
             {title}
           </text>
         )}
+        {/* 범례 — 상단 우측 (X축 라벨과 겹치지 않게) */}
+        <g transform={`translate(${W - padR - 128}, 12)`}>
+          <rect x={0} y={-8} width={10} height={10} rx={2} fill={INITIAL_COLOR} />
+          <text x={14} y={1} fontSize={10} fill="#475569">Initial</text>
+          <rect x={62} y={-8} width={10} height={10} rx={2} fill={FINAL_COLOR} />
+          <text x={76} y={1} fontSize={10} fill="#475569">Final</text>
+        </g>
         {/* Y 격자 + 라벨 */}
         {Array.from({ length: 6 }, (_, i) => i * 2).map((v) => (
           <g key={v}>
@@ -95,13 +103,6 @@ export default function AssessmentChart({
             </g>
           );
         })}
-        {/* 범례 */}
-        <g transform={`translate(${W / 2 - 70}, ${H - 10})`}>
-          <rect x={0} y={-8} width={10} height={10} rx={2} fill={INITIAL_COLOR} />
-          <text x={14} y={0} fontSize={10} fill="#475569">Initial</text>
-          <rect x={62} y={-8} width={10} height={10} rx={2} fill={FINAL_COLOR} />
-          <text x={76} y={0} fontSize={10} fill="#475569">Final</text>
-        </g>
       </svg>
     </div>
   );
