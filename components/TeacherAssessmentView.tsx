@@ -300,32 +300,47 @@ function AssessmentEditorModal({
         onClick={(e) => e.stopPropagation()}
         className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-4 shadow-xl sm:rounded-lg sm:p-6"
       >
-        {/* 헤더 */}
-        <div className="mb-3 flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h3 className="truncate text-lg font-bold text-slate-800">{student.name}</h3>
-            <p className="truncate text-xs text-slate-500">
-              {course.name} · {course.schedule}
-            </p>
+        {/* 헤더 + 단계 탭 + 저장 — 스크롤 중에도 상단에 고정되어 어디서든 저장 가능 */}
+        <div className="sticky top-0 z-10 -mx-4 -mt-4 mb-3 border-b border-slate-100 bg-white px-4 pb-2 pt-4 shadow-sm sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-5">
+          <div className="mb-2 flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="truncate text-lg font-bold text-slate-800">{student.name}</h3>
+              <p className="truncate text-xs text-slate-500">
+                {course.name} · {course.schedule}
+              </p>
+            </div>
+            <button type="button" onClick={onClose} className="shrink-0 rounded-md px-2 py-1 text-slate-400 hover:bg-slate-100">✕</button>
           </div>
-          <button type="button" onClick={onClose} className="shrink-0 rounded-md px-2 py-1 text-slate-400 hover:bg-slate-100">✕</button>
-        </div>
-
-        {/* Initial / Final 탭 */}
-        <div className="mb-3 inline-flex overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
-          {(["initial", "final"] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => { setPhase(p); setMsg(null); }}
-              className={
-                "px-4 py-1.5 text-sm font-semibold transition " +
-                (phase === p ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-50")
-              }
-            >
-              {p === "initial" ? "Initial" : "Final"}
-            </button>
-          ))}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+              {(["initial", "final"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => { setPhase(p); setMsg(null); }}
+                  className={
+                    "px-4 py-1.5 text-sm font-semibold transition " +
+                    (phase === p ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-50")
+                  }
+                >
+                  {p === "initial" ? "Initial" : "Final"}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-slate-500">
+                {n}/{ASSESSMENT_ITEM_KEYS.length} · {total}{t(lang, "점", " pts")}
+              </span>
+              {msg && (
+                <span className={"text-[11px] font-semibold " + (msg.type === "ok" ? "text-emerald-600" : "text-red-600")}>
+                  {msg.text}
+                </span>
+              )}
+              <button className="btn !px-3 !py-1.5 !text-xs" disabled={pending} onClick={save}>
+                {pending ? t(lang, "저장 중...", "Saving...") : t(lang, "저장", "Save")}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* 밴드 범례 */}
