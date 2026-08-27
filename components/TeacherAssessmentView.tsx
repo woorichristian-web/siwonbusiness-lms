@@ -3,7 +3,7 @@
 // 강사용 스피킹 평가(Initial / Final Assessment) 화면.
 // 과정 카드 → 교육생 리스트 → 교육생별 평가 에디터(영역 10개 × 1~10점 원형 버튼).
 // 모바일 우선: 원형 버튼 10개가 375px 폭에도 한 줄에 들어가도록 크기 조정.
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ASSESSMENT_GROUPS,
@@ -263,6 +263,15 @@ function AssessmentEditorModal({
   const n = useMemo(() => scoredCount(draft.scores), [draft.scores]);
   const prof = useMemo(() => proficiencyOf(draft.scores), [draft.scores]);
 
+  // 코멘트 입력창 — 내용 길이만큼 높이 자동 확장 (탭 전환·입력 시마다)
+  const commentRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = commentRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + 2 + "px";
+  }, [phase, draft.comment]);
+
   function setScore(itemKey: string, value: number) {
     setMsg(null);
     setDrafts((d) => {
@@ -407,7 +416,8 @@ function AssessmentEditorModal({
         {/* 코멘트 */}
         <label className="label mt-4">{t(lang, "코멘트 (선택)", "Comment (optional)")}</label>
         <textarea
-          className="input min-h-[70px]"
+          ref={commentRef}
+          className="input min-h-[70px] resize-none overflow-hidden"
           placeholder={t(lang, "평가에 대한 코멘트를 남겨주세요.", "Optional comments about this assessment.")}
           value={draft.comment}
           disabled={pending}
