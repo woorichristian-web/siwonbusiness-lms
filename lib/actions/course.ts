@@ -501,9 +501,16 @@ export interface CNStudent {
   score: number | null;             // 강사 평가 평균 (10점)
   comments: string;   // 설문 주관식 코멘트 (라운드 표기)
 }
+export interface CNAssessment {
+  name: string;
+  initial: Record<string, number> | null;
+  final: Record<string, number> | null;
+}
 export interface CNCompany {
   company: string; code: string | null; period: string;
   assignedTeachers: string[]; progress: string; students: CNStudent[];
+  /** Initial/Final 스피킹 평가 (점수 대시보드 시트용) */
+  assessments: CNAssessment[];
 }
 export interface CourseNameReport {
   courseName: string; generatedAt: string; author: string; companies: CNCompany[];
@@ -620,6 +627,25 @@ export async function getCourseNameReport(courseName: string):
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
+    // Initial/Final 스피킹 평가 — 0036 미적용 시 조용히 빈 목록
+    const { data: assessRows } = await supabase
+      .from("teacher_assessments")
+      .select("student_id, phase, scores")
+      .eq("course_id", c.id);
+    const assessByStudent = new Map<string, { initial: Record<string, number> | null; final: Record<string, number> | null }>();
+    for (const a of assessRows ?? []) {
+      const cur = assessByStudent.get(a.student_id) ?? { initial: null, final: null };
+      cur[a.phase === "final" ? "final" : "initial"] = (a.scores ?? {}) as Record<string, number>;
+      assessByStudent.set(a.student_id, cur);
+    }
+    const assessments: CNAssessment[] = studentIds
+      .map((sid) => ({
+        name: nameById.get(sid)?.name ?? "—",
+        ...(assessByStudent.get(sid) ?? { initial: null, final: null }),
+      }))
+      .filter((x) => x.initial || x.final)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
     companies.push({
       company: c.company_name || "(회사 미지정)",
       code: c.code ?? null,
@@ -627,6 +653,7 @@ export async function getCourseNameReport(courseName: string):
       assignedTeachers: teacherIds.map((t) => nameById.get(t)?.name ?? "—"),
       progress: progressLabel(progressMap.get(c.id)),
       students,
+      assessments,
     });
   }
 

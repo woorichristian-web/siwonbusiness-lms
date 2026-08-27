@@ -209,10 +209,142 @@ export function buildCourseNameXlsx(d: CourseNameReport) {
       if (ws[a]) ws[a].s = { alignment: { wrapText: true, vertical: "top" }, font: { sz: 10, name: "맑은 고딕" } };
     }
     XLSX.utils.book_append_sheet(wb, ws, safeSheet(comp.company, used));
+
+    // ── 점수 대시보드 시트 — Initial vs Final (그룹 평균 + 개인별 표·막대) ──
+    if (comp.assessments.length > 0) {
+      appendScoreDashboardSheet(wb, used, d, comp);
+    }
   }
 
   const safe = d.courseName.replace(/[^\w가-힣]+/g, "_").slice(0, 30);
   XLSX.writeFile(wb, `과정데이터_${safe}_${yymmdd()}.xlsx`);
+}
+
+// ---------------------------------------------------------------------
+// 점수 대시보드 (Score Dashboard) — Initial/Final 스피킹 평가
+// 그룹 평균 표(+학생별 점수 열) 및 학생별 표, 막대(▇)로 점수를 시각화한다.
+// ---------------------------------------------------------------------
+import { ASSESSMENT_ITEMS, categoryAverages, proficiencyOf, totalOf } from "@/lib/assessment";
+
+const INIT_HS = { ...HS, fill: { patternType: "solid", fgColor: { rgb: "2E9BD6" } } };
+const FIN_HS = { ...HS, fill: { patternType: "solid", fgColor: { rgb: "ED7D31" } } };
+const BAR_I_STYLE = { font: { sz: 10, name: "맑은 고딕", color: { rgb: "2E9BD6" } } };
+const BAR_F_STYLE = { font: { sz: 10, name: "맑은 고딕", color: { rgb: "ED7D31" } } };
+
+function bar(v: number | null | undefined): string {
+  if (typeof v !== "number" || v <= 0) return "";
+  return "▇".repeat(Math.max(1, Math.min(10, Math.round(v))));
+}
+
+function appendScoreDashboardSheet(
+  wb: any,
+  used: Set<string>,
+  d: CourseNameReport,
+  comp: CourseNameReport["companies"][number],
+) {
+  const list = comp.assessments;
+  const iSets = list.map((a) => a.initial).filter(Boolean) as Record<string, number>[];
+  const fSets = list.map((a) => a.final).filter(Boolean) as Record<string, number>[];
+  const avgI = categoryAverages(iSets);
+  const avgF = categoryAverages(fSets);
+  const names = list.map((a) => a.name);
+
+  const rows: any[][] = [
+    [`점수 대시보드 (Score Dashboard) — ${d.courseName} · ${comp.company}`],
+    ["작성자", d.author],
+    ["다운로드 날짜", d.generatedAt],
+    [],
+  ];
+
+  // 그룹 요약 표: Category | Initial/Final 평균 | 평균 막대 | 학생별 Initial | 학생별 Final
+  const groupHeaderRow = rows.length;
+  rows.push([
+    "Category", "Initial (Group Avg)", "Final (Group Avg)", "Initial 그래프", "Final 그래프",
+    ...names.map((n) => `${n} (I)`),
+    ...names.map((n) => `${n} (F)`),
+  ]);
+  const groupDataStart = rows.length;
+  for (const it of ASSESSMENT_ITEMS) {
+    rows.push([
+      it.short,
+      avgI[it.key] != null ? Math.round(avgI[it.key]! * 10) / 10 : "-",
+      avgF[it.key] != null ? Math.round(avgF[it.key]! * 10) / 10 : "-",
+      bar(avgI[it.key]),
+      bar(avgF[it.key]),
+      ...list.map((a) => a.initial?.[it.key] ?? "-"),
+      ...list.map((a) => a.final?.[it.key] ?? "-"),
+    ]);
+  }
+  rows.push([]);
+
+  // 학생별 블록
+  const studentTitleRows: number[] = [];
+  const studentHeaderRows: number[] = [];
+  const studentDataRanges: Array<[number, number]> = [];
+  for (const a of list) {
+    const iT = a.initial ? totalOf(a.initial) : null;
+    const fT = a.final ? totalOf(a.final) : null;
+    const iP = a.initial ? proficiencyOf(a.initial) : null;
+    const fP = a.final ? proficiencyOf(a.final) : null;
+    studentTitleRows.push(rows.length);
+    rows.push([
+      `${a.name} — Initial ${iT != null ? `${iT}점 (${iP ?? "-"})` : "미평가"} / Final ${fT != null ? `${fT}점 (${fP ?? "-"})` : "미평가"}`,
+    ]);
+    studentHeaderRows.push(rows.length);
+    rows.push(["Category", "Initial", "Final", "Initial 그래프", "Final 그래프"]);
+    const dataStart = rows.length;
+    for (const it of ASSESSMENT_ITEMS) {
+      rows.push([
+        it.short,
+        a.initial?.[it.key] ?? "-",
+        a.final?.[it.key] ?? "-",
+        bar(a.initial?.[it.key]),
+        bar(a.final?.[it.key]),
+      ]);
+    }
+    studentDataRanges.push([dataStart, rows.length]);
+    rows.push([]);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"] = [
+    { wch: 22 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 14 },
+    ...names.map(() => ({ wch: 10 })),
+    ...names.map(() => ({ wch: 10 })),
+  ];
+  applyMetaStyles(ws, 5);
+
+  // 그룹 표 헤더: 기본(남색) + 학생 Initial(파랑)/Final(주황)
+  const totalCols = 5 + names.length * 2;
+  styleRow(ws, groupHeaderRow, 5, HS);
+  for (let c = 5; c < 5 + names.length; c++) {
+    const aCell = XLSX.utils.encode_cell({ r: groupHeaderRow, c });
+    if (ws[aCell]) ws[aCell].s = INIT_HS;
+  }
+  for (let c = 5 + names.length; c < totalCols; c++) {
+    const aCell = XLSX.utils.encode_cell({ r: groupHeaderRow, c });
+    if (ws[aCell]) ws[aCell].s = FIN_HS;
+  }
+  // 그룹 표의 막대 열 색
+  for (let r = groupDataStart; r < groupDataStart + ASSESSMENT_ITEMS.length; r++) {
+    const bi = XLSX.utils.encode_cell({ r, c: 3 });
+    const bf = XLSX.utils.encode_cell({ r, c: 4 });
+    if (ws[bi]) ws[bi].s = BAR_I_STYLE;
+    if (ws[bf]) ws[bf].s = BAR_F_STYLE;
+  }
+  // 학생별 블록 스타일
+  for (const r of studentTitleRows) styleRow(ws, r, 1, COURSE);
+  for (const r of studentHeaderRows) styleRow(ws, r, 5, HS);
+  for (const [s, e] of studentDataRanges) {
+    for (let r = s; r < e; r++) {
+      const bi = XLSX.utils.encode_cell({ r, c: 3 });
+      const bf = XLSX.utils.encode_cell({ r, c: 4 });
+      if (ws[bi]) ws[bi].s = BAR_I_STYLE;
+      if (ws[bf]) ws[bf].s = BAR_F_STYLE;
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, safeSheet(`${comp.company} 점수`, used));
 }
 
 // ---------------------------------------------------------------------

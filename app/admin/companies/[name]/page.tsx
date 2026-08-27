@@ -6,6 +6,8 @@ import AppHeader from "@/components/AppHeader";
 import CompanyAdminClient from "@/components/CompanyAdminClient";
 import CompanyCoursesList from "@/components/CompanyCoursesList";
 import CompanyDeleteButton from "@/components/CompanyDeleteButton";
+import CompanyScoreDashboard from "@/components/CompanyScoreDashboard";
+import type { AssessmentCourseData } from "@/components/TeacherAssessmentView";
 import CompanyDetailTabs from "@/components/CompanyDetailTabs";
 import CompanyPerformanceView from "@/components/CompanyPerformanceView";
 import { getCompanyPerformance, type CompanyPerformanceData } from "@/lib/company-performance";
@@ -117,6 +119,40 @@ export default async function CompanyDetailPage({
   }
   const WD_KO: Record<string, string> = { mon: "월", tue: "화", wed: "수", thu: "목", fri: "금", sat: "토", sun: "일" };
 
+  // ── 점수 대시보드 (Initial/Final 평가) — 센터 전용 ──
+  let scoreDashCourses: AssessmentCourseData[] = [];
+  if (!isPerformance && ccIds.length > 0) {
+    const [{ data: enrolls }, { data: assess }] = await Promise.all([
+      supabase.from("course_students").select("course_id, student_id").in("course_id", ccIds),
+      // 0036 미적용 시 에러 → 빈 목록으로 처리
+      supabase
+        .from("teacher_assessments")
+        .select("course_id, student_id, phase, scores, comment")
+        .in("course_id", ccIds),
+    ]);
+    const nameOf = new Map(allUsers.map((u) => [u.id, u.name]));
+    scoreDashCourses = (companyCourses ?? []).map((c: any) => {
+      const days = (c.weekdays ?? []) as string[];
+      const timeOf = (d: string) => String(c.day_times?.[d] ?? c.class_time ?? "").slice(0, 5);
+      const sched = days.length > 0
+        ? days.map((d) => `${WD_KO[d] ?? d} ${timeOf(d)}`.trim()).join(" · ")
+        : "—";
+      const students = (enrolls ?? [])
+        .filter((r: any) => r.course_id === c.id)
+        .map((r: any) => ({ id: r.student_id, name: nameOf.get(r.student_id) ?? "—", company: null }))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name, "ko"));
+      const records: AssessmentCourseData["records"] = {};
+      for (const a of assess ?? []) {
+        if (a.course_id !== c.id) continue;
+        (records[a.student_id] ??= {})[a.phase as "initial" | "final"] = {
+          scores: (a.scores ?? {}) as Record<string, number>,
+          comment: a.comment ?? null,
+        };
+      }
+      return { id: c.id, name: c.name, schedule: sched, students, records };
+    });
+  }
+
   return (
     <>
       <AppHeader profile={profile} />
@@ -174,6 +210,9 @@ export default async function CompanyDetailPage({
                   ))}
                 </div>
               </section>
+            )}
+            {scoreDashCourses.length > 0 && (
+              <CompanyScoreDashboard courses={scoreDashCourses} />
             )}
             <div className="mb-6">
               <CompanyCoursesList
