@@ -245,6 +245,7 @@ export default async function TeacherClassManagePage({
                   courseName={c.name}
                   rows={c.items}
                   canEdit
+                  canDownload={false}
                   updatedAt={c.curriculum_updated_at}
                 />
               ))}

@@ -22,12 +22,15 @@ export default function CurriculumManager({
   rows,
   canEdit,
   updatedAt,
+  canDownload = true,
 }: {
   courseId: string;
   courseName: string;
   rows: CurriculumItem[];
   canEdit: boolean;
   updatedAt?: string | null;
+  /** 커리큘럼 다운로드 버튼 노출 여부 (강사 페이지에서는 숨김) */
+  canDownload?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -91,7 +94,7 @@ export default function CurriculumManager({
           )}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {rows.length > 0 && (
+          {rows.length > 0 && canDownload && (
             <button className="btn-ghost text-xs" onClick={downloadCurrent}>커리큘럼 다운로드</button>
           )}
           {canEdit && (
