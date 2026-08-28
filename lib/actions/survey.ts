@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { openRounds, surveyRounds } from "@/lib/survey";
+import { openRounds, surveyRounds, SURVEY_QUESTIONS } from "@/lib/survey";
 
 /** 한국어 코멘트를 영어로 번역 (ANTHROPIC_API_KEY 있을 때만). 실패 시 null. */
 async function translateToEnglish(text: string): Promise<string | null> {
@@ -35,40 +35,78 @@ async function translateToEnglish(text: string): Promise<string | null> {
   }
 }
 
-/** 교육생 만족도 설문 제출 (1~10점 + 선택 코멘트). 응답 기간 내에만 가능. */
+/**
+ * 교육생 만족도 설문 제출 — 객관식 10문항(5점 척도) + 주관식 2문항.
+ * rating 컬럼에는 10점 환산 평균을 저장해 기존 집계·엑셀과 호환한다.
+ * 응답 기간(주 시작 ~ 그 주 수업일+5일) 내에만 가능.
+ */
 export async function submitSurvey(input: {
   courseId: string;
   round: 1 | 2 | 3;
-  rating: number;
-  comment?: string | null;
+  answers: Record<string, number>;
+  strengths?: string | null;
+  improvements?: string | null;
 }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false as const, error: "로그인이 필요합니다." };
-  if (!Number.isInteger(input.rating) || input.rating < 1 || input.rating > 10)
-    return { ok: false as const, error: "점수는 1~10 사이여야 합니다." };
+
+  // 객관식 10문항 전부 1~5 정수인지 검증
+  const vals: number[] = [];
+  for (const q of SURVEY_QUESTIONS) {
+    const v = input.answers?.[q.key];
+    if (!Number.isInteger(v) || v < 1 || v > 5)
+      return { ok: false as const, error: "모든 문항에 1~5점으로 응답해 주세요." };
+    vals.push(v);
+  }
+  const avg5 = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const rating = Math.min(10, Math.max(1, Math.round(avg5 * 2))); // 10점 환산 (기존 호환)
 
   // 응답 기간 검증
   const { data: course } = await supabase
     .from("courses")
-    .select("start_date, end_date")
+    .select("start_date, end_date, weekdays")
     .eq("id", input.courseId)
     .maybeSingle();
   if (!course) return { ok: false as const, error: "과정을 찾을 수 없습니다." };
-  const open = openRounds(course.start_date, course.end_date).find((r) => r.round === input.round);
+  const open = openRounds(course.start_date, course.end_date, (course as any).weekdays ?? null)
+    .find((r) => r.round === input.round);
   if (!open) return { ok: false as const, error: "지금은 이 설문의 응답 기간이 아닙니다." };
 
-  const comment = input.comment?.trim() || null;
+  const strengths = input.strengths?.trim() || null;
+  const improvements = input.improvements?.trim() || null;
+  // 기존 화면·엑셀 호환용 통합 코멘트
+  const comment = [
+    strengths ? `[만족한 점] ${strengths}` : null,
+    improvements ? `[개선 요청] ${improvements}` : null,
+  ].filter(Boolean).join("\n") || null;
   const comment_en = comment ? await translateToEnglish(comment) : null;
 
-  const { error } = await supabase.from("survey_responses").insert({
+  const answers: Record<string, number> = {};
+  for (const q of SURVEY_QUESTIONS) answers[q.key] = input.answers[q.key];
+
+  let { error } = await supabase.from("survey_responses").insert({
     course_id: input.courseId,
     student_id: user.id,
     round: input.round,
-    rating: input.rating,
+    rating,
     comment,
     comment_en,
+    answers,
+    strengths,
+    improvements,
   });
+  // 0037 마이그레이션 미적용(컬럼 없음) 시 — 구버전 형식으로 저장
+  if (error && (error.code === "42703" || error.code === "PGRST204")) {
+    ({ error } = await supabase.from("survey_responses").insert({
+      course_id: input.courseId,
+      student_id: user.id,
+      round: input.round,
+      rating,
+      comment,
+      comment_en,
+    }));
+  }
   if (error) {
     if (error.code === "23505")
       return { ok: false as const, error: "이미 이 설문에 응답하셨습니다." };
@@ -95,16 +133,25 @@ export async function getCourseSurveyAdmin(courseId: string) {
   const admin = createAdminClient();
   const { data: course } = await admin
     .from("courses")
-    .select("name, code, company_name, start_date, end_date")
+    .select("name, code, company_name, start_date, end_date, weekdays")
     .eq("id", courseId)
     .maybeSingle();
   if (!course) return { ok: false as const, error: "과정을 찾을 수 없습니다." };
 
-  const { data: rows } = await admin
+  let { data: rows } = await admin
     .from("survey_responses")
-    .select("round, rating, comment, comment_en, created_at, student_id")
+    .select("round, rating, comment, comment_en, created_at, student_id, answers, strengths, improvements")
     .eq("course_id", courseId)
     .order("created_at", { ascending: true });
+  if (!rows) {
+    // 0037 미적용 시 구버전 컬럼으로 재조회
+    const fb = await admin
+      .from("survey_responses")
+      .select("round, rating, comment, comment_en, created_at, student_id")
+      .eq("course_id", courseId)
+      .order("created_at", { ascending: true });
+    rows = (fb.data as any[] | null) ?? null;
+  }
 
   const ids = Array.from(new Set((rows ?? []).map((r: any) => r.student_id)));
   const names = new Map<string, { name: string; username: string }>();
@@ -143,7 +190,7 @@ export async function getCourseSurveyAdmin(courseId: string) {
     for (const p of tp ?? []) tNames.set(p.id, p.name);
   }
 
-  const rounds = surveyRounds(course.start_date, course.end_date).map((r) => {
+  const rounds = surveyRounds(course.start_date, course.end_date, (course as any).weekdays ?? null).map((r) => {
     const responses = (rows ?? [])
       .filter((x: any) => x.round === r.round)
       .map((x: any) => {
@@ -156,6 +203,9 @@ export async function getCourseSurveyAdmin(courseId: string) {
           rating: x.rating as number,
           comment: (x.comment ?? null) as string | null,
           comment_en: (x.comment_en ?? null) as string | null,
+          answers: (x.answers ?? null) as Record<string, number> | null,
+          strengths: (x.strengths ?? null) as string | null,
+          improvements: (x.improvements ?? null) as string | null,
           created_at: x.created_at as string,
         };
       });
@@ -196,11 +246,19 @@ export async function getCourseSurveyAdmin(courseId: string) {
  */
 export async function getSurveyAggregate(courseId: string, round: number) {
   const admin = createAdminClient();
-  const { data } = await admin
+  let { data } = await admin
     .from("survey_responses")
-    .select("rating, comment, comment_en")
+    .select("rating, comment, comment_en, answers")
     .eq("course_id", courseId)
     .eq("round", round);
+  if (!data) {
+    const fb = await admin
+      .from("survey_responses")
+      .select("rating, comment, comment_en")
+      .eq("course_id", courseId)
+      .eq("round", round);
+    data = (fb.data as any[] | null) ?? null;
+  }
   const rows = data ?? [];
   const avg = rows.length
     ? Math.round((rows.reduce((s: number, r: any) => s + r.rating, 0) / rows.length) * 10) / 10
@@ -208,5 +266,17 @@ export async function getSurveyAggregate(courseId: string, round: number) {
   const comments = rows
     .map((r: any) => (r.comment_en || r.comment || "").trim())
     .filter(Boolean);
-  return { count: rows.length, avg, comments };
+  // 문항별 평균 (5점 만점) — 새 양식(answers) 응답이 있을 때만
+  const qAvgs: Record<string, number> = {};
+  let qCount = 0;
+  for (const q of SURVEY_QUESTIONS) {
+    const vals = rows
+      .map((r: any) => r.answers?.[q.key])
+      .filter((v: any): v is number => typeof v === "number");
+    if (vals.length > 0) {
+      qAvgs[q.key] = Math.round((vals.reduce((a: number, b: number) => a + b, 0) / vals.length) * 10) / 10;
+      qCount++;
+    }
+  }
+  return { count: rows.length, avg, comments, qAvgs: qCount > 0 ? qAvgs : null };
 }

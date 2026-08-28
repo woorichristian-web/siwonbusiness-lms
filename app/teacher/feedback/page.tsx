@@ -26,7 +26,7 @@ export default async function TeacherFeedbackListPage() {
   if (courseIds.length > 0) {
     const { data: cs } = await supabase
       .from("courses")
-      .select("id, name, company_name, start_date, end_date")
+      .select("id, name, company_name, start_date, end_date, weekdays")
       .in("id", courseIds)
       .order("name");
     courses = cs ?? [];
@@ -92,8 +92,8 @@ export default async function TeacherFeedbackListPage() {
         ) : (
           <ul className="space-y-2">
             {courses.map((c) => {
-              const delivered = closedRounds(c.start_date, c.end_date).length;
-              const total = surveyRounds(c.start_date, c.end_date).length;
+              const delivered = closedRounds(c.start_date, c.end_date, (c as any).weekdays ?? null).length;
+              const total = surveyRounds(c.start_date, c.end_date, (c as any).weekdays ?? null).length;
               return (
                 <li key={c.id}>
                   <Link

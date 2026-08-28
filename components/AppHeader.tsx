@@ -53,13 +53,13 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
     const cIds = Array.from(new Set((myCourses ?? []).map((r: any) => r.course_id)));
     if (cIds.length > 0) {
       const [{ data: cs }, { data: resp }] = await Promise.all([
-        supabase.from("courses").select("id, name, start_date, end_date").in("id", cIds),
+        supabase.from("courses").select("id, name, start_date, end_date, weekdays").in("id", cIds),
         supabase.from("survey_responses").select("course_id, round").eq("student_id", profile.id).in("course_id", cIds),
       ]);
       const done = new Set((resp ?? []).map((r: any) => `${r.course_id}|${r.round}`));
       // 설문 팝업은 테스트 과정에도 표시 — 센터가 설문 흐름을 테스트할 수 있도록 예외
       for (const c of cs ?? []) {
-        for (const r of openRounds(c.start_date, c.end_date)) {
+        for (const r of openRounds(c.start_date, c.end_date, (c as any).weekdays ?? null)) {
           if (!done.has(`${c.id}|${r.round}`)) {
             pendingSurveys.push({
               courseId: c.id, courseName: c.name,

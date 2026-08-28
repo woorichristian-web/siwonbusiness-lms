@@ -162,13 +162,13 @@ export default async function StudentStatusPage() {
   const pendingSurveys: PendingSurvey[] = [];
   if (surveyCourseIds.length > 0) {
     const [{ data: svCs }, { data: svResp }] = await Promise.all([
-      supabase.from("courses").select("id, name, start_date, end_date").in("id", surveyCourseIds),
+      supabase.from("courses").select("id, name, start_date, end_date, weekdays").in("id", surveyCourseIds),
       supabase.from("survey_responses").select("course_id, round")
         .eq("student_id", profile.id).in("course_id", surveyCourseIds),
     ]);
     const done = new Set((svResp ?? []).map((r: any) => `${r.course_id}|${r.round}`));
     for (const c of svCs ?? [])
-      for (const r of openRounds(c.start_date, c.end_date))
+      for (const r of openRounds(c.start_date, c.end_date, (c as any).weekdays ?? null))
         if (!done.has(`${c.id}|${r.round}`))
           pendingSurveys.push({
             courseId: c.id, courseName: c.name,

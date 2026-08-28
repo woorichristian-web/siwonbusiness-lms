@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
-import { surveyRounds } from "@/lib/survey";
+import { surveyRounds, SURVEY_QUESTIONS } from "@/lib/survey";
 import { getSurveyAggregate } from "@/lib/actions/survey";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ export default async function TeacherFeedbackCoursePage({
 
   const { data: course } = await supabase
     .from("courses")
-    .select("id, name, company_name, start_date, end_date")
+    .select("id, name, company_name, start_date, end_date, weekdays")
     .eq("id", params.courseId)
     .maybeSingle();
 
@@ -42,7 +42,7 @@ export default async function TeacherFeedbackCoursePage({
   }
 
   const now = new Date();
-  const rounds = surveyRounds(course.start_date, course.end_date);
+  const rounds = surveyRounds(course.start_date, course.end_date, (course as any).weekdays ?? null);
   const items = await Promise.all(
     rounds.map(async (r) => {
       const closed = now >= r.close;
@@ -102,6 +102,28 @@ export default async function TeacherFeedbackCoursePage({
                     </div>
                     <div className="text-sm text-slate-500">{it.agg.count} response{it.agg.count === 1 ? "" : "s"}</div>
                   </div>
+                  {/* 문항별 평균 (새 양식 10문항, 5점 만점) */}
+                  {it.agg.qAvgs && (
+                    <div className="mb-3 overflow-x-auto rounded-md border border-slate-200">
+                      <table className="w-full text-xs">
+                        <tbody>
+                          {SURVEY_QUESTIONS.map((q, qi) => {
+                            const v = it.agg!.qAvgs![q.key];
+                            if (v == null) return null;
+                            return (
+                              <tr key={q.key} className="border-b border-slate-100 last:border-b-0">
+                                <td className="whitespace-nowrap px-2 py-1.5 text-slate-400">{q.cat_en}</td>
+                                <td className="px-2 py-1.5 text-slate-600">{qi + 1}. {q.text_en}</td>
+                                <td className="whitespace-nowrap px-2 py-1.5 text-right font-bold text-amber-700">
+                                  {v}<span className="font-normal text-slate-400">/5</span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                   {it.agg.comments.length > 0 ? (
                     <ul className="space-y-2">
                       {it.agg.comments.map((cm, i) => (

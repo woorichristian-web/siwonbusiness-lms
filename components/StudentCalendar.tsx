@@ -136,14 +136,18 @@ export default function StudentCalendar({
             </span>
           )}
         </div>
-        <div className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
-          {(["day", "week", "month", "year"] as const).map((v) => (
-            <button key={v} type="button" onClick={() => setView(v)}
-              className={"px-3 py-1.5 text-sm font-medium transition " +
-                (view === v ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-50")}>
-              {v === "day" ? "Day" : v === "week" ? "Week" : v === "month" ? "Month" : "Year"}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          {/* 만족도 조사 — 응답 기간(해당 주차)에만 표시 */}
+          <SurveyButton surveys={pendingSurveys} />
+          <div className="inline-flex overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+            {(["day", "week", "month", "year"] as const).map((v) => (
+              <button key={v} type="button" onClick={() => setView(v)}
+                className={"px-3 py-1.5 text-sm font-medium transition " +
+                  (view === v ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-50")}>
+                {v === "day" ? "Day" : v === "week" ? "Week" : v === "month" ? "Month" : "Year"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
