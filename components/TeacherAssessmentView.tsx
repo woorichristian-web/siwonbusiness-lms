@@ -246,17 +246,41 @@ function AssessmentEditorModal({
   const [phase, setPhase] = useState<AssessmentPhase>("initial");
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  // 단계별 점수/코멘트 초안 — 탭 전환 시에도 유지
-  const [drafts, setDrafts] = useState<Record<AssessmentPhase, { scores: Record<string, number>; comment: string }>>(() => ({
-    initial: {
-      scores: { ...(getRecord("initial")?.scores ?? {}) },
-      comment: getRecord("initial")?.comment ?? "",
-    },
-    final: {
-      scores: { ...(getRecord("final")?.scores ?? {}) },
-      comment: getRecord("final")?.comment ?? "",
-    },
-  }));
+  // 단계별 점수/코멘트 초안 — 탭 전환 시에도 유지.
+  // 저장 전 입력은 localStorage에 임시 보관되어 모달을 닫거나 새로고침해도 남는다.
+  const draftKey = `assessment_draft_${course.id}_${student.id}`;
+  const [drafts, setDrafts] = useState<Record<AssessmentPhase, { scores: Record<string, number>; comment: string }>>(() => {
+    const base = {
+      initial: {
+        scores: { ...(getRecord("initial")?.scores ?? {}) },
+        comment: getRecord("initial")?.comment ?? "",
+      },
+      final: {
+        scores: { ...(getRecord("final")?.scores ?? {}) },
+        comment: getRecord("final")?.comment ?? "",
+      },
+    };
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        for (const p of ["initial", "final"] as const) {
+          if (saved?.[p]) {
+            base[p] = {
+              scores: saved[p].scores ?? {},
+              comment: typeof saved[p].comment === "string" ? saved[p].comment : "",
+            };
+          }
+        }
+      }
+    } catch { /* 저장소 접근 불가 시 서버 저장값으로 시작 */ }
+    return base;
+  });
+
+  // 입력이 바뀔 때마다 임시 저장
+  useEffect(() => {
+    try { localStorage.setItem(draftKey, JSON.stringify(drafts)); } catch { /* 무시 */ }
+  }, [drafts, draftKey]);
 
   const draft = drafts[phase];
   const total = useMemo(() => totalOf(draft.scores), [draft.scores]);
@@ -298,6 +322,14 @@ function AssessmentEditorModal({
         return;
       }
       onSaved(phase, { scores: { ...draft.scores }, comment: draft.comment.trim() || null });
+      // 저장 완료 → 이 단계의 임시본 제거 (서버 저장값이 기준)
+      try {
+        const raw = localStorage.getItem(draftKey);
+        const saved = raw ? JSON.parse(raw) : {};
+        delete saved[phase];
+        if (Object.keys(saved).length > 0) localStorage.setItem(draftKey, JSON.stringify(saved));
+        else localStorage.removeItem(draftKey);
+      } catch { /* 무시 */ }
       setMsg({ type: "ok", text: t(lang, "저장되었습니다.", "Saved.") });
       router.refresh();
     });
