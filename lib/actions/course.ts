@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncCourseChatRooms } from "@/lib/chatSync";
+import { syncCourseSchedule } from "@/lib/courseSlots";
 
 /**
  * 오픈된 과정 정보를 등록 교육생 profiles의 계약 필드(course_name·기간·총 차시)에 반영.
@@ -147,6 +148,7 @@ export async function createCourse(input: CourseInput) {
     .select("id")
     .single();
   if (error) return { ok: false as const, error: error.message };
+  await syncCourseSchedule(data.id as string);
   await syncCourseChatRooms(data.id as string);
   revalidatePath("/admin/courses");
   return { ok: true as const, courseId: data.id as string };
@@ -235,10 +237,13 @@ export async function openCourse(courseId: string) {
     .update({ opened_at: new Date().toISOString() })
     .eq("id", courseId);
 
+  await syncCourseSchedule(courseId);
   await syncCourseChatRooms(courseId);
   await syncStudentContractFields(courseId);
   revalidatePath("/admin/courses");
   revalidatePath("/admin/companies");
+  revalidatePath("/teacher/schedule");
+  revalidatePath("/student/calendar");
   return { ok: true as const };
 }
 
@@ -252,11 +257,14 @@ export async function updateCourse(courseId: string, input: CourseInput) {
     .update({ ...clean(input), updated_at: new Date().toISOString() })
     .eq("id", courseId);
   if (error) return { ok: false as const, error: error.message };
+  await syncCourseSchedule(courseId);
   await syncCourseChatRooms(courseId);
   await syncStudentContractFields(courseId);
   revalidatePath("/admin/courses");
   revalidatePath("/admin/companies");
   revalidatePath(`/admin/courses/${courseId}`);
+  revalidatePath("/teacher/schedule");
+  revalidatePath("/student/calendar");
   return { ok: true as const };
 }
 
@@ -297,8 +305,11 @@ export async function assignCourseTeachers(courseId: string, teacherIds: string[
 
   const { error } = await supabase.from("course_teachers").insert(rows);
   if (error) return { ok: false as const, error: error.message };
+  await syncCourseSchedule(courseId);
   await syncCourseChatRooms(courseId);
   revalidatePath(`/admin/courses/${courseId}`);
+  revalidatePath("/teacher/schedule");
+  revalidatePath("/student/calendar");
   return { ok: true as const };
 }
 
@@ -315,6 +326,7 @@ export async function removeCourseTeacher(courseId: string, teacherId: string) {
     .eq("teacher_id", teacherId)
     .is("assigned_until", null);
   if (error) return { ok: false as const, error: error.message };
+  await syncCourseSchedule(courseId);
   await syncCourseChatRooms(courseId);
   revalidatePath(`/admin/courses/${courseId}`);
   return { ok: true as const };
@@ -361,8 +373,11 @@ export async function replaceCourseTeacher(
     .eq("teacher_id", oldTeacherId)
     .gte("start_at", nowIso);
 
+  await syncCourseSchedule(courseId);
   await syncCourseChatRooms(courseId);
   revalidatePath(`/admin/courses/${courseId}`);
+  revalidatePath("/teacher/schedule");
+  revalidatePath("/student/calendar");
   return { ok: true as const };
 }
 
