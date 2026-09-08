@@ -110,7 +110,10 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
                 { href: "/teacher/profile", label: "My Page" },
               ])
         : profile.role === "company"
-        ? [{ href: "/company", label: "교육 현황" }]
+        ? [
+            { href: "/company", label: "교육 현황" },
+            { href: "/company/calendar", label: "수업일정" },
+          ]
         : [
             { href: "/admin", label: "관리자 홈" },
             { href: "/admin/courses", label: "과정 관리" },

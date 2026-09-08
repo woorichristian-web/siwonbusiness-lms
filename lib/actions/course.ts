@@ -46,7 +46,7 @@ async function companySlug(companyName: string): Promise<string> {
  * 하나 생긴다(이미 있으면 스킵). 비밀번호는 아이디와 동일. 역할은 company
  * (기업 담당자 읽기 전용 뷰). 실패해도 과정 생성 자체는 막지 않는다.
  */
-async function ensureCompanyMaster(companyName?: string | null) {
+async function ensureCompanyMaster(companyName?: string | null, preferredUsername?: string | null) {
   try {
     const name = companyName?.trim();
     if (!name) return;
@@ -58,7 +58,12 @@ async function ensureCompanyMaster(companyName?: string | null) {
       .limit(1).maybeSingle();
     if (exist) return;
 
-    const slug = await companySlug(name);
+    // 폼에서 지정한 아이디가 있으면 우선 사용 (없으면 회사명 기반 자동 생성)
+    const preferred = (preferredUsername ?? "")
+      .toLowerCase().replace(/[^a-z0-9_.-]/g, "");
+    const slug = preferred.replace(/_master$/, "").length >= 2
+      ? preferred.replace(/_master$/, "").slice(0, 13)
+      : await companySlug(name);
     // 아이디 충돌 시 숫자 접미사
     let username = `${slug}_master`;
     for (let i = 2; i <= 9; i++) {
@@ -157,6 +162,8 @@ export interface CourseInput {
   total_sessions?: number | null;
   /** 테스트 과정 — 센터에서만 보이고 강사·교육생에게는 숨김 */
   is_test?: boolean;
+  /** 마스터 계정 아이디 (예: afinit_master) — courses 컬럼이 아니라 계정 생성에만 사용 */
+  master_username?: string | null;
 }
 
 function clean(input: CourseInput) {
@@ -230,7 +237,7 @@ export async function createCourse(input: CourseInput) {
     .single();
   if (error) return { ok: false as const, error: error.message };
   await syncCourseChatRooms(data.id as string);
-  await ensureCompanyMaster(payload.company_name);
+  await ensureCompanyMaster(payload.company_name, input.master_username ?? null);
   revalidatePath("/admin/courses");
   return { ok: true as const, courseId: data.id as string };
 }
@@ -338,7 +345,7 @@ export async function updateCourse(courseId: string, input: CourseInput) {
   if (error) return { ok: false as const, error: error.message };
   await syncCourseChatRooms(courseId);
   await syncStudentContractFields(courseId);
-  await ensureCompanyMaster(input.company_name);
+  await ensureCompanyMaster(input.company_name, input.master_username ?? null);
   revalidatePath("/admin/courses");
   revalidatePath("/admin/companies");
   revalidatePath(`/admin/courses/${courseId}`);

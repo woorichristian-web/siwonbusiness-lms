@@ -242,6 +242,11 @@ function CreateForm({
     duration_min: initial?.duration_min != null ? String(initial.duration_min) : "60",
     total_sessions: initial?.total_sessions != null ? String(initial.total_sessions) : "",
   });
+  // 마스터 계정 아이디 접두어 — {접두어}_master 로 생성 (회사당 1개, 이미 있으면 새로 만들지 않음)
+  const [masterPrefix, setMasterPrefix] = useState<string>(() =>
+    (initial?.company_name ?? "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 13),
+  );
+  const [masterTouched, setMasterTouched] = useState(false);
   const [weekdays, setWeekdays] = useState<string[]>(initial?.weekdays ?? []);
   // 요일별 시작 시각 — 기존 값 > 단일 class_time 순으로 채움
   const [dayTimes, setDayTimes] = useState<Record<string, string>>(() => {
@@ -288,6 +293,7 @@ function CreateForm({
         duration_min: f.duration_min ? Number(f.duration_min) : null,
         total_sessions: f.total_sessions ? Number(f.total_sessions) : null,
         is_test: isTest,
+        master_username: masterPrefix ? `${masterPrefix}_master` : null,
       };
       const r = initial
         ? await updateCourse(initial.id, payload)
@@ -313,7 +319,37 @@ function CreateForm({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="강좌코드"><input className="input" value={f.code} onChange={(e) => set("code", e.target.value)} placeholder="비워두면 자동 생성 (예: AF-EN-BEC-2601)" /></Field>
         <Field label="강좌명 *"><input className="input" value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Topical Conversations in the Workplace" /></Field>
-        <Field label="회사"><input className="input" value={f.company_name} onChange={(e) => set("company_name", e.target.value)} placeholder="Afinit" /></Field>
+        <Field label="회사">
+          <input
+            className="input"
+            value={f.company_name}
+            onChange={(e) => {
+              set("company_name", e.target.value);
+              // 마스터 아이디 칸을 직접 수정하지 않았다면 회사명에 맞춰 자동 채움
+              if (!masterTouched)
+                setMasterPrefix(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 13));
+            }}
+            placeholder="Afinit"
+          />
+        </Field>
+        <Field label="마스터 계정 아이디">
+          <div className="flex items-center gap-1">
+            <input
+              className="input"
+              value={masterPrefix}
+              onChange={(e) => {
+                setMasterTouched(true);
+                setMasterPrefix(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, "").slice(0, 13));
+              }}
+              placeholder="afinit"
+            />
+            <span className="shrink-0 rounded-md bg-slate-100 px-2 py-2 font-mono text-sm text-slate-500">_master</span>
+          </div>
+          <p className="mt-1 text-[11px] text-slate-400">
+            기업 담당자용 계정이 <b>{masterPrefix || "…"}_master</b> (비밀번호 동일)로 자동 생성됩니다.
+            회사당 1개 — 이미 있으면 새로 만들지 않습니다.
+          </p>
+        </Field>
         <Field label="언어">
           <select
             className="input"
