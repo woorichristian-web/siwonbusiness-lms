@@ -4,6 +4,88 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncCourseChatRooms } from "@/lib/chatSync";
+import { usernameToEmail } from "@/lib/constants";
+
+/**
+ * 회사명 → 마스터 계정 아이디용 슬러그 (소문자 ASCII).
+ * 영문이 있으면 그대로 사용하고, 한글 등 비ASCII 이름은 LLM으로 통용 약칭을
+ * 만든다(예: 카이스트→kaist, 국민은행→kb). 실패 시 'partner' + 해시.
+ */
+async function companySlug(companyName: string): Promise<string> {
+  const ascii = companyName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (ascii.length >= 2) return ascii.slice(0, 13);
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (key) {
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 20,
+          messages: [{
+            role: "user",
+            content: `Convert this Korean company/organization name to a short lowercase ASCII slug (2-12 chars, letters/digits only). Use its widely-known English abbreviation if it has one (카이스트→kaist, 국민은행→kb, 삼성전자→samsung). Output ONLY the slug.\n\n${companyName}`,
+          }],
+        }),
+      });
+      if (res.ok) {
+        const j = await res.json();
+        const slug = String(j?.content?.[0]?.text ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (slug.length >= 2) return slug.slice(0, 13);
+      }
+    } catch { /* 아래 fallback */ }
+  }
+  let h = 0;
+  for (const ch of companyName) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return "partner" + (h % 10000);
+}
+
+/**
+ * 회사별 마스터 계정 자동 생성 — 과정을 만들면 {회사약자}_master 계정이
+ * 하나 생긴다(이미 있으면 스킵). 비밀번호는 아이디와 동일. 역할은 company
+ * (기업 담당자 읽기 전용 뷰). 실패해도 과정 생성 자체는 막지 않는다.
+ */
+async function ensureCompanyMaster(companyName?: string | null) {
+  try {
+    const name = companyName?.trim();
+    if (!name) return;
+    const admin = createAdminClient();
+    // 이 회사의 마스터 계정이 이미 있으면 스킵
+    const { data: exist } = await admin
+      .from("profiles").select("id")
+      .eq("role", "company").eq("company_name", name)
+      .limit(1).maybeSingle();
+    if (exist) return;
+
+    const slug = await companySlug(name);
+    // 아이디 충돌 시 숫자 접미사
+    let username = `${slug}_master`;
+    for (let i = 2; i <= 9; i++) {
+      const { data: taken } = await admin
+        .from("profiles").select("id").eq("username", username).limit(1).maybeSingle();
+      if (!taken) break;
+      username = `${slug}${i}_master`;
+    }
+
+    const { data: created, error: authErr } = await admin.auth.admin.createUser({
+      email: usernameToEmail(username),
+      password: username, // 비밀번호 = 아이디
+      email_confirm: true,
+    });
+    if (authErr || !created.user) return;
+    const { error: pErr } = await admin.from("profiles").insert({
+      id: created.user.id,
+      role: "company",
+      username,
+      name: `${name} 담당자`,
+      company_name: name,
+    });
+    if (pErr) await admin.auth.admin.deleteUser(created.user.id);
+  } catch {
+    // 마스터 계정 생성 실패가 과정 생성을 막지 않도록 조용히 무시
+  }
+}
 
 /**
  * 오픈된 과정 정보를 등록 교육생 profiles의 계약 필드(course_name·기간·총 차시)에 반영.
@@ -148,6 +230,7 @@ export async function createCourse(input: CourseInput) {
     .single();
   if (error) return { ok: false as const, error: error.message };
   await syncCourseChatRooms(data.id as string);
+  await ensureCompanyMaster(payload.company_name);
   revalidatePath("/admin/courses");
   return { ok: true as const, courseId: data.id as string };
 }
@@ -209,6 +292,7 @@ export async function duplicateCourse(courseId: string) {
     );
   }
 
+  await ensureCompanyMaster(copy.company_name);
   revalidatePath("/admin/courses");
   return { ok: true as const, courseId: newId };
 }
@@ -254,6 +338,7 @@ export async function updateCourse(courseId: string, input: CourseInput) {
   if (error) return { ok: false as const, error: error.message };
   await syncCourseChatRooms(courseId);
   await syncStudentContractFields(courseId);
+  await ensureCompanyMaster(input.company_name);
   revalidatePath("/admin/courses");
   revalidatePath("/admin/companies");
   revalidatePath(`/admin/courses/${courseId}`);

@@ -1,6 +1,6 @@
 // 공통 DB 타입.
 
-export type Role = "student" | "teacher" | "admin";
+export type Role = "student" | "teacher" | "admin" | "company";
 export type ClassFormat = "online" | "offline";
 export type ClassType = "1on1" | "1on1_coaching" | "group" | "group_coaching" | "small_group";
 

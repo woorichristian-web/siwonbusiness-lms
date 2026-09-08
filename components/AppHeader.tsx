@@ -109,6 +109,8 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
                 { href: "/chat", label: "Class Chat" },
                 { href: "/teacher/profile", label: "My Page" },
               ])
+        : profile.role === "company"
+        ? [{ href: "/company", label: "교육 현황" }]
         : [
             { href: "/admin", label: "관리자 홈" },
             { href: "/admin/courses", label: "과정 관리" },
@@ -225,5 +227,6 @@ export default async function AppHeader({ profile }: { profile: Profile }) {
 
 function roleLabel(r: string) {
   if (r === "teacher") return "Teacher";
+  if (r === "company") return "Partner";
   return r === "admin" ? "Admin" : "Student";
 }

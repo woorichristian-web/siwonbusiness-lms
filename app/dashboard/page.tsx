@@ -10,6 +10,8 @@ export default async function DashboardPage() {
       redirect("/admin");
     case "teacher":
       redirect("/teacher/schedule");
+    case "company":
+      redirect("/company");
     case "student":
     default:
       redirect("/student/calendar");
