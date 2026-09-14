@@ -100,7 +100,10 @@ export default async function TeacherClassManagePage({
       end_at: b.end_at,
       student_id: b.student_id,
       // 강사에게는 영문 이름을 우선 표시 (없으면 한글 이름)
-      student_name: s?.english_name?.trim() || s?.name || "Unknown",
+      // 영문 이름이 있으면 "한글 / 영문"으로 함께 표기
+      student_name: s?.english_name?.trim()
+        ? `${s.name} / ${s.english_name.trim()}`
+        : s?.name || "Unknown",
       student_username: s?.username ?? "",
       student_company: s?.company_name ?? null,
       course_name: s?.course_name ?? null,
@@ -165,7 +168,11 @@ export default async function TeacherClassManagePage({
       const { data: sps } = await supabase
         .from("profiles").select("id, name, english_name, company_name").in("id", sIds);
       for (const p of sps ?? [])
-        sName.set(p.id, { name: (p.english_name?.trim() || p.name) as string, company: p.company_name ?? null });
+        sName.set(p.id, {
+          // 영문 이름이 있으면 "한글 / 영문"으로 함께 표기
+          name: (p.english_name?.trim() ? `${p.name} / ${p.english_name.trim()}` : p.name) as string,
+          company: p.company_name ?? null,
+        });
     }
     assessmentCourses = (courseRows ?? []).map((c: any) => {
       const WD = lang === "ko" ? WD_KO : WD_EN;
