@@ -30,6 +30,25 @@ function isComplete(fb: Feedback | null | undefined): boolean {
   return true;
 }
 
+// 작성 중 내용 자동 임시저장 — 모달이 닫혀도(바깥 클릭 등) 다시 열면 복원된다.
+// 서버에 Draft/Submit 저장이 완료되면 임시본은 지운다.
+const draftKeyOf = (bookingId: string) => `feedback_draft_${bookingId}`;
+
+function loadLocalDraft(bookingId: string): { ratings: Ratings; comment: string } | null {
+  try {
+    const raw = localStorage.getItem(draftKeyOf(bookingId));
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || typeof d !== "object") return null;
+    return {
+      ratings: (d.ratings ?? {}) as Ratings,
+      comment: typeof d.comment === "string" ? d.comment : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 function ratingsFromFeedback(fb: Feedback | null): Ratings {
   return {
     delivery_pronunciation: fb?.delivery_pronunciation ?? null,
@@ -66,24 +85,40 @@ export default function FeedbackModal({
   const selectedSession = pastSessions.find((s) => s.booking_id === selectedBookingId)
     ?? pastSessions[0];
 
-  // 현재 세션의 ratings, comment 상태
+  // 현재 세션의 ratings, comment 상태 — 임시저장본이 있으면 그것부터 복원
   const [ratings, setRatings] = useState<Ratings>(() =>
-    ratingsFromFeedback(selectedSession?.feedback ?? null)
+    loadLocalDraft(selectedSession?.booking_id ?? initialBookingId)?.ratings
+      ?? ratingsFromFeedback(selectedSession?.feedback ?? null)
   );
-  const [comment, setComment] = useState(
-    selectedSession?.feedback?.comment ?? `Hi ${studentName}, you did a great job today. `
+  const [comment, setComment] = useState(() =>
+    loadLocalDraft(selectedSession?.booking_id ?? initialBookingId)?.comment
+      ?? selectedSession?.feedback?.comment
+      ?? `Hi ${studentName}, you did a great job today. `
   );
 
-  // 세션 전환 시 상태 갱신
+  // 세션 전환 시 상태 갱신 (임시저장본 우선)
   useEffect(() => {
     if (!selectedSession) return;
-    setRatings(ratingsFromFeedback(selectedSession.feedback));
+    const local = loadLocalDraft(selectedSession.booking_id);
+    setRatings(local?.ratings ?? ratingsFromFeedback(selectedSession.feedback));
     setComment(
-      selectedSession.feedback?.comment
+      local?.comment
+        ?? selectedSession.feedback?.comment
         ?? `Hi ${studentName}, you did a great job today. `
     );
     setMsg(null);
   }, [selectedBookingId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 입력이 바뀔 때마다 자동 임시저장
+  useEffect(() => {
+    if (!selectedSession) return;
+    try {
+      localStorage.setItem(
+        draftKeyOf(selectedSession.booking_id),
+        JSON.stringify({ ratings, comment }),
+      );
+    } catch { /* 저장소 접근 불가 시 무시 */ }
+  }, [ratings, comment, selectedSession?.booking_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(key: FeedbackKey, v: number | null) {
     setRatings((r) => ({ ...r, [key]: v }));
@@ -102,6 +137,8 @@ export default function FeedbackModal({
         status,
       );
       if (!r.ok) { setMsg({ type: "err", text: r.error ?? "Failed to save" }); return; }
+      // 서버 저장 완료 → 임시본 정리
+      try { localStorage.removeItem(draftKeyOf(selectedSession.booking_id)); } catch { /* 무시 */ }
       setMsg({
         type: "ok",
         text: status === "draft" ? "Draft saved." : "Submitted.",
