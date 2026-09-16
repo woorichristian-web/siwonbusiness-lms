@@ -123,8 +123,9 @@ export default function AdminUserAddForm({ teachers = [] }: { teachers?: Teacher
               value={username} onChange={(e) => setUsername(e.target.value)} />
           </div>
           <div>
-            <label className="label">임시 비밀번호 * (8자 이상)</label>
-            <input className="input" required minLength={8}
+            <label className="label">임시 비밀번호 (비워두면 회사명1234! 자동)</label>
+            <input className="input" minLength={6}
+              placeholder="예: kaist1234! — 비워두면 자동 설정"
               value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
         </div>

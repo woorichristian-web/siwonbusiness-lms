@@ -54,8 +54,10 @@ export async function adminCreateUser(input: NewUserInput) {
   }
   if (!/^[a-zA-Z0-9_.-]{3,20}$/.test(input.username))
     return { ok: false, error: "아이디 형식이 올바르지 않습니다." };
-  if (input.password.length < 8)
-    return { ok: false, error: "비밀번호는 8자 이상이어야 합니다." };
+  // 비밀번호를 비워두면 회사명1234! 로 자동 설정
+  const password = input.password || defaultPasswordFor(input.company_name);
+  if (password.length < 6)
+    return { ok: false, error: "비밀번호는 6자 이상이어야 합니다." };
 
   const admin = createAdminClient();
   const email = usernameToEmail(input.username);
@@ -63,7 +65,7 @@ export async function adminCreateUser(input: NewUserInput) {
   // 1) Auth user 생성 (자동 확인)
   const { data: created, error: authErr } = await admin.auth.admin.createUser({
     email,
-    password: input.password,
+    password,
     email_confirm: true,
   });
   if (authErr || !created.user)
@@ -247,6 +249,15 @@ export async function adminBulkUploadSlots(rows: SlotImportRow[]): Promise<{ ok:
 // =====================================================================
 // 교육생 일괄 업로드 — 계정 + 배정 강사 + 사전 예약(수강일정)을 한 번에
 // =====================================================================
+/**
+ * 기본 비밀번호 규칙 — "{회사명(영문 소문자)}1234!" (예: KAIST → kaist1234!).
+ * 계정 생성 시 비밀번호를 비워두면 이 규칙으로 자동 설정된다.
+ */
+function defaultPasswordFor(companyName?: string | null): string {
+  const slug = (companyName ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return `${slug.length >= 2 ? slug : "siwon"}1234!`;
+}
+
 export async function adminBulkUploadStudents(
   rows: StudentImportRow[]
 ): Promise<{ ok: true; result: StudentImportResult } | { ok: false; error: string }> {
@@ -262,17 +273,18 @@ export async function adminBulkUploadStudents(
     const r = rows[i];
     const rowNum = i + 2; // 헤더 빼고 사람이 보는 행 번호
 
-    // 1) 필수값 + 형식 검증
-    if (!r.username || !r.password || !r.name) {
-      result.errors.push({ row: rowNum, reason: "username, password, name 은 필수" });
+    // 1) 필수값 + 형식 검증 — 비밀번호를 비워두면 회사명1234! 로 자동 설정
+    if (!r.password) r.password = defaultPasswordFor(r.company_name);
+    if (!r.username || !r.name) {
+      result.errors.push({ row: rowNum, reason: "username, name 은 필수" });
       continue;
     }
     if (!/^[a-zA-Z0-9_.-]{3,20}$/.test(r.username)) {
       result.errors.push({ row: rowNum, reason: `아이디 형식 오류 (${r.username})` });
       continue;
     }
-    if (r.password.length < 8) {
-      result.errors.push({ row: rowNum, reason: "비밀번호는 8자 이상" });
+    if (r.password.length < 6) {
+      result.errors.push({ row: rowNum, reason: "비밀번호는 6자 이상" });
       continue;
     }
 
