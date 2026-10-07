@@ -7,16 +7,76 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { syncCourseChatRooms } from "@/lib/chatSync";
 
 const GROUP_TYPES = new Set(["group", "group_coaching", "small_group"]);
+const WD_NUM: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+
+/**
+ * 과정 기간·요일·시간 기준으로 수업 시간표(time_slots)를 자동 생성.
+ * 그룹 수업 + 활성 강사 1명일 때만 동작 (반이 여러 개면 수동/업로드로 관리).
+ * 이미 같은 시각의 슬롯이 있으면 건너뛰므로 여러 번 호출해도 안전하다.
+ */
+async function ensureCourseSlots(admin: any, course: any) {
+  if (!GROUP_TYPES.has(course.class_type)) return;
+  if (!course.start_date || !course.end_date) return;
+  const weekdays: string[] = course.weekdays ?? [];
+  if (weekdays.length === 0) return;
+
+  const { data: cts } = await admin
+    .from("course_teachers").select("teacher_id")
+    .eq("course_id", course.id).is("assigned_until", null);
+  const tIds = Array.from(new Set((cts ?? []).map((r: any) => r.teacher_id)));
+  if (tIds.length !== 1) return;
+  const teacherId = tIds[0];
+
+  const duration = course.duration_min ?? 60;
+  const dayTimes = (course.day_times ?? {}) as Record<string, string>;
+  const wanted: { start: Date; end: Date }[] = [];
+  const start = new Date(course.start_date + "T00:00:00+09:00");
+  const end = new Date(course.end_date + "T00:00:00+09:00");
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const wd = weekdays.find((w) => WD_NUM[w] === new Date(d.getTime() + 9 * 3600000).getUTCDay());
+    if (!wd) continue;
+    const time = (dayTimes[wd] ?? course.class_time ?? "09:00").slice(0, 5);
+    const kstDate = new Date(d.getTime() + 9 * 3600000).toISOString().slice(0, 10);
+    const s = new Date(`${kstDate}T${time}:00+09:00`);
+    wanted.push({ start: s, end: new Date(s.getTime() + duration * 60000) });
+  }
+  // 총 차시가 정해져 있으면 그 수까지만
+  const limit = course.total_sessions ?? wanted.length;
+  const sessions = wanted.slice(0, limit);
+  if (sessions.length === 0) return;
+
+  const { data: existing } = await admin
+    .from("time_slots").select("start_at").eq("course_id", course.id);
+  const have = new Set((existing ?? []).map((r: any) => new Date(r.start_at).getTime()));
+  const inserts = sessions
+    .filter((s) => !have.has(s.start.getTime()))
+    .map((s) => ({
+      teacher_id: teacherId,
+      course_id: course.id,
+      start_at: s.start.toISOString(),
+      end_at: s.end.toISOString(),
+      format: course.format ?? "offline",
+      class_type: course.class_type,
+      capacity: course.capacity ?? 6,
+      status: "open",
+      slot_duration_minutes: duration,
+    }));
+  for (let i = 0; i < inserts.length; i += 100)
+    await admin.from("time_slots").insert(inserts.slice(i, i + 100));
+}
 
 export async function syncCourseEnrollment(courseId: string) {
   try {
     const admin = createAdminClient();
     const { data: course } = await admin
       .from("courses")
-      .select("id, name, company_name")
+      .select("id, name, company_name, class_type, format, capacity, duration_min, total_sessions, start_date, end_date, weekdays, class_time, day_times")
       .eq("id", courseId)
       .maybeSingle();
     if (!course) return;
+
+    // 0) 시간표가 없으면 과정 일정 기준으로 자동 생성
+    await ensureCourseSlots(admin, course);
 
     // 1) 강좌명 매칭 → 수강 등록 채우기 (회사명이 있으면 같은 회사만)
     let q = admin
