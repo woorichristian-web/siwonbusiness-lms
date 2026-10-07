@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { syncEnrollmentByCourseName } from "@/lib/enrollmentSync";
 import type { CompanySettings, ClassFormat, ClassType } from "@/lib/types";
 
 async function assertAdmin() {
@@ -161,6 +162,14 @@ export async function updateMemberAdminFields(
   if (clean.assigned_teacher_id === "") clean.assigned_teacher_id = null;
   const { error } = await admin.from("profiles").update(clean).eq("id", profileId);
   if (error) return { ok: false, error: error.message };
+
+  // 수강 강좌명이 바뀌었으면 — 과정 매칭 + 미래 그룹 수업 예약 자동 생성
+  if (patch.course_name !== undefined) {
+    const { data: p } = await admin
+      .from("profiles").select("course_name, company_name").eq("id", profileId).maybeSingle();
+    await syncEnrollmentByCourseName(p?.course_name ?? null, p?.company_name ?? null);
+  }
+
   revalidatePath("/admin/companies");
   revalidatePath("/admin/users");
   return { ok: true };

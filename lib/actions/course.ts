@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncCourseChatRooms } from "@/lib/chatSync";
+import { syncCourseEnrollment } from "@/lib/enrollmentSync";
 import { usernameToEmail } from "@/lib/constants";
 
 /**
@@ -236,6 +237,7 @@ export async function createCourse(input: CourseInput) {
     .select("id")
     .single();
   if (error) return { ok: false as const, error: error.message };
+  await syncCourseEnrollment(data.id as string); // 강좌명 매칭 교육생 등록 + 미래 그룹 수업 예약
   await syncCourseChatRooms(data.id as string);
   await ensureCompanyMaster(payload.company_name, input.master_username ?? null);
   revalidatePath("/admin/courses");
@@ -326,6 +328,7 @@ export async function openCourse(courseId: string) {
     .update({ opened_at: new Date().toISOString() })
     .eq("id", courseId);
 
+  await syncCourseEnrollment(courseId); // 오픈 시에도 매칭·예약 보정
   await syncCourseChatRooms(courseId);
   await syncStudentContractFields(courseId);
   revalidatePath("/admin/courses");
@@ -343,6 +346,7 @@ export async function updateCourse(courseId: string, input: CourseInput) {
     .update({ ...clean(input), updated_at: new Date().toISOString() })
     .eq("id", courseId);
   if (error) return { ok: false as const, error: error.message };
+  await syncCourseEnrollment(courseId); // 강좌명 매칭 교육생 등록 + 미래 그룹 수업 예약
   await syncCourseChatRooms(courseId);
   await syncStudentContractFields(courseId);
   await ensureCompanyMaster(input.company_name, input.master_username ?? null);

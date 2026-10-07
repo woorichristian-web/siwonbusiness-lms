@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { usernameToEmail } from "@/lib/constants";
 import { syncCourseChatRooms } from "@/lib/chatSync";
+import { syncEnrollmentByCourseName } from "@/lib/enrollmentSync";
 import type { Role, ClassFormat, ClassType } from "@/lib/types";
 
 /** 현재 사용자가 admin 인지 검증. 아니면 throw. */
@@ -443,6 +444,17 @@ export async function adminBulkUploadStudents(
   }
 
   for (const cid of syncCourseIds) await syncCourseChatRooms(cid);
+
+  // 강좌명이 입력된 행 — 해당 과정에 수강 등록 + 미래 그룹 수업 예약 자동 생성
+  // (스케줄 칼럼을 비워 둬도 과정 매칭만 되면 수업이 채워진다)
+  const enrollPairs = new Set<string>();
+  for (const r of rows)
+    if (r.course_name?.trim())
+      enrollPairs.add(`${r.course_name.trim()}|${r.company_name?.trim() ?? ""}`);
+  for (const pair of enrollPairs) {
+    const [cn, comp] = pair.split("|");
+    await syncEnrollmentByCourseName(cn, comp || null);
+  }
 
   revalidatePath("/admin/upload");
   revalidatePath("/admin/companies");
