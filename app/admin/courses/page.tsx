@@ -29,7 +29,7 @@ export default async function AdminCoursesPage() {
 
   const [cssRes, ctsRes] = courseIds.length > 0
     ? await Promise.all([
-        supabase.from("course_students").select("course_id").in("course_id", courseIds),
+        supabase.from("course_students").select("course_id, student_id").in("course_id", courseIds),
         supabase.from("course_teachers").select("course_id, teacher_id")
           .in("course_id", courseIds).is("assigned_until", null),
       ])
@@ -39,6 +39,25 @@ export default async function AdminCoursesPage() {
   const studentCounts: Record<string, number> = {};
   for (const r of cssRes.data ?? [])
     studentCounts[r.course_id] = (studentCounts[r.course_id] ?? 0) + 1;
+
+  // 과정별 등록 교육생 명단 (폼의 교육생 배정 피커 초기값)
+  const enrollIds = Array.from(new Set((cssRes.data ?? []).map((r: any) => r.student_id)));
+  const sById = new Map<string, any>();
+  if (enrollIds.length > 0) {
+    const { data: sps } = await supabase
+      .from("profiles").select("id, name, english_name, company_name").in("id", enrollIds);
+    for (const p of sps ?? []) sById.set(p.id, p);
+  }
+  const enrollments: Record<string, { id: string; name: string; english_name: string | null; company_name: string | null }[]> = {};
+  for (const r of cssRes.data ?? []) {
+    const p = sById.get(r.student_id);
+    if (!p) continue;
+    (enrollments[r.course_id] ??= []).push({
+      id: p.id, name: p.name,
+      english_name: p.english_name ?? null,
+      company_name: p.company_name ?? null,
+    });
+  }
 
   // 과정별 현재 배정 강사
   const assignments: Record<string, { teacher_id: string; name: string }[]> = {};
@@ -65,6 +84,7 @@ export default async function AdminCoursesPage() {
           allTeachers={(allTeachers ?? []) as TeacherOption[]}
           assignments={assignments}
           studentCounts={studentCounts}
+          enrollments={enrollments}
         />
       </main>
     </>

@@ -373,6 +373,67 @@ export async function deleteCourse(courseId: string) {
   return { ok: true as const };
 }
 
+/** 교육생 검색 (과정 폼 배정 피커용) — 이름·영문이름·아이디로 검색, 회사명 병기해 동명이인 구분. */
+export async function searchStudentsForCourse(query: string) {
+  let supabase;
+  try { supabase = await assertAdmin(); }
+  catch (e: any) { return { ok: false as const, error: e.message }; }
+  const q = query.trim().replace(/[,%]/g, "");
+  if (q.length < 1) return { ok: true as const, list: [] };
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, name, english_name, username, company_name")
+    .eq("role", "student")
+    .or(`name.ilike.%${q}%,username.ilike.%${q}%,english_name.ilike.%${q}%`)
+    .order("name")
+    .limit(30);
+  return { ok: true as const, list: (data ?? []) as any[] };
+}
+
+/**
+ * 과정 교육생 배정 동기화 — 폼에서 고른 명단과 일치하도록 추가/해제.
+ * 추가된 교육생에게는 syncCourseEnrollment 가 미래 그룹 수업 예약을 자동 생성.
+ * 해제된 교육생은 미래 예약을 삭제하고, 수강 강좌명이 이 과정이면 비워서
+ * 이름 매칭으로 다시 등록되지 않게 한다. (지난 수업 기록은 보존)
+ */
+export async function setCourseStudents(courseId: string, studentIds: string[]) {
+  try { await assertAdmin(); }
+  catch (e: any) { return { ok: false as const, error: e.message }; }
+  const admin = createAdminClient();
+
+  const { data: course } = await admin
+    .from("courses").select("name").eq("id", courseId).maybeSingle();
+  if (!course) return { ok: false as const, error: "과정을 찾을 수 없습니다." };
+
+  const { data: cur } = await admin
+    .from("course_students").select("student_id").eq("course_id", courseId);
+  const before = new Set((cur ?? []).map((r: any) => r.student_id));
+  const after = new Set(studentIds);
+  const toAdd = studentIds.filter((id) => !before.has(id));
+  const toRemove = Array.from(before).filter((id) => !after.has(id));
+
+  if (toAdd.length > 0) {
+    await admin.from("course_students").upsert(
+      toAdd.map((id) => ({ course_id: courseId, student_id: id })),
+      { onConflict: "course_id,student_id" },
+    );
+  }
+  if (toRemove.length > 0) {
+    await admin.from("course_students").delete()
+      .eq("course_id", courseId).in("student_id", toRemove);
+    await admin.from("bookings").delete()
+      .eq("course_id", courseId).in("student_id", toRemove)
+      .gt("start_at", new Date().toISOString());
+    await admin.from("profiles").update({ course_name: null })
+      .in("id", toRemove).eq("course_name", course.name);
+  }
+
+  await syncCourseEnrollment(courseId); // 추가 인원 예약 생성 + 대화방 동기화
+  await syncStudentContractFields(courseId);
+  revalidatePath("/admin/courses");
+  return { ok: true as const };
+}
+
 /** 강사 여러 명 배정 (이미 활성 배정된 강사는 건너뜀). */
 export async function assignCourseTeachers(courseId: string, teacherIds: string[]) {
   let supabase;

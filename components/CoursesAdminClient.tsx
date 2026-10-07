@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createCourse,
@@ -11,7 +11,16 @@ import {
   assignCourseTeachers,
   removeCourseTeacher,
   getCourseNameReport,
+  searchStudentsForCourse,
+  setCourseStudents,
 } from "@/lib/actions/course";
+
+export type StudentOption = {
+  id: string;
+  name: string;
+  english_name: string | null;
+  company_name: string | null;
+};
 import { buildCourseNameXlsx, buildSurveyXlsx, type SurveyXlsxData } from "@/lib/reportXlsx";
 import { getCourseSurveyAdmin } from "@/lib/actions/survey";
 
@@ -74,11 +83,14 @@ export default function CoursesAdminClient({
   allTeachers,
   assignments,
   studentCounts = {},
+  enrollments = {},
 }: {
   courses: CourseRow[];
   allTeachers: TeacherOption[];
   assignments: Record<string, Assigned[]>;
   studentCounts?: Record<string, number>;
+  /** 과정별 등록 교육생 명단 — 폼의 교육생 배정 초기값 */
+  enrollments?: Record<string, StudentOption[]>;
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [editFor, setEditFor] = useState<CourseRow | null>(null);
@@ -105,7 +117,7 @@ export default function CoursesAdminClient({
       </div>
 
       {showCreate && (
-        <CreateForm onDone={() => setShowCreate(false)} allTeachers={allTeachers} assignedIds={[]} />
+        <CreateForm onDone={() => setShowCreate(false)} allTeachers={allTeachers} assignedIds={[]} enrolledStudents={[]} />
       )}
 
       {courses.length === 0 ? (
@@ -160,6 +172,7 @@ export default function CoursesAdminClient({
               onDone={() => setEditFor(null)}
               allTeachers={allTeachers}
               assignedIds={(assignments[editFor.id] ?? []).map((a) => a.teacher_id)}
+              enrolledStudents={enrollments[editFor.id] ?? []}
             />
           </div>
         </div>
@@ -216,12 +229,13 @@ function Pagination({
 
 // ---------------------------------------------------------------------
 function CreateForm({
-  onDone, initial, allTeachers, assignedIds,
+  onDone, initial, allTeachers, assignedIds, enrolledStudents = [],
 }: {
   onDone: () => void;
   initial?: CourseRow | null;
   allTeachers: TeacherOption[];
   assignedIds: string[];
+  enrolledStudents?: StudentOption[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -262,6 +276,9 @@ function CreateForm({
   );
   const [selTeachers, setSelTeachers] = useState<string[]>(assignedIds);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // 교육생 배정 — 검색해서 불러오기 (한 교육생이 여러 과정에 중복 배정 가능)
+  const [selStudents, setSelStudents] = useState<StudentOption[]>(enrolledStudents);
+  const [studentPickerOpen, setStudentPickerOpen] = useState(false);
   const [customLang, setCustomLang] = useState(
     !!(initial?.language && !LANGUAGES.includes(initial.language)),
   );
@@ -307,6 +324,13 @@ function CreateForm({
       const toRemove = assignedIds.filter((id) => !after.has(id));
       if (toAdd.length > 0) await assignCourseTeachers(courseId, toAdd);
       for (const id of toRemove) await removeCourseTeacher(courseId, id);
+      // 교육생 배정 동기화 — 추가 인원에게 미래 그룹 수업 예약 자동 생성
+      const beforeS = new Set(enrolledStudents.map((s) => s.id));
+      const afterS = new Set(selStudents.map((s) => s.id));
+      const changed = selStudents.length !== enrolledStudents.length
+        || selStudents.some((s) => !beforeS.has(s.id))
+        || enrolledStudents.some((s) => !afterS.has(s.id));
+      if (changed) await setCourseStudents(courseId, selStudents.map((s) => s.id));
       router.refresh();
       onDone();
     });
@@ -457,6 +481,44 @@ function CreateForm({
               excludeIds={selTeachers}
               onPick={(id) => { setSelTeachers((s) => [...s, id]); setPickerOpen(false); }}
               onClose={() => setPickerOpen(false)}
+            />
+          )}
+        </Field>
+        <Field label={`교육생 배정 (${selStudents.length}명)`}>
+          <div className="space-y-2 rounded-md border border-slate-200 p-2.5">
+            {selStudents.length === 0 ? (
+              <p className="text-xs text-slate-400">
+                배정된 교육생이 없습니다. [교육생 불러오기]로 검색해서 추가하세요.
+                저장 시 남은 그룹 수업 예약이 자동 생성됩니다.
+              </p>
+            ) : (
+              <ul className="flex flex-wrap gap-1.5">
+                {selStudents.map((s) => (
+                  <li key={s.id} className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-xs ring-1 ring-slate-200">
+                    <span className="font-medium text-slate-800">
+                      {s.name}{s.english_name ? ` / ${s.english_name}` : ""}
+                    </span>
+                    {s.company_name && <span className="text-slate-400">· {s.company_name}</span>}
+                    <button type="button" title="배정 해제"
+                      className="rounded px-1 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                      onClick={() => setSelStudents((list) => list.filter((x) => x.id !== s.id))}>
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button type="button"
+              className="rounded-md border border-brand-300 px-3 py-1.5 text-xs font-semibold text-brand-700 transition hover:bg-brand-50"
+              onClick={() => setStudentPickerOpen(true)}>
+              {selStudents.length === 0 ? "교육생 불러오기" : "+ 교육생 추가"}
+            </button>
+          </div>
+          {studentPickerOpen && (
+            <StudentPickerModal
+              excludeIds={selStudents.map((s) => s.id)}
+              onPick={(s) => setSelStudents((list) => [...list, s])}
+              onClose={() => setStudentPickerOpen(false)}
             />
           )}
         </Field>
@@ -924,5 +986,78 @@ function CourseNameDownload({ name }: { name: string }) {
       </button>
       {err && <span className="text-xs font-normal text-red-600">{err}</span>}
     </span>
+  );
+}
+
+
+// ---------------------------------------------------------------------
+// 교육생 불러오기 모달 — 이름·영문이름·아이디 검색, 회사명 병기(동명이인 구분)
+// ---------------------------------------------------------------------
+function StudentPickerModal({
+  excludeIds, onPick, onClose,
+}: {
+  excludeIds: string[];
+  onPick: (s: StudentOption) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const [list, setList] = useState<(StudentOption & { username?: string })[]>([]);
+  const [busy, setBusy] = useState(false);
+  const excluded = new Set(excludeIds);
+
+  useEffect(() => {
+    if (!q.trim()) { setList([]); return; }
+    const t = setTimeout(async () => {
+      setBusy(true);
+      try {
+        const r = await searchStudentsForCourse(q);
+        if (r.ok) setList(r.list as any[]);
+      } finally {
+        setBusy(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()}
+        className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 shadow-xl">
+        <h3 className="mb-3 text-base font-semibold text-slate-800">교육생 불러오기</h3>
+        <input autoFocus className="input" placeholder="이름 · 영문이름 · 아이디 검색"
+          value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="mt-3 divide-y divide-slate-100 rounded-md border border-slate-200">
+          {busy && <p className="p-3 text-center text-xs text-slate-400">검색 중...</p>}
+          {!busy && q.trim() && list.length === 0 && (
+            <p className="p-3 text-center text-xs text-slate-400">검색 결과가 없습니다.</p>
+          )}
+          {!busy && list.map((s: any) => {
+            const already = excluded.has(s.id);
+            return (
+              <button key={s.id} type="button" disabled={already}
+                onClick={() => { onPick({ id: s.id, name: s.name, english_name: s.english_name ?? null, company_name: s.company_name ?? null }); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-40">
+                <span className="min-w-0 flex-1">
+                  <span className="font-medium text-slate-800">
+                    {s.name}{s.english_name ? ` / ${s.english_name}` : ""}
+                  </span>
+                  <span className="ml-1.5 text-xs text-slate-400">@{s.username}</span>
+                </span>
+                <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
+                  {s.company_name ?? "회사 미지정"}
+                </span>
+                {already && <span className="shrink-0 text-[11px] text-emerald-600">배정됨</span>}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-[11px] text-slate-400">
+          같은 교육생을 여러 과정에 중복 배정할 수 있습니다. 회사명으로 동명이인을 구분하세요.
+        </p>
+        <div className="mt-4 flex justify-end">
+          <button className="btn-ghost" onClick={onClose}>닫기</button>
+        </div>
+      </div>
+    </div>
   );
 }
